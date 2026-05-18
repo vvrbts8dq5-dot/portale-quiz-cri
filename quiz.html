@@ -226,6 +226,16 @@
     border-color: var(--red); color: var(--red);
   }
 
+  .option-btn.selected {
+    border-color: var(--text);
+    background: white;
+    pointer-events: none;
+  }
+
+  .option-btn.selected .option-letter {
+    background: var(--text); border-color: var(--text); color: white;
+  }
+
   .option-btn.correct {
     border-color: var(--green); background: var(--green-bg);
     pointer-events: none;
@@ -728,25 +738,11 @@ function selezionaRisposta(risposta, domanda, btnCliccato, wrap) {
     esito: esito
   });
 
-  // Disabilita tutti i bottoni
+  // Disabilita tutti i bottoni e marca solo quello selezionato (senza mostrare la corretta)
   wrap.querySelectorAll('.option-btn').forEach(b => {
     b.disabled = true;
-    const testo = b.querySelector('span:last-child').textContent;
-    if (testo === corretta) b.classList.add('show-correct');
   });
-
-  if (esito) {
-    btnCliccato.classList.remove('show-correct');
-    btnCliccato.classList.add('correct');
-    const fb = document.getElementById('feedbackMsg');
-    fb.textContent = '✓ Risposta corretta!';
-    fb.className = 'feedback-msg correct-fb';
-  } else {
-    btnCliccato.classList.add('wrong');
-    const fb = document.getElementById('feedbackMsg');
-    fb.textContent = `✗ Risposta errata. La risposta corretta è: "${corretta}"`;
-    fb.className = 'feedback-msg wrong-fb';
-  }
+  btnCliccato.classList.add('selected');
 
   document.getElementById('btnNext').classList.add('visible');
 }
