@@ -61,11 +61,8 @@
   .login-head { text-align: center; margin-bottom: 28px; }
 
   .lock-icon {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 64px; height: 64px;
-    background: var(--text); color: white;
-    border-radius: 18px; margin-bottom: 14px;
-    font-size: 28px;
+    width: 110px; height: auto;
+    margin-bottom: 14px;
   }
 
   .login-title { font-size: 20px; font-weight: 600; }
@@ -126,14 +123,11 @@
   .top-nav-left { display: flex; align-items: center; gap: 12px; }
 
   .logo-admin {
-    width: 36px; height: 36px;
-    background: var(--text); color: white;
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px;
+    width: 40px; height: auto;
+    flex-shrink: 0;
   }
 
-  .nav-title { font-size: 15px; font-weight: 600; }
+  .nav-title { font-size: 14px; font-weight: 600; color: var(--red); line-height: 1.2; }
   .nav-sub { font-size: 11px; color: var(--text2); }
 
   .top-nav-right { display: flex; align-items: center; gap: 12px; }
@@ -451,9 +445,9 @@
 <div class="login-wrap" id="loginScreen">
   <div class="login-card">
     <div class="login-head">
-      <div class="lock-icon">🔒</div>
-      <div class="login-title">Dashboard Admin</div>
-      <div class="login-sub">Portale Quiz CRI Padova</div>
+      <img src="logo-cri.png" alt="Croce Rossa Italiana" class="lock-icon" />
+      <div class="login-title">Croce Rossa Italiana</div>
+      <div class="login-sub">Comitato di Padova · Dashboard Admin</div>
     </div>
 
     <div class="form-group">
@@ -476,10 +470,10 @@
 
   <div class="top-nav">
     <div class="top-nav-left">
-      <div class="logo-admin">🔒</div>
+      <img src="logo-cri.png" alt="CRI" class="logo-admin" />
       <div>
-        <div class="nav-title">Dashboard Admin</div>
-        <div class="nav-sub">Portale Quiz CRI</div>
+        <div class="nav-title">Croce Rossa Italiana</div>
+        <div class="nav-sub">Comitato di Padova · Dashboard Admin</div>
       </div>
     </div>
     <div class="top-nav-right">
