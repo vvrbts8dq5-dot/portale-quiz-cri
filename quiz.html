@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz — Portale CRI</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #CC0000;
+    --red-dark: #990000;
+    --green: #1a7a3c;
+    --green-bg: #f0faf4;
+    --green-border: #b6e8ca;
+    --wrong-bg: #fff5f5;
+    --wrong-border: #ffd0d0;
+    --bg: #f7f5f2;
+    --bg2: #ffffff;
+    --text: #1a1a1a;
+    --text2: #666;
+    --border: #e0ddd8;
+    --radius: 12px;
+    --shadow: 0 2px 16px rgba(0,0,0,0.07);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 16px 48px;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: radial-gradient(circle at 20% 20%, rgba(204,0,0,0.04) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap {
+    max-width: 600px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Topbar */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 28px;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  .logo-sm {
+    width: 36px; height: 36px;
+    background: var(--red);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 18px; flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(204,0,0,0.2);
+  }
+
+  .topbar-title { font-size: 15px; font-weight: 600; }
+  .topbar-sub { font-size: 12px; color: var(--text2); }
+
+  /* Card */
+  .card {
+    background: var(--bg2);
+    border-radius: var(--radius);
+    padding: 28px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    animation: fadeUp 0.4s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Screens */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ---- SCHERMATA NOME ---- */
+  .screen-label {
+    font-size: 11px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.8px;
+    color: var(--text2); margin-bottom: 18px;
+  }
+
+  .form-group { margin-bottom: 16px; }
+  .form-group label {
+    display: block; font-size: 13px; font-weight: 500;
+    color: var(--text2); margin-bottom: 6px;
+  }
+
+  .form-group input {
+    width: 100%; padding: 13px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px; color: var(--text);
+    background: var(--bg); outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .form-group input:focus {
+    border-color: var(--red);
+    box-shadow: 0 0 0 3px rgba(204,0,0,0.08);
+    background: white;
+  }
+
+  /* Badge corso */
+  .corso-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(204,0,0,0.07);
+    color: var(--red); border-radius: 20px;
+    padding: 4px 12px; font-size: 12px; font-weight: 500;
+    margin-bottom: 20px;
+  }
+
+  /* ---- SCELTA NUMERO DOMANDE ---- */
+  .choice-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 12px; margin-top: 8px;
+  }
+
+  .choice-btn {
+    border: 2px solid var(--border);
+    border-radius: 10px; background: var(--bg);
+    padding: 20px 16px; cursor: pointer;
+    text-align: center; transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .choice-btn:hover { border-color: var(--red); background: white; }
+
+  .choice-num {
+    font-size: 32px; font-weight: 600;
+    color: var(--red); line-height: 1;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .choice-label {
+    font-size: 13px; color: var(--text2); margin-top: 4px;
+  }
+
+  /* ---- QUIZ ---- */
+  .progress-wrap { margin-bottom: 20px; }
+
+  .progress-info {
+    display: flex; justify-content: space-between;
+    font-size: 12px; color: var(--text2); margin-bottom: 8px;
+  }
+
+  .progress-bar {
+    height: 4px; background: var(--border);
+    border-radius: 99px; overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%; background: var(--red);
+    border-radius: 99px;
+    transition: width 0.4s ease;
+  }
+
+  .question-num {
+    font-size: 11px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.8px;
+    color: var(--text2); margin-bottom: 10px;
+  }
+
+  .question-type-badge {
+    display: inline-block;
+    font-size: 10px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.6px;
+    padding: 2px 8px; border-radius: 4px;
+    margin-bottom: 10px;
+  }
+
+  .badge-multi { background: #e8f0fe; color: #1a56b0; }
+  .badge-vf { background: #fef3e2; color: #b45309; }
+
+  .question-text {
+    font-size: 17px; font-weight: 500;
+    line-height: 1.5; margin-bottom: 22px;
+    color: var(--text);
+  }
+
+  .options { display: flex; flex-direction: column; gap: 10px; }
+
+  .option-btn {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px; background: var(--bg);
+    cursor: pointer; text-align: left; width: 100%;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px; color: var(--text);
+    transition: all 0.15s;
+    position: relative;
+  }
+
+  .option-btn:hover:not(:disabled) {
+    border-color: var(--red); background: white;
+  }
+
+  .option-letter {
+    width: 28px; height: 28px; flex-shrink: 0;
+    border-radius: 50%; border: 1.5px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 500; color: var(--text2);
+    font-family: 'DM Mono', monospace;
+    transition: all 0.15s;
+  }
+
+  .option-btn:hover:not(:disabled) .option-letter {
+    border-color: var(--red); color: var(--red);
+  }
+
+  .option-btn.correct {
+    border-color: var(--green); background: var(--green-bg);
+    pointer-events: none;
+  }
+
+  .option-btn.correct .option-letter {
+    background: var(--green); border-color: var(--green); color: white;
+  }
+
+  .option-btn.wrong {
+    border-color: var(--red); background: var(--wrong-bg);
+    pointer-events: none;
+  }
+
+  .option-btn.wrong .option-letter {
+    background: var(--red); border-color: var(--red); color: white;
+  }
+
+  .option-btn.show-correct {
+    border-color: var(--green); background: var(--green-bg);
+    pointer-events: none;
+  }
+
+  .option-btn.show-correct .option-letter {
+    background: var(--green); border-color: var(--green); color: white;
+  }
+
+  .option-btn:disabled { pointer-events: none; }
+
+  .feedback-msg {
+    margin-top: 16px; padding: 12px 14px;
+    border-radius: 8px; font-size: 13px;
+    display: none;
+  }
+
+  .feedback-msg.correct-fb {
+    background: var(--green-bg); border: 1px solid var(--green-border);
+    color: var(--green); display: block;
+  }
+
+  .feedback-msg.wrong-fb {
+    background: var(--wrong-bg); border: 1px solid var(--wrong-border);
+    color: var(--red); display: block;
+  }
+
+  .btn-next {
+    width: 100%; margin-top: 16px; padding: 14px;
+    background: var(--red); color: white; border: none;
+    border-radius: 8px; font-family: 'DM Sans', sans-serif;
+    font-size: 15px; font-weight: 500; cursor: pointer;
+    transition: background 0.2s; display: none;
+  }
+
+  .btn-next:hover { background: var(--red-dark); }
+  .btn-next.visible { display: block; animation: fadeUp 0.3s ease both; }
+
+  /* ---- RISULTATI ---- */
+  .result-header { text-align: center; padding: 8px 0 24px; }
+
+  .result-icon {
+    font-size: 48px; margin-bottom: 12px;
+    animation: pop 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+  }
+
+  @keyframes pop {
+    from { transform: scale(0.5); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .result-title {
+    font-size: 22px; font-weight: 600; margin-bottom: 4px;
+  }
+
+  .result-sub { font-size: 14px; color: var(--text2); }
+
+  .score-box {
+    display: flex; align-items: center; justify-content: center;
+    gap: 24px; margin: 24px 0;
+    padding: 20px; background: var(--bg);
+    border-radius: 10px; border: 1px solid var(--border);
+  }
+
+  .score-item { text-align: center; }
+
+  .score-num {
+    font-size: 28px; font-weight: 600;
+    font-family: 'DM Mono', monospace;
+    line-height: 1;
+  }
+
+  .score-num.green { color: var(--green); }
+  .score-num.red { color: var(--red); }
+  .score-num.main { font-size: 36px; color: var(--text); }
+
+  .score-label { font-size: 11px; color: var(--text2); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .score-divider { width: 1px; height: 40px; background: var(--border); }
+
+  /* Riepilogo errori */
+  .review-title {
+    font-size: 13px; font-weight: 500; color: var(--text2);
+    text-transform: uppercase; letter-spacing: 0.8px;
+    margin: 24px 0 14px;
+  }
+
+  .review-item {
+    border: 1px solid var(--border); border-radius: 10px;
+    overflow: hidden; margin-bottom: 10px;
+  }
+
+  .review-question {
+    padding: 12px 14px; font-size: 14px; font-weight: 500;
+    background: var(--bg); border-bottom: 1px solid var(--border);
+    line-height: 1.4;
+  }
+
+  .review-answers { padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; }
+
+  .review-answer {
+    font-size: 13px; padding: 6px 10px; border-radius: 6px;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .review-answer.your-wrong {
+    background: var(--wrong-bg); color: var(--red);
+  }
+
+  .review-answer.correct-ans {
+    background: var(--green-bg); color: var(--green);
+  }
+
+  .review-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .dot-red { background: var(--red); }
+  .dot-green { background: var(--green); }
+
+  /* Bottoni risultati */
+  .result-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; }
+
+  .btn-retry {
+    width: 100%; padding: 14px; background: var(--red); color: white;
+    border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif;
+    font-size: 15px; font-weight: 500; cursor: pointer; transition: background 0.2s;
+  }
+
+  .btn-retry:hover { background: var(--red-dark); }
+
+  .btn-home {
+    width: 100%; padding: 14px; background: var(--bg); color: var(--text2);
+    border: 1.5px solid var(--border); border-radius: 8px;
+    font-family: 'DM Sans', sans-serif; font-size: 15px; cursor: pointer;
+    transition: border-color 0.2s;
+  }
+
+  .btn-home:hover { border-color: var(--text2); }
+
+  /* Esito badge */
+  .esito-badge {
+    display: inline-block; padding: 6px 16px; border-radius: 20px;
+    font-size: 13px; font-weight: 500; margin-top: 8px;
+  }
+
+  .esito-pass { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+  .esito-fail { background: var(--wrong-bg); color: var(--red); border: 1px solid var(--wrong-border); }
+
+  /* Saving overlay */
+  .saving-msg {
+    text-align: center; padding: 12px; font-size: 13px;
+    color: var(--text2); display: none;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="logo-sm">✚</div>
+    <div>
+      <div class="topbar-title">Portale Quiz CRI</div>
+      <div class="topbar-sub" id="topbarSub">Padova</div>
+    </div>
+  </div>
+
+  <!-- SCHERMATA 1: NOME E COGNOME -->
+  <div class="card screen active" id="screenNome">
+    <div class="screen-label">Registrazione</div>
+    <div class="corso-badge" id="corsoBadge">📋 Corso</div>
+    <div class="form-group">
+      <label>Nome</label>
+      <input type="text" id="inputNome" placeholder="Il tuo nome" autocomplete="given-name" />
+    </div>
+    <div class="form-group">
+      <label>Cognome</label>
+      <input type="text" id="inputCognome" placeholder="Il tuo cognome" autocomplete="family-name" />
+    </div>
+    <button class="btn-retry" onclick="goToScelta()" style="margin-top:8px">Continua →</button>
+    <div class="error-nome" id="errNome" style="color:var(--red);font-size:13px;margin-top:10px;display:none">
+      Inserisci nome e cognome per continuare.
+    </div>
+  </div>
+
+  <!-- SCHERMATA 2: SCELTA NUMERO DOMANDE -->
+  <div class="card screen" id="screenScelta">
+    <div class="screen-label">Configura il test</div>
+    <p style="font-size:15px;font-weight:500;margin-bottom:6px">Quante domande vuoi fare?</p>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:20px">Le domande saranno selezionate casualmente dal database.</p>
+    <div class="choice-grid">
+      <button class="choice-btn" onclick="startQuiz(15)">
+        <div class="choice-num">15</div>
+        <div class="choice-label">domande</div>
+      </button>
+      <button class="choice-btn" onclick="startQuiz(30)">
+        <div class="choice-num">30</div>
+        <div class="choice-label">domande</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- SCHERMATA 3: QUIZ -->
+  <div class="card screen" id="screenQuiz">
+    <div class="progress-wrap">
+      <div class="progress-info">
+        <span id="progressText">Domanda 1 di 15</span>
+        <span id="progressPct">0%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div class="question-num" id="questionNum">Domanda 1</div>
+    <div id="questionTypeBadge"></div>
+    <div class="question-text" id="questionText"></div>
+    <div class="options" id="optionsWrap"></div>
+    <div class="feedback-msg" id="feedbackMsg"></div>
+    <button class="btn-next" id="btnNext" onclick="nextQuestion()">Prossima domanda →</button>
+  </div>
+
+  <!-- SCHERMATA 4: RISULTATI -->
+  <div class="card screen" id="screenRisultati">
+    <div class="result-header">
+      <div class="result-icon" id="resultIcon">🎯</div>
+      <div class="result-title" id="resultTitle">Ottimo lavoro!</div>
+      <div class="result-sub" id="resultSub"></div>
+      <div id="resultEsito"></div>
+    </div>
+
+    <div class="score-box">
+      <div class="score-item">
+        <div class="score-num green" id="scoreCorrette">0</div>
+        <div class="score-label">Corrette</div>
+      </div>
+      <div class="score-divider"></div>
+      <div class="score-item">
+        <div class="score-num main" id="scoreTotale">0</div>
+        <div class="score-label">Totale</div>
+      </div>
+      <div class="score-divider"></div>
+      <div class="score-item">
+        <div class="score-num red" id="scoreErrate">0</div>
+        <div class="score-label">Errate</div>
+      </div>
+    </div>
+
+    <div id="reviewSection">
+      <div class="review-title" id="reviewTitle"></div>
+      <div id="reviewList"></div>
+    </div>
+
+    <div class="saving-msg" id="savingMsg">💾 Salvataggio risultato...</div>
+
+    <div class="result-actions">
+      <button class="btn-retry" onclick="retryQuiz()">Rifai il test</button>
+      <button class="btn-home" onclick="window.location.href='index.html'">← Torna al portale</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAQsAwG237CMsuqlNTvrGyfNphDSjlg4JM",
+  authDomain: "portale-quiz-cri.firebaseapp.com",
+  projectId: "portale-quiz-cri",
+  storageBucket: "portale-quiz-cri.firebasestorage.app",
+  messagingSenderId: "889294477843",
+  appId: "1:889294477843:web:69a0e52a858a482becbde6"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// Stato globale
+let stato = {
+  nome: '', cognome: '',
+  corso: '', corsoLabel: '',
+  categoria: '', categoriaLabel: '',
+  domande: [], domandeSelezionate: [],
+  current: 0, corrette: 0,
+  risposteDate: [], // {domanda, tuaRisposta, rispostaCorretta, esito}
+  numDomande: 15
+};
+
+// Leggi parametri URL
+const params = new URLSearchParams(window.location.search);
+stato.corso = params.get('corso') || 'base';
+stato.categoria = params.get('categoria') || '';
+
+// Labels
+const corsoLabels = {
+  base: 'Corso Base', tssa: 'Corso TSSA', squadra: 'Formazione Squadra'
+};
+const categoriaLabels = {
+  tssa_adulto: 'Protocolli adulto', tssa_pediatrico: 'Protocolli pediatrico',
+  tssa_resp: 'Problematica respiratoria', tssa_neuro: 'Problematica neurologica',
+  tssa_cardio: 'Problematica cardiaca', tssa_farmaci: 'Farmaci',
+  tssa_ossigeno: 'Ossigeno', tssa_generale: 'Quiz Generale TSSA'
+};
+
+stato.corsoLabel = corsoLabels[stato.corso] || stato.corso;
+stato.categoriaLabel = stato.categoria ? (categoriaLabels[stato.categoria] || stato.categoria) : '';
+
+// Aggiorna UI topbar e badge
+const badgeText = stato.categoriaLabel ? `${stato.corsoLabel} — ${stato.categoriaLabel}` : stato.corsoLabel;
+document.getElementById('corsoBadge').textContent = '📋 ' + badgeText;
+document.getElementById('topbarSub').textContent = badgeText;
+
+// Collezione Firebase da usare
+function getCollezione() {
+  if (stato.corso === 'base') return 'domande_base';
+  if (stato.corso === 'squadra') return 'domande_squadra';
+  if (stato.categoria === 'tssa_generale') return null; // multipla
+  return 'domande_' + stato.categoria;
+}
+
+// Domande di esempio (usate finché Firebase non ha dati reali)
+const DOMANDE_ESEMPIO = [
+  { testo: "La catena della sopravvivenza prevede come primo anello il riconoscimento precoce dell'emergenza e la chiamata ai soccorsi.", tipo: 'vf', corretta: 'Vero', opzioni: ['Vero','Falso'] },
+  { testo: "Qual è la frequenza corretta delle compressioni toraciche durante la RCP nell'adulto?", tipo: 'multipla', opzioni: ['60-80 al minuto','100-120 al minuto','140-160 al minuto','80-100 al minuto'], corretta: '100-120 al minuto' },
+  { testo: "Il DAE può essere utilizzato su bambini di età inferiore a 1 anno senza alcuna modifica.", tipo: 'vf', corretta: 'Falso', opzioni: ['Vero','Falso'] },
+  { testo: "In caso di ostruzione grave delle vie aeree in un adulto cosciente, cosa si deve fare?", tipo: 'multipla', opzioni: ['Eseguire 5 colpi interscapolari e 5 compressioni addominali','Somministrare ossigeno ad alti flussi','Posizionare il paziente in decubito laterale','Chiamare il 118 e attendere'], corretta: 'Eseguire 5 colpi interscapolari e 5 compressioni addominali' },
+  { testo: "La posizione laterale di sicurezza è indicata per pazienti incoscienti che respirano.", tipo: 'vf', corretta: 'Vero', opzioni: ['Vero','Falso'] },
+  { testo: "Quale dei seguenti è un segno di shock ipovolemico?", tipo: 'multipla', opzioni: ['Bradicardia e ipertensione','Tachicardia e ipotensione','Bradipnea e ipossia','Ipertermia e diaforesi'], corretta: 'Tachicardia e ipotensione' },
+  { testo: "In caso di epistassi, il paziente deve essere posizionato con la testa iperestesa.", tipo: 'vf', corretta: 'Falso', opzioni: ['Vero','Falso'] },
+  { testo: "Qual è il rapporto corretto tra compressioni e ventilazioni nella RCP dell'adulto con 2 soccorritori?", tipo: 'multipla', opzioni: ['15:2','5:1','30:2','10:2'], corretta: '30:2' },
+  { testo: "Un paziente con GCS di 15 è completamente cosciente.", tipo: 'vf', corretta: 'Vero', opzioni: ['Vero','Falso'] },
+  { testo: "Quale dei seguenti NON è un segno di frattura?", tipo: 'multipla', opzioni: ['Dolore locale','Deformità','Bradicardia','Gonfiore'], corretta: 'Bradicardia' },
+  { testo: "L'emostasi diretta mediante compressione è la prima manovra da eseguire in caso di ferita sanguinante.", tipo: 'vf', corretta: 'Vero', opzioni: ['Vero','Falso'] },
+  { testo: "Cosa si intende per SAMPLE nella valutazione del paziente?", tipo: 'multipla', opzioni: ['Sintomi, Allergie, Medicinali, Patologie, Ultima assunzione cibo, Evento scatenante','Stato, Azione, Mezzo, Persone, Luogo, Esito','Saturazione, Arterie, Muscoli, Pressione, Liquidi, Elettroliti','Nessuna delle precedenti'], corretta: 'Sintomi, Allergie, Medicinali, Patologie, Ultima assunzione cibo, Evento scatenante' },
+  { testo: "La cianosi è sempre un segno di problematica cardiaca.", tipo: 'vf', corretta: 'Falso', opzioni: ['Vero','Falso'] },
+  { testo: "Quale saturazione minima di ossigeno è considerata normale in un adulto sano?", tipo: 'multipla', opzioni: ['85%','90%','95%','99%'], corretta: '95%' },
+  { testo: "In caso di trauma cranico con perdita di coscienza è sempre necessario attivare il 118.", tipo: 'vf', corretta: 'Vero', opzioni: ['Vero','Falso'] },
+  { testo: "Quale dispositivo si usa per garantire la pervietà delle vie aeree in un paziente incosciente?", tipo: 'multipla', opzioni: ['Cannula di Guedel','Sondino nasogastrico','Maschera C-PAP','Tubo di Kehr'], corretta: 'Cannula di Guedel' },
+  { testo: "Le ustioni di secondo grado coinvolgono epidermide e derma.", tipo: 'vf', corretta: 'Vero', opzioni: ['Vero','Falso'] },
+  { testo: "In quale caso NON si deve rimuovere il corpo estraneo conficcato?", tipo: 'multipla', opzioni: ['Se è piccolo e superficiale','Se è profondo e penetrante','Se è visibile','Se non sanguina'], corretta: 'Se è profondo e penetrante' },
+  { testo: "La glicemia normale a digiuno è compresa tra 70 e 100 mg/dl.", tipo: 'vf', corretta: 'Vero', opzioni: ['Vero','Falso'] },
+  { testo: "Quale delle seguenti condizioni richiede il posizionamento del paziente in posizione antishock?", tipo: 'multipla', opzioni: ['Trauma cranico','Edema polmonare','Shock ipovolemico','Crisi ipertensiva'], corretta: 'Shock ipovolemico' },
+  { testo: "La fibrillazione ventricolare è un ritmo defibrillabile.", tipo: 'vf', corretta: 'Vero', opzioni: ['Vero','Falso'] },
+  { testo: "Qual è la profondità corretta delle compressioni toraciche nell'adulto?", tipo: 'multipla', opzioni: ['2-3 cm','4-5 cm','5-6 cm','7-8 cm'], corretta: '5-6 cm' },
+  { testo: "Un paziente con dispnea severa deve essere trasportato sempre in posizione supina.", tipo: 'vf', corretta: 'Falso', opzioni: ['Vero','Falso'] },
+  { testo: "Cosa indica l'acronimo ABCDE nella valutazione primaria del paziente?", tipo: 'multipla', opzioni: ['Airway, Breathing, Circulation, Disability, Exposure','Arterie, Bronchi, Cuore, Defibrillazione, Emergenza','Accesso, BLS, CPR, DAE, Evacuazione','Nessuna delle precedenti'], corretta: 'Airway, Breathing, Circulation, Disability, Exposure' },
+  { testo: "In caso di convulsioni, si deve cercare di bloccare i movimenti del paziente.", tipo: 'vf', corretta: 'Falso', opzioni: ['Vero','Falso'] },
+  { testo: "Quale delle seguenti è la via di somministrazione dell'adrenalina in caso di anafilassi grave?", tipo: 'multipla', opzioni: ['Endovenosa','Intramuscolare','Sottocutanea','Sublinguale'], corretta: 'Intramuscolare' },
+  { testo: "La BPCO è una malattia reversibile delle vie aeree.", tipo: 'vf', corretta: 'Falso', opzioni: ['Vero','Falso'] },
+  { testo: "Qual è il primo passo nella gestione di un paziente traumatizzato?", tipo: 'multipla', opzioni: ['Valutare la coscienza','Mettere in sicurezza la scena','Applicare un collare cervicale','Chiamare rinforzi'], corretta: 'Mettere in sicurezza la scena' },
+  { testo: "La pressione arteriosa normale è di circa 120/80 mmHg.", tipo: 'vf', corretta: 'Vero', opzioni: ['Vero','Falso'] },
+  { testo: "In caso di emorragia da arteria femorale, il laccio emostatico deve essere applicato a livello del polso.", tipo: 'vf', corretta: 'Falso', opzioni: ['Vero','Falso'] },
+];
+
+// Funzione per mescolare array
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Carica domande da Firebase o usa esempi
+async function caricaDomande() {
+  try {
+    const col = getCollezione();
+    let tuttiDocumenti = [];
+
+    if (col) {
+      const snap = await getDocs(collection(db, col));
+      snap.forEach(doc => tuttiDocumenti.push(doc.data()));
+    } else if (stato.categoria === 'tssa_generale') {
+      // Carica da tutte le collezioni TSSA
+      const categorieTSSA = ['tssa_adulto','tssa_pediatrico','tssa_resp','tssa_neuro','tssa_cardio','tssa_farmaci','tssa_ossigeno'];
+      for (const cat of categorieTSSA) {
+        const snap = await getDocs(collection(db, 'domande_' + cat));
+        snap.forEach(doc => tuttiDocumenti.push(doc.data()));
+      }
+    }
+
+    // Se Firebase è vuoto usa le domande di esempio
+    if (tuttiDocumenti.length === 0) {
+      tuttiDocumenti = DOMANDE_ESEMPIO;
+    }
+
+    stato.domande = tuttiDocumenti;
+  } catch (e) {
+    stato.domande = DOMANDE_ESEMPIO;
+  }
+}
+
+// Naviga a scelta numero domande
+window.goToScelta = function() {
+  const nome = document.getElementById('inputNome').value.trim();
+  const cognome = document.getElementById('inputCognome').value.trim();
+  if (!nome || !cognome) {
+    document.getElementById('errNome').style.display = 'block';
+    return;
+  }
+  stato.nome = nome;
+  stato.cognome = cognome;
+  showScreen('screenScelta');
+};
+
+// Avvia quiz
+window.startQuiz = async function(n) {
+  stato.numDomande = n;
+  stato.current = 0;
+  stato.corrette = 0;
+  stato.risposteDate = [];
+
+  await caricaDomande();
+
+  // Seleziona N domande casuali
+  const mescolate = shuffle(stato.domande);
+  stato.domandeSelezionate = mescolate.slice(0, Math.min(n, mescolate.length));
+
+  showScreen('screenQuiz');
+  renderDomanda();
+};
+
+// Render domanda corrente
+function renderDomanda() {
+  const d = stato.domandeSelezionate[stato.current];
+  const tot = stato.domandeSelezionate.length;
+  const idx = stato.current;
+
+  // Progresso
+  const pct = Math.round((idx / tot) * 100);
+  document.getElementById('progressText').textContent = `Domanda ${idx + 1} di ${tot}`;
+  document.getElementById('progressPct').textContent = pct + '%';
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('questionNum').textContent = `Domanda ${idx + 1}`;
+
+  // Badge tipo
+  const badge = document.getElementById('questionTypeBadge');
+  if (d.tipo === 'vf') {
+    badge.innerHTML = '<span class="question-type-badge badge-vf">Vero / Falso</span>';
+  } else {
+    badge.innerHTML = '<span class="question-type-badge badge-multi">Risposta multipla</span>';
+  }
+
+  // Testo
+  document.getElementById('questionText').textContent = d.testo;
+
+  // Opzioni (mescola le opzioni multipla, vf resta ordinate)
+  const opzioni = d.tipo === 'vf' ? d.opzioni : shuffle(d.opzioni);
+  const lettere = ['A','B','C','D'];
+  const wrap = document.getElementById('optionsWrap');
+  wrap.innerHTML = '';
+
+  opzioni.forEach((op, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn';
+    btn.innerHTML = `<span class="option-letter">${d.tipo === 'vf' ? op[0] : lettere[i]}</span><span>${op}</span>`;
+    btn.onclick = () => selezionaRisposta(op, d, btn, wrap);
+    wrap.appendChild(btn);
+  });
+
+  // Reset feedback e bottone
+  document.getElementById('feedbackMsg').className = 'feedback-msg';
+  document.getElementById('feedbackMsg').textContent = '';
+  const btnNext = document.getElementById('btnNext');
+  btnNext.classList.remove('visible');
+  btnNext.textContent = stato.current < stato.domandeSelezionate.length - 1 ? 'Prossima domanda →' : 'Vedi risultati →';
+}
+
+// Selezione risposta
+function selezionaRisposta(risposta, domanda, btnCliccato, wrap) {
+  const corretta = domanda.corretta;
+  const esito = risposta === corretta;
+
+  if (esito) stato.corrette++;
+
+  stato.risposteDate.push({
+    domanda: domanda.testo,
+    tuaRisposta: risposta,
+    rispostaCorretta: corretta,
+    esito: esito
+  });
+
+  // Disabilita tutti i bottoni
+  wrap.querySelectorAll('.option-btn').forEach(b => {
+    b.disabled = true;
+    const testo = b.querySelector('span:last-child').textContent;
+    if (testo === corretta) b.classList.add('show-correct');
+  });
+
+  if (esito) {
+    btnCliccato.classList.remove('show-correct');
+    btnCliccato.classList.add('correct');
+    const fb = document.getElementById('feedbackMsg');
+    fb.textContent = '✓ Risposta corretta!';
+    fb.className = 'feedback-msg correct-fb';
+  } else {
+    btnCliccato.classList.add('wrong');
+    const fb = document.getElementById('feedbackMsg');
+    fb.textContent = `✗ Risposta errata. La risposta corretta è: "${corretta}"`;
+    fb.className = 'feedback-msg wrong-fb';
+  }
+
+  document.getElementById('btnNext').classList.add('visible');
+}
+
+// Prossima domanda
+window.nextQuestion = function() {
+  stato.current++;
+  if (stato.current >= stato.domandeSelezionate.length) {
+    mostraRisultati();
+  } else {
+    renderDomanda();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+};
+
+// Mostra risultati
+async function mostraRisultati() {
+  showScreen('screenRisultati');
+
+  const tot = stato.domandeSelezionate.length;
+  const corr = stato.corrette;
+  const err = tot - corr;
+  const pct = Math.round((corr / tot) * 100);
+  const pass = pct >= 70;
+
+  document.getElementById('resultIcon').textContent = pass ? '🏆' : '📚';
+  document.getElementById('resultTitle').textContent = pass ? 'Ottimo lavoro!' : 'Continua a studiare!';
+  document.getElementById('resultSub').textContent = `${stato.nome} ${stato.cognome} — ${badgeText}`;
+  document.getElementById('resultEsito').innerHTML = pass
+    ? `<span class="esito-badge esito-pass">✓ Superato (${pct}%)</span>`
+    : `<span class="esito-badge esito-fail">✗ Non superato (${pct}%)</span>`;
+
+  document.getElementById('scoreCorrette').textContent = corr;
+  document.getElementById('scoreTotale').textContent = `${corr}/${tot}`;
+  document.getElementById('scoreErrate').textContent = err;
+
+  // Riepilogo errori
+  const errori = stato.risposteDate.filter(r => !r.esito);
+  const reviewList = document.getElementById('reviewList');
+  const reviewTitle = document.getElementById('reviewTitle');
+
+  if (errori.length === 0) {
+    reviewTitle.textContent = '🎉 Nessun errore!';
+    reviewList.innerHTML = '<p style="font-size:14px;color:var(--text2)">Hai risposto correttamente a tutte le domande.</p>';
+  } else {
+    reviewTitle.textContent = `Domande errate (${errori.length})`;
+    reviewList.innerHTML = errori.map(r => `
+      <div class="review-item">
+        <div class="review-question">${r.domanda}</div>
+        <div class="review-answers">
+          <div class="review-answer your-wrong">
+            <div class="review-dot dot-red"></div>
+            <span>La tua risposta: ${r.tuaRisposta}</span>
+          </div>
+          <div class="review-answer correct-ans">
+            <div class="review-dot dot-green"></div>
+            <span>Risposta corretta: ${r.rispostaCorretta}</span>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Salva su Firebase
+  document.getElementById('savingMsg').style.display = 'block';
+  try {
+    await addDoc(collection(db, 'risultati'), {
+      nome: stato.nome,
+      cognome: stato.cognome,
+      corso: stato.corso,
+      corsoLabel: stato.corsoLabel,
+      categoria: stato.categoria || null,
+      categoriaLabel: stato.categoriaLabel || null,
+      numDomande: tot,
+      corrette: corr,
+      errate: err,
+      percentuale: pct,
+      superato: pass,
+      timestamp: serverTimestamp()
+    });
+    document.getElementById('savingMsg').textContent = '✓ Risultato salvato';
+    document.getElementById('savingMsg').style.color = 'var(--green)';
+  } catch(e) {
+    document.getElementById('savingMsg').textContent = 'Risultato non salvato (errore connessione)';
+  }
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Rifai quiz
+window.retryQuiz = function() {
+  stato.current = 0;
+  stato.corrette = 0;
+  stato.risposteDate = [];
+  showScreen('screenScelta');
+};
+
+// Utility: mostra schermata
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+const badgeText = stato.categoriaLabel ? `${stato.corsoLabel} — ${stato.categoriaLabel}` : stato.corsoLabel;
+
+</script>
+</body>
+</html>
