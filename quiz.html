@@ -553,9 +553,9 @@ stato.corsoLabel = corsoLabels[stato.corso] || stato.corso;
 stato.categoriaLabel = stato.categoria ? (categoriaLabels[stato.categoria] || stato.categoria) : '';
 
 // Aggiorna UI topbar e badge
-const badgeText = stato.categoriaLabel ? `${stato.corsoLabel} — ${stato.categoriaLabel}` : stato.corsoLabel;
-document.getElementById('corsoBadge').textContent = '📋 ' + badgeText;
-document.getElementById('topbarSub').textContent = badgeText;
+stato.badgeText = stato.categoriaLabel ? `${stato.corsoLabel} — ${stato.categoriaLabel}` : stato.corsoLabel;
+document.getElementById('corsoBadge').textContent = '📋 ' + stato.badgeText;
+document.getElementById('topbarSub').textContent = stato.badgeText;
 
 // Collezione Firebase da usare
 function getCollezione() {
@@ -774,7 +774,7 @@ async function mostraRisultati() {
 
   document.getElementById('resultIcon').textContent = pass ? '🏆' : '📚';
   document.getElementById('resultTitle').textContent = pass ? 'Ottimo lavoro!' : 'Continua a studiare!';
-  document.getElementById('resultSub').textContent = `${stato.nome} ${stato.cognome} — ${badgeText}`;
+  document.getElementById('resultSub').textContent = `${stato.nome} ${stato.cognome} — ${stato.badgeText}`;
   document.getElementById('resultEsito').innerHTML = pass
     ? `<span class="esito-badge esito-pass">✓ Superato (${pct}%)</span>`
     : `<span class="esito-badge esito-fail">✗ Non superato (${pct}%)</span>`;
@@ -849,8 +849,6 @@ function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
-
-const badgeText = stato.categoriaLabel ? `${stato.corsoLabel} — ${stato.categoriaLabel}` : stato.corsoLabel;
 
 </script>
 </body>
