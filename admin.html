@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Portale Quiz CRI</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --red: #CC0000;
+    --red-dark: #990000;
+    --green: #1a7a3c;
+    --green-bg: #f0faf4;
+    --amber: #d97706;
+    --amber-bg: #fef3e2;
+    --blue: #1a56b0;
+    --blue-bg: #e8f0fe;
+    --bg: #f7f5f2;
+    --bg2: #ffffff;
+    --text: #1a1a1a;
+    --text2: #666;
+    --text3: #999;
+    --border: #e0ddd8;
+    --border-light: #f0eeea;
+    --radius: 12px;
+    --shadow: 0 2px 16px rgba(0,0,0,0.07);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ========== LOGIN ========== */
+  .login-wrap {
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+
+  .login-card {
+    background: var(--bg2);
+    width: 100%; max-width: 420px;
+    border-radius: var(--radius);
+    padding: 36px 32px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    animation: fadeUp 0.4s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .login-head { text-align: center; margin-bottom: 28px; }
+
+  .lock-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 64px; height: 64px;
+    background: var(--text); color: white;
+    border-radius: 18px; margin-bottom: 14px;
+    font-size: 28px;
+  }
+
+  .login-title { font-size: 20px; font-weight: 600; }
+  .login-sub { font-size: 13px; color: var(--text2); margin-top: 4px; }
+
+  .form-group { margin-bottom: 14px; }
+  .form-group label {
+    display: block; font-size: 12px; font-weight: 500;
+    color: var(--text2); margin-bottom: 6px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+
+  .form-group input {
+    width: 100%; padding: 13px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 14px; color: var(--text);
+    background: var(--bg); outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .form-group input:focus {
+    border-color: var(--text);
+    box-shadow: 0 0 0 3px rgba(0,0,0,0.06);
+    background: white;
+  }
+
+  .btn-primary {
+    width: 100%; padding: 14px;
+    background: var(--text); color: white; border: none;
+    border-radius: 8px; font-family: 'DM Sans', sans-serif;
+    font-size: 15px; font-weight: 500; cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .btn-primary:hover { background: #000; }
+
+  .login-err {
+    background: #fff0f0; border: 1px solid #ffd0d0;
+    color: var(--red); padding: 12px; border-radius: 8px;
+    font-size: 13px; margin-top: 12px; display: none;
+  }
+
+  .login-err.show { display: block; }
+
+  /* ========== DASHBOARD ========== */
+  .dashboard { display: none; }
+  .dashboard.active { display: block; }
+
+  .top-nav {
+    background: white; border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+
+  .top-nav-left { display: flex; align-items: center; gap: 12px; }
+
+  .logo-admin {
+    width: 36px; height: 36px;
+    background: var(--text); color: white;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+
+  .nav-title { font-size: 15px; font-weight: 600; }
+  .nav-sub { font-size: 11px; color: var(--text2); }
+
+  .top-nav-right { display: flex; align-items: center; gap: 12px; }
+
+  .user-badge {
+    background: var(--bg); padding: 6px 12px;
+    border-radius: 20px; font-size: 13px;
+    border: 1px solid var(--border);
+  }
+
+  .btn-logout {
+    background: white; border: 1.5px solid var(--border);
+    padding: 7px 14px; border-radius: 8px; font-size: 13px;
+    cursor: pointer; transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .btn-logout:hover { border-color: var(--red); color: var(--red); }
+
+  /* Tabs */
+  .tabs-wrap {
+    background: white; border-bottom: 1px solid var(--border);
+    padding: 0 24px; display: flex; gap: 4px;
+    overflow-x: auto;
+  }
+
+  .tab {
+    padding: 14px 18px; border: none; background: none;
+    cursor: pointer; font-family: 'DM Sans', sans-serif;
+    font-size: 14px; color: var(--text2);
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s; white-space: nowrap;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--red); border-bottom-color: var(--red); font-weight: 500; }
+
+  /* Content */
+  .content { padding: 24px; max-width: 1400px; margin: 0 auto; }
+
+  .tab-panel { display: none; animation: fadeUp 0.3s ease both; }
+  .tab-panel.active { display: block; }
+
+  .panel-head {
+    display: flex; flex-wrap: wrap; gap: 12px;
+    align-items: center; justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .panel-title { font-size: 22px; font-weight: 600; }
+  .panel-sub { font-size: 13px; color: var(--text2); margin-top: 2px; }
+
+  /* Filtri */
+  .filters {
+    background: white; border-radius: var(--radius);
+    border: 1px solid var(--border); padding: 16px;
+    margin-bottom: 20px;
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+  }
+
+  .filter-group { display: flex; flex-direction: column; gap: 4px; }
+  .filter-label { font-size: 11px; color: var(--text2); font-weight: 500; text-transform: uppercase; letter-spacing: 0.4px; }
+
+  .filter-select, .filter-input {
+    padding: 8px 12px; border: 1.5px solid var(--border);
+    border-radius: 6px; font-family: 'DM Sans', sans-serif;
+    font-size: 13px; color: var(--text); background: var(--bg);
+    outline: none; transition: border-color 0.2s;
+    min-width: 140px;
+  }
+
+  .filter-select:focus, .filter-input:focus { border-color: var(--text); background: white; }
+
+  /* KPI Cards */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px; margin-bottom: 24px;
+  }
+
+  .kpi {
+    background: white; border-radius: var(--radius);
+    border: 1px solid var(--border); padding: 18px;
+    transition: transform 0.15s;
+  }
+
+  .kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+
+  .kpi-label {
+    font-size: 11px; color: var(--text2);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    font-weight: 500;
+  }
+
+  .kpi-value {
+    font-size: 32px; font-weight: 600;
+    font-family: 'DM Mono', monospace;
+    color: var(--text); line-height: 1;
+    margin: 8px 0 4px;
+  }
+
+  .kpi-value.green { color: var(--green); }
+  .kpi-value.red { color: var(--red); }
+  .kpi-value.amber { color: var(--amber); }
+  .kpi-value.blue { color: var(--blue); }
+
+  .kpi-sub { font-size: 12px; color: var(--text2); }
+
+  /* Tabella */
+  .table-wrap {
+    background: white; border-radius: var(--radius);
+    border: 1px solid var(--border); overflow: hidden;
+  }
+
+  .table-tools {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: flex; flex-wrap: wrap; gap: 10px;
+    align-items: center; justify-content: space-between;
+  }
+
+  .results-count { font-size: 13px; color: var(--text2); }
+
+  .btn-export {
+    padding: 7px 14px; background: var(--text); color: white;
+    border: none; border-radius: 6px;
+    font-family: 'DM Sans', sans-serif; font-size: 12px;
+    cursor: pointer; transition: background 0.2s;
+  }
+
+  .btn-export:hover { background: #000; }
+
+  table { width: 100%; border-collapse: collapse; }
+
+  th {
+    text-align: left; padding: 11px 16px;
+    font-size: 11px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--text2); background: var(--bg);
+    border-bottom: 1px solid var(--border);
+  }
+
+  td {
+    padding: 13px 16px; font-size: 13px;
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg); }
+
+  .badge {
+    display: inline-block; padding: 3px 9px;
+    border-radius: 99px; font-size: 11px; font-weight: 500;
+  }
+
+  .badge-pass { background: var(--green-bg); color: var(--green); }
+  .badge-fail { background: #fff0f0; color: var(--red); }
+  .badge-blue { background: var(--blue-bg); color: var(--blue); }
+  .badge-amber { background: var(--amber-bg); color: var(--amber); }
+
+  .score-bar {
+    width: 80px; height: 5px; background: var(--border);
+    border-radius: 99px; overflow: hidden;
+    display: inline-block; vertical-align: middle; margin-right: 8px;
+  }
+
+  .score-bar-fill { height: 100%; background: var(--green); border-radius: 99px; }
+  .score-bar-fill.fail { background: var(--red); }
+
+  .empty-state {
+    padding: 60px 20px; text-align: center; color: var(--text2);
+  }
+
+  .empty-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.5; }
+  .empty-title { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+  .empty-sub { font-size: 13px; }
+
+  /* Grafici */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px; margin-bottom: 20px;
+  }
+
+  @media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
+
+  .chart-card {
+    background: white; border-radius: var(--radius);
+    border: 1px solid var(--border); padding: 20px;
+  }
+
+  .chart-title {
+    font-size: 14px; font-weight: 600; margin-bottom: 4px;
+  }
+
+  .chart-sub { font-size: 12px; color: var(--text2); margin-bottom: 16px; }
+
+  .chart-container {
+    position: relative; height: 280px;
+  }
+
+  .chart-container.tall { height: 360px; }
+
+  /* Domande critiche */
+  .critical-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .critical-item {
+    background: white; border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px;
+    display: flex; align-items: center; gap: 14px;
+  }
+
+  .critical-rank {
+    width: 32px; height: 32px;
+    background: var(--bg); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; color: var(--text2);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px; flex-shrink: 0;
+  }
+
+  .critical-rank.top1 { background: #fef3c7; color: #b45309; }
+  .critical-rank.top2 { background: #fed7aa; color: #9a3412; }
+  .critical-rank.top3 { background: #fecaca; color: #991b1b; }
+
+  .critical-body { flex: 1; min-width: 0; }
+  .critical-q { font-size: 13px; font-weight: 500; line-height: 1.4; }
+  .critical-meta { font-size: 11px; color: var(--text2); margin-top: 4px; }
+  .critical-rate {
+    text-align: right; flex-shrink: 0;
+    padding-left: 12px; border-left: 1px solid var(--border);
+  }
+  .critical-pct { font-size: 18px; font-weight: 600; color: var(--red); font-family: 'DM Mono', monospace; }
+  .critical-pct-label { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.3px; }
+
+  /* Modal dettaglio */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: none; align-items: center; justify-content: center;
+    padding: 24px; z-index: 1000;
+  }
+
+  .modal-overlay.active { display: flex; animation: fadeIn 0.2s ease both; }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .modal {
+    background: white; border-radius: 14px;
+    max-width: 720px; width: 100%;
+    max-height: 90vh; overflow-y: auto;
+    padding: 28px;
+    animation: fadeUp 0.3s ease both;
+  }
+
+  .modal-head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 18px; padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .modal-title { font-size: 17px; font-weight: 600; }
+  .modal-sub { font-size: 13px; color: var(--text2); margin-top: 3px; }
+
+  .close-btn {
+    background: var(--bg); border: 1px solid var(--border);
+    width: 32px; height: 32px; border-radius: 8px;
+    cursor: pointer; font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .close-btn:hover { background: var(--border); }
+
+  .modal-info-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 12px; margin-bottom: 18px;
+  }
+
+  .modal-info {
+    background: var(--bg); padding: 10px 12px; border-radius: 8px;
+  }
+
+  .modal-info-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text2); }
+  .modal-info-value { font-size: 14px; font-weight: 600; margin-top: 2px; }
+
+  /* Loading */
+  .loader-wrap {
+    display: flex; align-items: center; justify-content: center;
+    padding: 60px 20px; color: var(--text2);
+    font-size: 13px; gap: 10px;
+  }
+
+  .loader {
+    width: 18px; height: 18px;
+    border: 2px solid var(--border);
+    border-top-color: var(--text);
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Responsive table */
+  @media (max-width: 700px) {
+    .content { padding: 16px; }
+    table { font-size: 12px; }
+    th, td { padding: 9px 10px; }
+    th:nth-child(4), td:nth-child(4) { display: none; }
+    .modal-info-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginScreen">
+  <div class="login-card">
+    <div class="login-head">
+      <div class="lock-icon">🔒</div>
+      <div class="login-title">Dashboard Admin</div>
+      <div class="login-sub">Portale Quiz CRI Padova</div>
+    </div>
+
+    <div class="form-group">
+      <label>Nome utente</label>
+      <input type="text" id="adminUser" placeholder="nome.cognome" autocomplete="username" />
+    </div>
+
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="adminPwd" placeholder="••••••••" autocomplete="current-password" />
+    </div>
+
+    <button class="btn-primary" onclick="doAdminLogin()">Accedi</button>
+    <div class="login-err" id="loginErr">Credenziali non valide o utente non abilitato.</div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="dashboard" id="dashboard">
+
+  <div class="top-nav">
+    <div class="top-nav-left">
+      <div class="logo-admin">🔒</div>
+      <div>
+        <div class="nav-title">Dashboard Admin</div>
+        <div class="nav-sub">Portale Quiz CRI</div>
+      </div>
+    </div>
+    <div class="top-nav-right">
+      <span class="user-badge" id="userBadge">👤 utente</span>
+      <button class="btn-logout" onclick="doLogout()">Esci</button>
+    </div>
+  </div>
+
+  <div class="tabs-wrap">
+    <button class="tab active" onclick="switchTab('results')">📋 Risultati</button>
+    <button class="tab" onclick="switchTab('stats')">📊 Statistiche</button>
+    <button class="tab" onclick="switchTab('critical')">⚠️ Domande critiche</button>
+  </div>
+
+  <div class="content">
+
+    <!-- FILTRI -->
+    <div class="filters">
+      <div class="filter-group">
+        <span class="filter-label">Corso</span>
+        <select class="filter-select" id="filterCorso" onchange="applyFilters()">
+          <option value="">Tutti</option>
+          <option value="base">Corso Base</option>
+          <option value="tssa">Corso TSSA</option>
+          <option value="squadra">Formazione Squadra</option>
+        </select>
+      </div>
+
+      <div class="filter-group" id="filterCategoriaWrap" style="display:none">
+        <span class="filter-label">Categoria TSSA</span>
+        <select class="filter-select" id="filterCategoria" onchange="applyFilters()">
+          <option value="">Tutte</option>
+          <option value="tssa_adulto">Protocolli adulto</option>
+          <option value="tssa_pediatrico">Protocolli pediatrico</option>
+          <option value="tssa_resp">Respiratoria</option>
+          <option value="tssa_neuro">Neurologica</option>
+          <option value="tssa_cardio">Cardiaca</option>
+          <option value="tssa_farmaci">Farmaci</option>
+          <option value="tssa_ossigeno">Ossigeno</option>
+          <option value="tssa_generale">Quiz generale</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <span class="filter-label">Esito</span>
+        <select class="filter-select" id="filterEsito" onchange="applyFilters()">
+          <option value="">Tutti</option>
+          <option value="true">Superati</option>
+          <option value="false">Non superati</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <span class="filter-label">Periodo</span>
+        <select class="filter-select" id="filterPeriodo" onchange="applyFilters()">
+          <option value="all">Sempre</option>
+          <option value="7">Ultimi 7 giorni</option>
+          <option value="30">Ultimi 30 giorni</option>
+          <option value="90">Ultimi 90 giorni</option>
+        </select>
+      </div>
+
+      <div class="filter-group" style="flex:1;min-width:180px">
+        <span class="filter-label">Cerca nome</span>
+        <input class="filter-input" id="filterNome" placeholder="Mario Rossi…" oninput="applyFilters()" style="width:100%" />
+      </div>
+    </div>
+
+    <!-- TAB RISULTATI -->
+    <div class="tab-panel active" id="panelResults">
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-label">Test totali</div>
+          <div class="kpi-value" id="kpiTotali">—</div>
+          <div class="kpi-sub" id="kpiTotaliSub">nel periodo selezionato</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Superati</div>
+          <div class="kpi-value green" id="kpiSuperati">—</div>
+          <div class="kpi-sub" id="kpiSuperatiSub">—%</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Non superati</div>
+          <div class="kpi-value red" id="kpiNonSup">—</div>
+          <div class="kpi-sub" id="kpiNonSupSub">—%</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Punteggio medio</div>
+          <div class="kpi-value blue" id="kpiMedia">—</div>
+          <div class="kpi-sub">su 100</div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-tools">
+          <div class="results-count" id="resultsCount">Caricamento…</div>
+          <button class="btn-export" onclick="exportCSV()">⬇ Esporta CSV</button>
+        </div>
+        <div id="tableBody">
+          <div class="loader-wrap"><div class="loader"></div> Caricamento risultati…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB STATISTICHE -->
+    <div class="tab-panel" id="panelStats">
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-label">Tasso superamento</div>
+          <div class="kpi-value green" id="statsTassoSup">—%</div>
+          <div class="kpi-sub">nel periodo</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Categoria migliore</div>
+          <div class="kpi-value" style="font-size:18px;font-family:'DM Sans',sans-serif" id="statsMiglior">—</div>
+          <div class="kpi-sub" id="statsMigliorSub">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Categoria peggiore</div>
+          <div class="kpi-value" style="font-size:18px;font-family:'DM Sans',sans-serif;color:var(--red)" id="statsPeggior">—</div>
+          <div class="kpi-sub" id="statsPeggiorSub">—</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Volontari distinti</div>
+          <div class="kpi-value blue" id="statsVolontari">—</div>
+          <div class="kpi-sub">hanno fatto almeno un test</div>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="chart-title">Superamento per corso</div>
+          <div class="chart-sub">Percentuale di test superati per ogni corso</div>
+          <div class="chart-container">
+            <canvas id="chartCorsi"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title">Esito complessivo</div>
+          <div class="chart-sub">Distribuzione dei test nel periodo</div>
+          <div class="chart-container">
+            <canvas id="chartEsito"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-card" style="margin-bottom:16px">
+        <div class="chart-title">Performance per categoria TSSA</div>
+        <div class="chart-sub">Punteggio medio per ogni argomento del corso TSSA</div>
+        <div class="chart-container tall">
+          <canvas id="chartTSSA"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-title">Andamento nel tempo</div>
+        <div class="chart-sub">Punteggio medio giornaliero</div>
+        <div class="chart-container">
+          <canvas id="chartTempo"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB DOMANDE CRITICHE -->
+    <div class="tab-panel" id="panelCritical">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">Domande critiche</div>
+          <div class="panel-sub">Domande con il più alto tasso di errore — utili per identificare argomenti da rinforzare nella formazione</div>
+        </div>
+      </div>
+      <div id="criticalList" class="critical-list">
+        <div class="loader-wrap"><div class="loader"></div> Analisi delle domande in corso…</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL DETTAGLIO -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this) closeModal()">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, doc, getDoc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAQsAwG237CMsuqlNTvrGyfNphDSjlg4JM",
+  authDomain: "portale-quiz-cri.firebaseapp.com",
+  projectId: "portale-quiz-cri",
+  storageBucket: "portale-quiz-cri.firebasestorage.app",
+  messagingSenderId: "889294477843",
+  appId: "1:889294477843:web:69a0e52a858a482becbde6"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// Password admin unica
+const ADMIN_PWD = 'admin.quiz.cri';
+
+// Stato globale
+let allResults = [];
+let filteredResults = [];
+let charts = {};
+let currentUser = '';
+
+// ========== LOGIN ==========
+window.doAdminLogin = async function() {
+  const user = document.getElementById('adminUser').value.trim().toLowerCase();
+  const pwd = document.getElementById('adminPwd').value;
+  const err = document.getElementById('loginErr');
+  err.classList.remove('show');
+
+  if (!user || !pwd) {
+    err.textContent = 'Inserisci nome utente e password.';
+    err.classList.add('show');
+    return;
+  }
+
+  if (pwd !== ADMIN_PWD) {
+    err.textContent = 'Password errata.';
+    err.classList.add('show');
+    return;
+  }
+
+  // Verifica utente abilitato su Firebase
+  try {
+    const userDoc = await getDoc(doc(db, 'admins', user));
+    if (!userDoc.exists() || userDoc.data().abilitato !== true) {
+      err.textContent = `Utente "${user}" non abilitato. Contatta l'amministratore.`;
+      err.classList.add('show');
+      return;
+    }
+
+    // Login riuscito
+    currentUser = user;
+    sessionStorage.setItem('adminUser', user);
+
+    // Registra accesso
+    try {
+      await addDoc(collection(db, 'accessi_admin'), {
+        utente: user,
+        timestamp: serverTimestamp(),
+        userAgent: navigator.userAgent
+      });
+    } catch(e) { console.warn('Log accesso fallito', e); }
+
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('dashboard').classList.add('active');
+    document.getElementById('userBadge').textContent = '👤 ' + user;
+
+    caricaRisultati();
+  } catch(e) {
+    err.textContent = 'Errore di connessione al database. Riprova.';
+    err.classList.add('show');
+    console.error(e);
+  }
+};
+
+window.doLogout = function() {
+  sessionStorage.removeItem('adminUser');
+  location.reload();
+};
+
+// Enter su password
+document.getElementById('adminPwd').addEventListener('keydown', e => {
+  if (e.key === 'Enter') window.doAdminLogin();
+});
+
+// Auto-login se sessione attiva
+const savedUser = sessionStorage.getItem('adminUser');
+if (savedUser) {
+  currentUser = savedUser;
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('dashboard').classList.add('active');
+  document.getElementById('userBadge').textContent = '👤 ' + savedUser;
+  caricaRisultati();
+}
+
+// ========== CARICAMENTO DATI ==========
+async function caricaRisultati() {
+  try {
+    const q = query(collection(db, 'risultati'), orderBy('timestamp', 'desc'));
+    const snap = await getDocs(q);
+    allResults = [];
+    snap.forEach(d => {
+      const data = d.data();
+      data._id = d.id;
+      data._date = data.timestamp ? data.timestamp.toDate() : new Date();
+      allResults.push(data);
+    });
+    applyFilters();
+  } catch(e) {
+    document.getElementById('tableBody').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">⚠️</div>
+        <div class="empty-title">Errore di caricamento</div>
+        <div class="empty-sub">${e.message}</div>
+      </div>`;
+  }
+}
+
+// ========== FILTRI ==========
+window.applyFilters = function() {
+  const corso = document.getElementById('filterCorso').value;
+  const cat = document.getElementById('filterCategoria').value;
+  const esito = document.getElementById('filterEsito').value;
+  const periodo = document.getElementById('filterPeriodo').value;
+  const nome = document.getElementById('filterNome').value.trim().toLowerCase();
+
+  // Mostra/nascondi filtro categoria TSSA
+  document.getElementById('filterCategoriaWrap').style.display = corso === 'tssa' ? 'flex' : 'none';
+  if (corso !== 'tssa') document.getElementById('filterCategoria').value = '';
+
+  let now = Date.now();
+  let cutoff = 0;
+  if (periodo !== 'all') cutoff = now - parseInt(periodo) * 24 * 60 * 60 * 1000;
+
+  filteredResults = allResults.filter(r => {
+    if (corso && r.corso !== corso) return false;
+    if (cat && r.categoria !== cat) return false;
+    if (esito === 'true' && !r.superato) return false;
+    if (esito === 'false' && r.superato) return false;
+    if (cutoff > 0 && r._date.getTime() < cutoff) return false;
+    if (nome) {
+      const fullName = `${(r.nome||'').toLowerCase()} ${(r.cognome||'').toLowerCase()}`;
+      if (!fullName.includes(nome)) return false;
+    }
+    return true;
+  });
+
+  renderTabella();
+  renderKPI();
+  renderStats();
+  renderCritical();
+};
+
+// ========== TABELLA ==========
+function renderTabella() {
+  const wrap = document.getElementById('tableBody');
+  const count = document.getElementById('resultsCount');
+  count.textContent = `${filteredResults.length} ${filteredResults.length === 1 ? 'risultato' : 'risultati'}`;
+
+  if (filteredResults.length === 0) {
+    wrap.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <div class="empty-title">Nessun risultato</div>
+        <div class="empty-sub">Modifica i filtri per visualizzare i test.</div>
+      </div>`;
+    return;
+  }
+
+  let html = `<table><thead><tr>
+    <th>Data</th><th>Nome</th><th>Corso</th><th>Categoria</th><th>Punteggio</th><th>Esito</th>
+  </tr></thead><tbody>`;
+
+  filteredResults.forEach(r => {
+    const data = r._date.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: '2-digit' });
+    const ora = r._date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    const pct = r.percentuale || 0;
+    html += `<tr style="cursor:pointer" onclick="showDettaglio('${r._id}')">
+      <td><div style="font-size:12px">${data}</div><div style="font-size:10px;color:var(--text2)">${ora}</div></td>
+      <td><strong>${r.nome || '—'} ${r.cognome || ''}</strong></td>
+      <td>${r.corsoLabel || r.corso || '—'}</td>
+      <td>${r.categoriaLabel || '<span style="color:var(--text3)">—</span>'}</td>
+      <td>
+        <div class="score-bar"><div class="score-bar-fill ${r.superato ? '' : 'fail'}" style="width:${pct}%"></div></div>
+        <span style="font-family:'DM Mono',monospace;font-size:12px">${r.corrette}/${r.numDomande} (${pct}%)</span>
+      </td>
+      <td><span class="badge ${r.superato ? 'badge-pass' : 'badge-fail'}">${r.superato ? '✓ Superato' : '✗ Non sup.'}</span></td>
+    </tr>`;
+  });
+  html += `</tbody></table>`;
+  wrap.innerHTML = html;
+}
+
+// ========== KPI ==========
+function renderKPI() {
+  const tot = filteredResults.length;
+  const sup = filteredResults.filter(r => r.superato).length;
+  const nonSup = tot - sup;
+  const supPct = tot ? Math.round((sup/tot)*100) : 0;
+  const nonSupPct = tot ? Math.round((nonSup/tot)*100) : 0;
+  const media = tot ? Math.round(filteredResults.reduce((a,r) => a + (r.percentuale||0), 0) / tot) : 0;
+
+  document.getElementById('kpiTotali').textContent = tot;
+  document.getElementById('kpiSuperati').textContent = sup;
+  document.getElementById('kpiSuperatiSub').textContent = supPct + '%';
+  document.getElementById('kpiNonSup').textContent = nonSup;
+  document.getElementById('kpiNonSupSub').textContent = nonSupPct + '%';
+  document.getElementById('kpiMedia').textContent = media;
+}
+
+// ========== STATISTICHE & GRAFICI ==========
+function renderStats() {
+  const tot = filteredResults.length;
+  const sup = filteredResults.filter(r => r.superato).length;
+  const tassoSup = tot ? Math.round((sup/tot)*100) : 0;
+
+  document.getElementById('statsTassoSup').textContent = tassoSup + '%';
+
+  // Volontari distinti
+  const distinti = new Set(filteredResults.map(r => `${r.nome}|${r.cognome}`.toLowerCase()));
+  document.getElementById('statsVolontari').textContent = distinti.size;
+
+  // Categorie migliori/peggiori (solo TSSA con categoria)
+  const perCat = {};
+  filteredResults.forEach(r => {
+    if (r.categoria && r.categoria !== 'tssa_generale') {
+      if (!perCat[r.categoria]) perCat[r.categoria] = { sum: 0, count: 0, label: r.categoriaLabel || r.categoria };
+      perCat[r.categoria].sum += r.percentuale || 0;
+      perCat[r.categoria].count++;
+    }
+  });
+  const catArr = Object.entries(perCat).map(([k,v]) => ({ key: k, label: v.label, media: Math.round(v.sum/v.count), count: v.count }));
+  catArr.sort((a,b) => b.media - a.media);
+
+  if (catArr.length > 0) {
+    document.getElementById('statsMiglior').textContent = catArr[0].label;
+    document.getElementById('statsMigliorSub').textContent = `${catArr[0].media}% di media (${catArr[0].count} test)`;
+    document.getElementById('statsPeggior').textContent = catArr[catArr.length-1].label;
+    document.getElementById('statsPeggiorSub').textContent = `${catArr[catArr.length-1].media}% di media (${catArr[catArr.length-1].count} test)`;
+  } else {
+    document.getElementById('statsMiglior').textContent = '—';
+    document.getElementById('statsMigliorSub').textContent = 'Nessun dato TSSA';
+    document.getElementById('statsPeggior').textContent = '—';
+    document.getElementById('statsPeggiorSub').textContent = 'Nessun dato TSSA';
+  }
+
+  renderCharts(catArr);
+}
+
+function renderCharts(catArr) {
+  // Distruggi grafici esistenti
+  Object.values(charts).forEach(c => c && c.destroy());
+  charts = {};
+
+  Chart.defaults.font.family = "'DM Sans', sans-serif";
+  Chart.defaults.font.size = 12;
+  Chart.defaults.color = '#666';
+
+  // 1. Superamento per corso
+  const corsi = ['base','tssa','squadra'];
+  const corsiLabels = { base: 'Base', tssa: 'TSSA', squadra: 'Squadra' };
+  const supPerCorso = corsi.map(c => {
+    const r = filteredResults.filter(x => x.corso === c);
+    const s = r.filter(x => x.superato).length;
+    return r.length ? Math.round((s/r.length)*100) : 0;
+  });
+  const totPerCorso = corsi.map(c => filteredResults.filter(x => x.corso === c).length);
+
+  const ctxCorsi = document.getElementById('chartCorsi');
+  if (ctxCorsi) {
+    charts.corsi = new Chart(ctxCorsi, {
+      type: 'bar',
+      data: {
+        labels: corsi.map(c => corsiLabels[c]),
+        datasets: [{
+          label: '% superamento',
+          data: supPerCorso,
+          backgroundColor: ['#CC0000','#1a56b0','#1a7a3c'],
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { afterLabel: (ctx) => `Test totali: ${totPerCorso[ctx.dataIndex]}` } }
+        },
+        scales: {
+          y: { beginAtZero: true, max: 100, ticks: { callback: v => v+'%' } }
+        }
+      }
+    });
+  }
+
+  // 2. Esito complessivo (doughnut)
+  const sup = filteredResults.filter(r => r.superato).length;
+  const nonSup = filteredResults.length - sup;
+  const ctxEsito = document.getElementById('chartEsito');
+  if (ctxEsito) {
+    charts.esito = new Chart(ctxEsito, {
+      type: 'doughnut',
+      data: {
+        labels: ['Superati', 'Non superati'],
+        datasets: [{
+          data: [sup, nonSup],
+          backgroundColor: ['#1a7a3c','#CC0000'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { padding: 16 } } },
+        cutout: '65%'
+      }
+    });
+  }
+
+  // 3. Performance categorie TSSA
+  const ctxTSSA = document.getElementById('chartTSSA');
+  if (ctxTSSA && catArr.length > 0) {
+    charts.tssa = new Chart(ctxTSSA, {
+      type: 'bar',
+      data: {
+        labels: catArr.map(c => c.label),
+        datasets: [{
+          label: 'Punteggio medio (%)',
+          data: catArr.map(c => c.media),
+          backgroundColor: catArr.map(c => c.media >= 70 ? '#1a7a3c' : c.media >= 50 ? '#d97706' : '#CC0000'),
+          borderRadius: 6
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { afterLabel: (ctx) => `Test svolti: ${catArr[ctx.dataIndex].count}` } }
+        },
+        scales: {
+          x: { beginAtZero: true, max: 100, ticks: { callback: v => v+'%' } }
+        }
+      }
+    });
+  } else if (ctxTSSA) {
+    const ctx = ctxTSSA.getContext('2d');
+    ctx.clearRect(0,0,ctxTSSA.width,ctxTSSA.height);
+    ctx.font = '13px DM Sans';
+    ctx.fillStyle = '#999';
+    ctx.textAlign = 'center';
+    ctx.fillText('Nessun dato TSSA disponibile', ctxTSSA.width/2, ctxTSSA.height/2);
+  }
+
+  // 4. Andamento nel tempo
+  const perGiorno = {};
+  filteredResults.forEach(r => {
+    const k = r._date.toISOString().slice(0,10);
+    if (!perGiorno[k]) perGiorno[k] = { sum: 0, count: 0 };
+    perGiorno[k].sum += r.percentuale || 0;
+    perGiorno[k].count++;
+  });
+  const giorniOrdinati = Object.keys(perGiorno).sort();
+  const ctxTempo = document.getElementById('chartTempo');
+  if (ctxTempo && giorniOrdinati.length > 0) {
+    charts.tempo = new Chart(ctxTempo, {
+      type: 'line',
+      data: {
+        labels: giorniOrdinati.map(g => new Date(g).toLocaleDateString('it-IT', { day:'2-digit', month:'short' })),
+        datasets: [{
+          label: 'Punteggio medio',
+          data: giorniOrdinati.map(g => Math.round(perGiorno[g].sum / perGiorno[g].count)),
+          borderColor: '#CC0000',
+          backgroundColor: 'rgba(204,0,0,0.08)',
+          fill: true,
+          tension: 0.3,
+          pointBackgroundColor: '#CC0000',
+          pointRadius: 4
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, max: 100, ticks: { callback: v => v+'%' } }
+        }
+      }
+    });
+  } else if (ctxTempo) {
+    const ctx = ctxTempo.getContext('2d');
+    ctx.clearRect(0,0,ctxTempo.width,ctxTempo.height);
+    ctx.font = '13px DM Sans';
+    ctx.fillStyle = '#999';
+    ctx.textAlign = 'center';
+    ctx.fillText('Nessun dato nel periodo', ctxTempo.width/2, ctxTempo.height/2);
+  }
+}
+
+// ========== DOMANDE CRITICHE ==========
+// (richiede che il quiz salvi anche le risposte date — futuro miglioramento)
+function renderCritical() {
+  const wrap = document.getElementById('criticalList');
+  wrap.innerHTML = `
+    <div class="empty-state">
+      <div class="empty-icon">📊</div>
+      <div class="empty-title">Analisi domande in arrivo</div>
+      <div class="empty-sub">Questa sezione mostrerà le domande con tasso di errore più alto<br>una volta che il quiz salverà anche le singole risposte. Per ora vedi il riepilogo errori dai singoli test cliccando sui risultati.</div>
+    </div>`;
+}
+
+// ========== TAB ==========
+window.switchTab = function(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  if (tab === 'results') document.getElementById('panelResults').classList.add('active');
+  if (tab === 'stats') document.getElementById('panelStats').classList.add('active');
+  if (tab === 'critical') document.getElementById('panelCritical').classList.add('active');
+};
+
+// ========== MODAL ==========
+window.showDettaglio = function(id) {
+  const r = filteredResults.find(x => x._id === id);
+  if (!r) return;
+  const data = r._date.toLocaleString('it-IT', { dateStyle: 'medium', timeStyle: 'short' });
+  document.getElementById('modalContent').innerHTML = `
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">${r.nome} ${r.cognome}</div>
+        <div class="modal-sub">${data} — ${r.corsoLabel || r.corso}${r.categoriaLabel ? ' / ' + r.categoriaLabel : ''}</div>
+      </div>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-info-grid">
+      <div class="modal-info"><div class="modal-info-label">Domande</div><div class="modal-info-value">${r.numDomande}</div></div>
+      <div class="modal-info"><div class="modal-info-label">Corrette</div><div class="modal-info-value" style="color:var(--green)">${r.corrette}</div></div>
+      <div class="modal-info"><div class="modal-info-label">Errate</div><div class="modal-info-value" style="color:var(--red)">${r.errate}</div></div>
+      <div class="modal-info"><div class="modal-info-label">Punteggio</div><div class="modal-info-value">${r.percentuale}%</div></div>
+    </div>
+    <div style="text-align:center;padding:14px;background:${r.superato?'var(--green-bg)':'#fff0f0'};border-radius:10px;color:${r.superato?'var(--green)':'var(--red)'};font-weight:500">
+      ${r.superato ? '✓ Test superato' : '✗ Test non superato'}
+    </div>
+    <p style="margin-top:18px;font-size:12px;color:var(--text2);text-align:center">
+      Per vedere le singole risposte, è necessario abilitare il salvataggio dettagliato nel quiz.
+    </p>
+  `;
+  document.getElementById('modalOverlay').classList.add('active');
+};
+
+window.closeModal = function() {
+  document.getElementById('modalOverlay').classList.remove('active');
+};
+
+// ========== EXPORT CSV ==========
+window.exportCSV = function() {
+  if (filteredResults.length === 0) {
+    alert('Nessun dato da esportare.');
+    return;
+  }
+  const headers = ['Data','Ora','Nome','Cognome','Corso','Categoria','Domande','Corrette','Errate','Percentuale','Superato'];
+  const rows = filteredResults.map(r => [
+    r._date.toLocaleDateString('it-IT'),
+    r._date.toLocaleTimeString('it-IT'),
+    r.nome || '',
+    r.cognome || '',
+    r.corsoLabel || r.corso || '',
+    r.categoriaLabel || '',
+    r.numDomande || 0,
+    r.corrette || 0,
+    r.errate || 0,
+    (r.percentuale || 0) + '%',
+    r.superato ? 'Sì' : 'No'
+  ]);
+  const csv = [headers, ...rows].map(row =>
+    row.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')
+  ).join('\n');
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `risultati-cri-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+};
+
+</script>
+</body>
+</html>
