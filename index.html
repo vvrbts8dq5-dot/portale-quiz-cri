@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portale Quiz — CRI Padova</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #CC0000;
+    --red-dark: #990000;
+    --red-light: #ff4444;
+    --bg: #f7f5f2;
+    --bg2: #ffffff;
+    --text: #1a1a1a;
+    --text2: #555;
+    --border: #e0ddd8;
+    --shadow: 0 2px 16px rgba(0,0,0,0.08);
+    --radius: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  /* Background pattern */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: radial-gradient(circle at 20% 20%, rgba(204,0,0,0.04) 0%, transparent 50%),
+                      radial-gradient(circle at 80% 80%, rgba(204,0,0,0.03) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 440px;
+    position: relative;
+    z-index: 1;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .logo-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    background: var(--red);
+    border-radius: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 20px rgba(204,0,0,0.25);
+  }
+
+  .logo-cross {
+    color: white;
+    font-size: 36px;
+    font-weight: 300;
+    line-height: 1;
+    letter-spacing: -2px;
+  }
+
+  .header h1 {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.3px;
+  }
+
+  .header p {
+    font-size: 14px;
+    color: var(--text2);
+    margin-top: 4px;
+  }
+
+  /* Card */
+  .card {
+    background: var(--bg2);
+    border-radius: var(--radius);
+    padding: 32px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+  }
+
+  .card-title {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text2);
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-size: 11px;
+  }
+
+  /* Form */
+  .input-wrap {
+    position: relative;
+    margin-bottom: 16px;
+  }
+
+  .input-wrap input {
+    width: 100%;
+    padding: 14px 44px 14px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    letter-spacing: 0.5px;
+  }
+
+  .input-wrap input:focus {
+    border-color: var(--red);
+    box-shadow: 0 0 0 3px rgba(204,0,0,0.08);
+    background: white;
+  }
+
+  .input-wrap input::placeholder {
+    color: #bbb;
+    font-family: 'DM Sans', sans-serif;
+    letter-spacing: 0;
+  }
+
+  .toggle-pwd {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #bbb;
+    font-size: 16px;
+    padding: 0;
+    line-height: 1;
+    transition: color 0.2s;
+  }
+
+  .toggle-pwd:hover { color: var(--text2); }
+
+  .btn-login {
+    width: 100%;
+    padding: 14px;
+    background: var(--red);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    letter-spacing: 0.2px;
+  }
+
+  .btn-login:hover { background: var(--red-dark); }
+  .btn-login:active { transform: scale(0.99); }
+
+  .error-msg {
+    background: #fff0f0;
+    border: 1px solid #ffd0d0;
+    color: #cc0000;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 13px;
+    margin-top: 14px;
+    display: none;
+    animation: shake 0.3s ease;
+  }
+
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+  }
+
+  .error-msg.show { display: block; }
+
+  /* Menu categorie TSSA */
+  .menu-screen {
+    display: none;
+  }
+
+  .menu-screen.active {
+    display: block;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  .menu-header {
+    margin-bottom: 24px;
+  }
+
+  .back-btn {
+    background: none;
+    border: none;
+    color: var(--text2);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 14px;
+    transition: color 0.2s;
+  }
+
+  .back-btn:hover { color: var(--red); }
+
+  .menu-header h2 {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+  }
+
+  .menu-header p {
+    font-size: 13px;
+    color: var(--text2);
+    margin-top: 4px;
+  }
+
+  .menu-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg);
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s, transform 0.1s;
+    text-align: left;
+    width: 100%;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .menu-item:hover {
+    border-color: var(--red);
+    background: white;
+    transform: translateX(3px);
+  }
+
+  .menu-item:active { transform: scale(0.99); }
+
+  .menu-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: rgba(204,0,0,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .menu-item-text {
+    flex: 1;
+  }
+
+  .menu-item-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .menu-item-sub {
+    font-size: 12px;
+    color: var(--text2);
+    margin-top: 2px;
+  }
+
+  .menu-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 8px 0;
+  }
+
+  .menu-item.generale {
+    border-color: var(--red);
+    background: rgba(204,0,0,0.03);
+  }
+
+  .menu-item.generale .menu-icon {
+    background: var(--red);
+    color: white;
+  }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    margin-top: 24px;
+    font-size: 12px;
+    color: #aaa;
+  }
+
+  /* Loading */
+  .btn-login.loading {
+    opacity: 0.7;
+    pointer-events: none;
+  }
+
+  .btn-login.loading::after {
+    content: '...';
+    animation: dots 1s steps(3, end) infinite;
+  }
+
+  @keyframes dots {
+    0%,20% { content: '.'; }
+    40% { content: '..'; }
+    60%,100% { content: '...'; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo-wrap">
+      <span class="logo-cross">✚</span>
+    </div>
+    <h1>Portale Quiz</h1>
+    <p>Croce Rossa Italiana — Comitato di Padova</p>
+  </div>
+
+  <!-- SCHERMATA LOGIN -->
+  <div class="card" id="loginScreen">
+    <div class="card-title">Accesso</div>
+    <div class="input-wrap">
+      <input type="password" id="passwordInput" placeholder="Inserisci la password del corso" autocomplete="off" />
+      <button class="toggle-pwd" onclick="togglePassword()" id="toggleBtn">👁</button>
+    </div>
+    <button class="btn-login" onclick="doLogin()">Accedi</button>
+    <div class="error-msg" id="errorMsg">Password non riconosciuta. Verifica e riprova.</div>
+  </div>
+
+  <!-- SCHERMATA MENU TSSA -->
+  <div class="card menu-screen" id="menuTSSA">
+    <button class="back-btn" onclick="goBack()">← Torna al login</button>
+    <div class="menu-header">
+      <h2>Corso TSSA</h2>
+      <p>Seleziona l'argomento del quiz</p>
+    </div>
+    <div class="menu-grid">
+
+      <button class="menu-item" onclick="startQuiz('tssa_adulto')">
+        <div class="menu-icon">🫀</div>
+        <div class="menu-item-text">
+          <div class="menu-item-title">Protocolli operativi sanitari adulto</div>
+        </div>
+        <span style="color:#ccc">›</span>
+      </button>
+
+      <button class="menu-item" onclick="startQuiz('tssa_pediatrico')">
+        <div class="menu-icon">👶</div>
+        <div class="menu-item-text">
+          <div class="menu-item-title">Protocolli operativi sanitari pediatrico</div>
+        </div>
+        <span style="color:#ccc">›</span>
+      </button>
+
+      <button class="menu-item" onclick="startQuiz('tssa_resp')">
+        <div class="menu-icon">🫁</div>
+        <div class="menu-item-text">
+          <div class="menu-item-title">Approccio al paziente con problematica respiratoria</div>
+        </div>
+        <span style="color:#ccc">›</span>
+      </button>
+
+      <button class="menu-item" onclick="startQuiz('tssa_neuro')">
+        <div class="menu-icon">🧠</div>
+        <div class="menu-item-text">
+          <div class="menu-item-title">Approccio al paziente con problematica neurologica</div>
+        </div>
+        <span style="color:#ccc">›</span>
+      </button>
+
+      <button class="menu-item" onclick="startQuiz('tssa_cardio')">
+        <div class="menu-icon">❤️</div>
+        <div class="menu-item-text">
+          <div class="menu-item-title">Approccio al paziente con problematica cardiaca</div>
+        </div>
+        <span style="color:#ccc">›</span>
+      </button>
+
+      <button class="menu-item" onclick="startQuiz('tssa_farmaci')">
+        <div class="menu-icon">💊</div>
+        <div class="menu-item-text">
+          <div class="menu-item-title">Farmaci</div>
+        </div>
+        <span style="color:#ccc">›</span>
+      </button>
+
+      <button class="menu-item" onclick="startQuiz('tssa_ossigeno')">
+        <div class="menu-icon">🫧</div>
+        <div class="menu-item-text">
+          <div class="menu-item-title">Ossigeno</div>
+        </div>
+        <span style="color:#ccc">›</span>
+      </button>
+
+      <div class="menu-divider"></div>
+
+      <button class="menu-item generale" onclick="startQuiz('tssa_generale')">
+        <div class="menu-icon">📋</div>
+        <div class="menu-item-text">
+          <div class="menu-item-title">Quiz Generale TSSA</div>
+          <div class="menu-item-sub">Domande da tutti gli argomenti</div>
+        </div>
+        <span style="color:var(--red)">›</span>
+      </button>
+
+    </div>
+  </div>
+
+  <div class="footer">
+    Portale riservato ai volontari CRI · v1.0
+  </div>
+</div>
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAQsAwG237CMsuqlNTvrGyfNphDSjlg4JM",
+    authDomain: "portale-quiz-cri.firebaseapp.com",
+    projectId: "portale-quiz-cri",
+    storageBucket: "portale-quiz-cri.firebasestorage.app",
+    messagingSenderId: "889294477843",
+    appId: "1:889294477843:web:69a0e52a858a482becbde6"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // Password → profilo
+  const PASSWORDS = {
+    'quiz.base.cri':    { corso: 'base',    label: 'Corso Base' },
+    'quiz.tssa.cri':    { corso: 'tssa',    label: 'Corso TSSA' },
+    'quiz.squadra.cri': { corso: 'squadra', label: 'Formazione Squadra' }
+  };
+
+  // Rendi funzioni disponibili globalmente
+  window.doLogin = function() {
+    const pwd = document.getElementById('passwordInput').value.trim().toLowerCase();
+    const err = document.getElementById('errorMsg');
+    const btn = document.querySelector('.btn-login');
+
+    err.classList.remove('show');
+
+    if (!PASSWORDS[pwd]) {
+      err.classList.add('show');
+      document.getElementById('passwordInput').value = '';
+      return;
+    }
+
+    const profilo = PASSWORDS[pwd];
+    btn.classList.add('loading');
+    btn.textContent = 'Accesso in corso';
+
+    // Salva sessione
+    sessionStorage.setItem('corso', profilo.corso);
+    sessionStorage.setItem('corsoLabel', profilo.label);
+
+    setTimeout(() => {
+      if (profilo.corso === 'tssa') {
+        // Mostra menu categorie
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('menuTSSA').classList.add('active');
+      } else {
+        // Vai direttamente al quiz
+        window.location.href = `quiz.html?corso=${profilo.corso}`;
+      }
+      btn.classList.remove('loading');
+      btn.textContent = 'Accedi';
+    }, 600);
+  };
+
+  window.goBack = function() {
+    document.getElementById('loginScreen').style.display = 'block';
+    document.getElementById('menuTSSA').classList.remove('active');
+    sessionStorage.clear();
+  };
+
+  window.startQuiz = function(categoria) {
+    window.location.href = `quiz.html?corso=tssa&categoria=${categoria}`;
+  };
+
+  window.togglePassword = function() {
+    const input = document.getElementById('passwordInput');
+    const btn = document.getElementById('toggleBtn');
+    if (input.type === 'password') {
+      input.type = 'text';
+      btn.textContent = '🙈';
+    } else {
+      input.type = 'password';
+      btn.textContent = '👁';
+    }
+  };
+
+  // Enter per accedere
+  document.getElementById('passwordInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') window.doLogin();
+  });
+</script>
+
+</body>
+</html>
