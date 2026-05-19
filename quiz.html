@@ -572,7 +572,7 @@ const categoriaLabels = {
   tssa_adulto: 'Protocolli adulto', tssa_pediatrico: 'Protocolli pediatrico',
   tssa_resp: 'Problematica respiratoria', tssa_neuro: 'Problematica neurologica',
   tssa_cardio: 'Problematica cardiaca', tssa_farmaci: 'Farmaci',
-  tssa_ossigeno: 'Ossigeno', tssa_generale: 'Quiz Generale TSSA'
+  tssa_ossigeno: 'Ossigeno', tssa_trauma: 'Trauma', tssa_generale: 'Quiz Generale TSSA'
 };
 
 stato.corsoLabel = corsoLabels[stato.corso] || stato.corso;
@@ -646,7 +646,7 @@ async function caricaDomande() {
       snap.forEach(doc => tuttiDocumenti.push(doc.data()));
     } else if (stato.categoria === 'tssa_generale') {
       // Carica da tutte le collezioni TSSA
-      const categorieTSSA = ['tssa_adulto','tssa_pediatrico','tssa_resp','tssa_neuro','tssa_cardio','tssa_farmaci','tssa_ossigeno'];
+      const categorieTSSA = ['tssa_adulto','tssa_pediatrico','tssa_resp','tssa_neuro','tssa_cardio','tssa_farmaci','tssa_ossigeno','tssa_trauma'];
       for (const cat of categorieTSSA) {
         const snap = await getDocs(collection(db, 'domande_' + cat));
         snap.forEach(doc => tuttiDocumenti.push(doc.data()));
