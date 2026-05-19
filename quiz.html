@@ -58,12 +58,29 @@
     animation: fadeUp 0.4s ease both;
   }
 
+  /* Header centrato */
+  .page-header {
+    text-align: center;
+    padding: 32px 0 20px;
+  }
+  .page-header img {
+    width: 260px; height: auto; max-width: 85%;
+    margin-bottom: 6px;
+  }
+  .page-header h2 {
+    font-size: 15px; font-weight: 500;
+    color: var(--red); margin: 0;
+  }
+  .page-header p {
+    font-size: 12px; color: var(--text2); margin: 4px 0 0;
+  }
+
   .logo-sm {
-    width: 44px; height: auto;
+    width: 36px; height: auto;
     flex-shrink: 0;
   }
 
-  .topbar-title { font-size: 14px; font-weight: 600; color: var(--red); line-height: 1.2; }
+  .topbar-title { font-size: 13px; font-weight: 600; color: var(--red); line-height: 1.2; }
   .topbar-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
 
   /* Card */
@@ -405,6 +422,13 @@
 </head>
 <body>
 <div class="wrap">
+
+  <!-- HEADER CENTRATO -->
+  <div class="page-header">
+    <img src="logo-cri.png" alt="Croce Rossa Italiana" />
+    <h2>Croce Rossa Italiana</h2>
+    <p>Comitato di Padova · Portale Quiz</p>
+  </div>
 
   <!-- TOPBAR -->
   <div class="topbar">
