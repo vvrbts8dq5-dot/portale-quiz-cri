@@ -51,12 +51,13 @@
 
   /* Topbar */
   .topbar {
-    display: flex;
+    display: none;
     align-items: center;
     gap: 12px;
     margin-bottom: 28px;
     animation: fadeUp 0.4s ease both;
   }
+  .topbar.visible { display: flex; }
 
   .logo-sm {
     width: 36px; height: auto;
@@ -86,6 +87,12 @@
   .screen.active { display: block; }
 
   /* ---- SCHERMATA NOME ---- */
+  .reg-head { text-align: center; margin-bottom: 24px; }
+  .reg-head img { width: 200px; height: auto; max-width: 80%; margin-bottom: 12px; }
+  .reg-title { font-size: 20px; font-weight: 600; color: var(--red); }
+  .reg-comitato { font-size: 14px; font-weight: 500; color: var(--red); margin-top: 3px; }
+  .reg-sub { font-size: 13px; color: var(--text); margin-top: 4px; margin-bottom: 0; }
+
   .screen-label {
     font-size: 11px; font-weight: 500;
     text-transform: uppercase; letter-spacing: 0.8px;
@@ -370,6 +377,15 @@
   /* Bottoni risultati */
   .result-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; }
 
+  .btn-primary {
+    width: 100%; padding: 14px;
+    background: var(--red); color: white; border: none;
+    border-radius: 8px; font-family: 'DM Sans', sans-serif;
+    font-size: 15px; font-weight: 500; cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-primary:hover { background: #a00; }
+
   .btn-retry {
     width: 100%; padding: 14px; background: var(--red); color: white;
     border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif;
@@ -417,8 +433,12 @@
 
   <!-- SCHERMATA 1: NOME E COGNOME -->
   <div class="card screen active" id="screenNome">
-    <div class="screen-label">Registrazione</div>
-    <div class="corso-badge" id="corsoBadge">📋 Corso</div>
+    <div class="reg-head">
+      <img src="logo-cri.png" alt="Croce Rossa Italiana" />
+      <div class="reg-title">Croce Rossa Italiana</div>
+      <div class="reg-comitato">Comitato di Padova</div>
+      <div class="reg-sub" id="corsoBadge">📋 Corso</div>
+    </div>
     <div class="form-group">
       <label>Nome</label>
       <input type="text" id="inputNome" placeholder="Il tuo nome" autocomplete="given-name" />
@@ -427,7 +447,7 @@
       <label>Cognome</label>
       <input type="text" id="inputCognome" placeholder="Il tuo cognome" autocomplete="family-name" />
     </div>
-    <button class="btn-retry" onclick="goToScelta()" style="margin-top:8px">Continua →</button>
+    <button class="btn-primary" onclick="goToScelta()" style="margin-top:8px">Continua →</button>
     <div class="error-nome" id="errNome" style="color:var(--red);font-size:13px;margin-top:10px;display:none">
       Inserisci nome e cognome per continuare.
     </div>
