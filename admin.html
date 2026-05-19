@@ -61,12 +61,13 @@
   .login-head { text-align: center; margin-bottom: 28px; }
 
   .lock-icon {
-    width: 110px; height: auto;
+    width: 150px; height: auto;
     margin-bottom: 14px;
   }
 
-  .login-title { font-size: 20px; font-weight: 600; }
-  .login-sub { font-size: 13px; color: var(--text2); margin-top: 4px; }
+  .login-title { font-size: 20px; font-weight: 600; color: var(--red); }
+  .login-comitato { font-size: 14px; font-weight: 500; color: var(--red); margin-top: 3px; }
+  .login-sub { font-size: 13px; color: var(--text); margin-top: 4px; }
 
   .form-group { margin-bottom: 14px; }
   .form-group label {
@@ -121,23 +122,6 @@
   }
 
   .top-nav-left { display: flex; align-items: center; gap: 12px; }
-
-  /* Header centrato login */
-  .page-header {
-    text-align: center;
-    padding: 32px 0 20px;
-  }
-  .page-header img {
-    width: 260px; height: auto; max-width: 85%;
-    margin-bottom: 6px;
-  }
-  .page-header h2 {
-    font-size: 15px; font-weight: 500;
-    color: var(--red); margin: 0;
-  }
-  .page-header p {
-    font-size: 12px; color: var(--text2); margin: 4px 0 0;
-  }
 
   .logo-admin {
     width: 36px; height: auto;
@@ -459,19 +443,13 @@
 <body>
 
 <!-- LOGIN -->
-<!-- HEADER CENTRATO -->
-  <div class="page-header">
-    <img src="logo-cri.png" alt="Croce Rossa Italiana" />
-    <h2>Croce Rossa Italiana</h2>
-    <p>Comitato di Padova · Portale Quiz</p>
-  </div>
-
-  <div class="login-wrap" id="loginScreen">
+<div class="login-wrap" id="loginScreen">
   <div class="login-card">
     <div class="login-head">
       <img src="logo-cri.png" alt="Croce Rossa Italiana" class="lock-icon" />
       <div class="login-title">Croce Rossa Italiana</div>
-      <div class="login-sub">Comitato di Padova · Dashboard Admin</div>
+      <div class="login-comitato">Comitato di Padova</div>
+      <div class="login-sub">Dashboard Admin</div>
     </div>
 
     <div class="form-group">
