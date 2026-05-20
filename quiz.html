@@ -668,8 +668,10 @@ stato.categoriaLabel = stato.categoria ? (categoriaLabels[stato.categoria] || st
 
 // Aggiorna UI topbar e badge
 stato.badgeText = stato.categoriaLabel ? `${stato.corsoLabel} — ${stato.categoriaLabel}` : stato.corsoLabel;
-document.getElementById('corsoBadge').textContent = '📋 ' + stato.badgeText;
-document.getElementById('topbarSub').textContent = stato.badgeText;
+const corsoBadgeEl = document.getElementById('corsoBadge');
+if (corsoBadgeEl) corsoBadgeEl.textContent = '📋 ' + stato.badgeText;
+const topbarSubEl = document.getElementById('topbarSub');
+if (topbarSubEl) topbarSubEl.textContent = stato.badgeText;
 
 // Collezione Firebase da usare
 function getCollezione() {
