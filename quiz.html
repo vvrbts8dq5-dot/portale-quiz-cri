@@ -925,27 +925,13 @@ function selezionaRisposta(risposta, domanda, btnCliccato, wrap) {
     esito: esito
   });
 
-  // Disabilita tutti i bottoni
+  // Disabilita tutti i bottoni senza rivelare la risposta corretta
   wrap.querySelectorAll('.option-btn').forEach(b => {
     b.disabled = true;
-    // Evidenzia la risposta corretta in verde
-    if (b.querySelector('span:last-child').textContent === corretta) {
-      b.classList.add('correct-ans');
-    }
   });
 
-  // Evidenzia quella selezionata: verde se giusta, rossa se sbagliata
-  btnCliccato.classList.add(esito ? 'correct-sel' : 'wrong-sel');
-
-  // Feedback testuale
-  const feedback = document.getElementById('feedbackMsg');
-  if (esito) {
-    feedback.className = 'feedback-msg correct-fb';
-    feedback.innerHTML = '✓ Risposta corretta!';
-  } else {
-    feedback.className = 'feedback-msg wrong-fb';
-    feedback.innerHTML = `✗ Risposta errata — La risposta corretta è: <strong>${corretta}</strong>`;
-  }
+  // Evidenzia solo quella selezionata in neutro (grigio scuro)
+  btnCliccato.classList.add('selected');
 
   document.getElementById('btnNext').classList.add('visible');
 }
