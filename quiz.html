@@ -588,7 +588,22 @@ function getCollezione() {
   if (stato.corso === 'base') return 'domande_base';
   if (stato.corso === 'squadra') return 'domande_squadra';
   if (stato.categoria === 'tssa_generale') return null; // multipla
+  if (stato.categoria === 'tssa_trauma') return 'trauma'; // collezione dedicata
   return 'domande_' + stato.categoria;
+}
+
+// Normalizza domande dal formato nuovo (domanda/risposte/corretta numerico)
+// al formato standard del portale (testo/opzioni/corretta stringa)
+function normalizzaDomanda(d) {
+  if (d.domanda && d.risposte && typeof d.corretta === 'number') {
+    return {
+      testo: d.domanda,
+      opzioni: d.risposte,
+      corretta: d.risposte[d.corretta],
+      tipo: 'multipla'
+    };
+  }
+  return d; // già nel formato corretto
 }
 
 // Domande di esempio (usate finché Firebase non ha dati reali)
@@ -643,13 +658,14 @@ async function caricaDomande() {
 
     if (col) {
       const snap = await getDocs(collection(db, col));
-      snap.forEach(doc => tuttiDocumenti.push(doc.data()));
+      snap.forEach(doc => tuttiDocumenti.push(normalizzaDomanda(doc.data())));
     } else if (stato.categoria === 'tssa_generale') {
       // Carica da tutte le collezioni TSSA
       const categorieTSSA = ['tssa_adulto','tssa_pediatrico','tssa_resp','tssa_neuro','tssa_cardio','tssa_farmaci','tssa_ossigeno','tssa_trauma'];
       for (const cat of categorieTSSA) {
-        const snap = await getDocs(collection(db, 'domande_' + cat));
-        snap.forEach(doc => tuttiDocumenti.push(doc.data()));
+        const nomeCol = cat === 'tssa_trauma' ? 'trauma' : 'domande_' + cat;
+        const snap = await getDocs(collection(db, nomeCol));
+        snap.forEach(doc => tuttiDocumenti.push(normalizzaDomanda(doc.data())));
       }
     }
 
