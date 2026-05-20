@@ -803,8 +803,8 @@ window.aggiornaAdmin = async function() {
 // ========== CARICAMENTO DATI ==========
 async function caricaRisultati() {
   try {
-    const q = query(collection(db, 'risultati'), orderBy('timestamp', 'desc'));
-    const snap = await getDocs(q);
+    // Legge senza orderBy per evitare errori di indice Firebase
+    const snap = await getDocs(collection(db, 'risultati'));
     allResults = [];
     snap.forEach(d => {
       const data = d.data();
@@ -812,6 +812,8 @@ async function caricaRisultati() {
       data._date = data.timestamp ? data.timestamp.toDate() : new Date();
       allResults.push(data);
     });
+    // Ordina lato client: più recenti prima
+    allResults.sort((a, b) => b._date - a._date);
     applyFilters();
   } catch(e) {
     document.getElementById('tableBody').innerHTML = `

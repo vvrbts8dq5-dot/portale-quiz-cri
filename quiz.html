@@ -1037,12 +1037,11 @@ window.mostraStorico = async function() {
   list.innerHTML = '<div style="color:var(--text2);font-size:13px;padding:10px 0">Caricamento...</div>';
 
   try {
+    // Query senza orderBy per evitare errori indice Firebase
     const q = query(
       collection(db, 'risultati'),
       where('nome', '==', nome),
-      where('cognome', '==', cognome),
-      orderBy('timestamp', 'desc'),
-      limit(20)
+      where('cognome', '==', cognome)
     );
     const snap = await getDocs(q);
 
@@ -1051,9 +1050,18 @@ window.mostraStorico = async function() {
       return;
     }
 
+    // Ordina lato client e prendi gli ultimi 20
+    const docs = [];
+    snap.forEach(doc => docs.push(doc.data()));
+    docs.sort((a, b) => {
+      const ta = a.timestamp ? a.timestamp.toDate() : new Date(0);
+      const tb = b.timestamp ? b.timestamp.toDate() : new Date(0);
+      return tb - ta;
+    });
+    const ultimi20 = docs.slice(0, 20);
+
     let html = '';
-    snap.forEach(doc => {
-      const r = doc.data();
+    ultimi20.forEach(r => {
       const data = r.timestamp ? r.timestamp.toDate() : new Date();
       const dataStr = data.toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
       const categoria = r.categoriaLabel || r.corsoLabel || '';
