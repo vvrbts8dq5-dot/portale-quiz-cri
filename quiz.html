@@ -173,6 +173,46 @@
     height: 100%; background: var(--red);
     border-radius: 99px;
     transition: width 0.4s ease;
+
+  /* ---- TIMER ---- */
+  .timer-wrap {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+
+  .timer-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: 99px;
+    padding: 6px 16px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text2);
+    font-family: 'DM Mono', monospace;
+    transition: all 0.3s;
+  }
+
+  .timer-badge.warning {
+    border-color: #f59e0b;
+    color: #b45309;
+    background: #fffbeb;
+  }
+
+  .timer-badge.danger {
+    border-color: var(--red);
+    color: var(--red);
+    background: #fff0f0;
+    animation: pulse 1s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.04); }
+  }
   }
 
   .question-num {
@@ -472,6 +512,9 @@
 
   <!-- SCHERMATA 3: QUIZ -->
   <div class="card screen" id="screenQuiz">
+    <div class="timer-wrap">
+      <div class="timer-badge" id="timerBadge">⏱ <span id="timerDisplay">15:00</span></div>
+    </div>
     <div class="progress-wrap">
       <div class="progress-info">
         <span id="progressText">Domanda 1 di 15</span>
@@ -702,13 +745,86 @@ window.startQuiz = async function(n) {
 
   await caricaDomande();
 
-  // Seleziona N domande casuali
-  const mescolate = shuffle(stato.domande);
-  stato.domandeSelezionate = mescolate.slice(0, Math.min(n, mescolate.length));
+  // PROGRESSIONE DIFFICOLTÀ: facile → medio → difficile
+  const conDiff = stato.domande.filter(d => d.difficolta);
+  let selezionate;
+
+  if (conDiff.length >= Math.round(n * 0.5)) {
+    // Abbastanza domande con difficoltà → usa progressione
+    const facili    = shuffle(conDiff.filter(d => d.difficolta === 'facile'));
+    const medi      = shuffle(conDiff.filter(d => d.difficolta === 'medio'));
+    const difficili = shuffle(conDiff.filter(d => d.difficolta === 'difficile'));
+    const nF = Math.round(n * 0.35);
+    const nD = Math.round(n * 0.15);
+    const nM = n - nF - nD;
+    selezionate = [
+      ...facili.slice(0, nF),
+      ...medi.slice(0, nM),
+      ...difficili.slice(0, nD)
+    ];
+    // Integra se mancano domande per qualche livello
+    if (selezionate.length < n) {
+      const usate = new Set(selezionate);
+      const resto = shuffle(stato.domande.filter(d => !usate.has(d)));
+      selezionate = [...selezionate, ...resto].slice(0, n);
+    }
+  } else {
+    // Domande senza difficoltà → mescola casualmente
+    selezionate = shuffle(stato.domande).slice(0, Math.min(n, stato.domande.length));
+  }
+
+  stato.domandeSelezionate = selezionate;
+
+  // TIMER: 1 minuto per domanda (15 min per 15 domande, 30 min per 30)
+  avviaTimer(n * 60);
 
   showScreen('screenQuiz');
   renderDomanda();
 };
+
+// TIMER
+let timerInterval = null;
+
+function avviaTimer(secondiTotali) {
+  // Pulisce eventuale timer precedente
+  if (timerInterval) clearInterval(timerInterval);
+
+  let secondiRimasti = secondiTotali;
+  const badge = document.getElementById('timerBadge');
+  const display = document.getElementById('timerDisplay');
+
+  function aggiorna() {
+    const min = Math.floor(secondiRimasti / 60);
+    const sec = secondiRimasti % 60;
+    display.textContent = `${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+
+    // Colori: normale → warning (< 3 min) → danger (< 1 min)
+    badge.classList.remove('warning', 'danger');
+    if (secondiRimasti < 60) {
+      badge.classList.add('danger');
+    } else if (secondiRimasti < 180) {
+      badge.classList.add('warning');
+    }
+
+    if (secondiRimasti <= 0) {
+      clearInterval(timerInterval);
+      display.textContent = '00:00';
+      // Tempo scaduto → mostra risultati automaticamente
+      mostraRisultati();
+    }
+    secondiRimasti--;
+  }
+
+  aggiorna();
+  timerInterval = setInterval(aggiorna, 1000);
+}
+
+function fermaTimer() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+}
 
 // Render domanda corrente
 function renderDomanda() {
@@ -792,6 +908,7 @@ window.nextQuestion = function() {
 
 // Mostra risultati
 async function mostraRisultati() {
+  fermaTimer();
   showScreen('screenRisultati');
 
   const tot = stato.domandeSelezionate.length;
@@ -866,6 +983,7 @@ async function mostraRisultati() {
 
 // Rifai quiz
 window.retryQuiz = function() {
+  fermaTimer();
   stato.current = 0;
   stato.corrette = 0;
   stato.risposteDate = [];
@@ -873,11 +991,10 @@ window.retryQuiz = function() {
 };
 
 window.goHome = function() {
+  fermaTimer();
   if (stato.corso === 'tssa') {
-    // TSSA → torna all'index che mostrerà il menu categorie (sessionStorage intatto)
     window.location.href = 'index.html';
   } else {
-    // Base/Squadra → torna a screenScelta mantenendo nome/cognome
     stato.current = 0;
     stato.corrette = 0;
     stato.risposteDate = [];
