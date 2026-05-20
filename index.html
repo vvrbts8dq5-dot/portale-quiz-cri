@@ -532,6 +532,12 @@
   document.getElementById('passwordInput').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') window.doLogin();
   });
+
+  // Se si torna dal quiz TSSA, mostra subito il menu categorie
+  if (sessionStorage.getItem('corso') === 'tssa') {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('menuTSSA').classList.add('active');
+  }
 </script>
 
 </body>

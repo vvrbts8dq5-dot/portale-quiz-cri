@@ -525,7 +525,7 @@
 
     <div class="result-actions">
       <button class="btn-retry" onclick="retryQuiz()">Rifai il test</button>
-      <button class="btn-home" onclick="window.location.href='index.html'">← Torna al portale</button>
+      <button class="btn-home" onclick="goHome()">← Torna al portale</button>
     </div>
   </div>
 
@@ -870,6 +870,21 @@ window.retryQuiz = function() {
   stato.corrette = 0;
   stato.risposteDate = [];
   showScreen('screenScelta');
+};
+
+window.goHome = function() {
+  if (stato.corso === 'tssa') {
+    // TSSA → torna all'index che mostrerà il menu categorie (sessionStorage intatto)
+    window.location.href = 'index.html';
+  } else {
+    // Base/Squadra → torna a screenScelta mantenendo nome/cognome
+    stato.current = 0;
+    stato.corrette = 0;
+    stato.risposteDate = [];
+    stato.domande = [];
+    stato.domandeSelezionate = [];
+    showScreen('screenScelta');
+  }
 };
 
 // Utility: mostra schermata
