@@ -769,15 +769,7 @@ async function caricaDomande() {
 }
 
 // Naviga a scelta numero domande
-// Leggi nome/cognome da sessionStorage (inseriti in index.html)
-stato.nome = sessionStorage.getItem('nome') || '';
-stato.cognome = sessionStorage.getItem('cognome') || '';
-
-// Parti direttamente dalla scelta domande
-showScreen('screenScelta');
-
 window.goToScelta = function() {
-  // Funzione mantenuta per compatibilità ma non più usata
   showScreen('screenScelta');
 };
 
@@ -1123,6 +1115,11 @@ function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
+
+// INIT: leggi nome/cognome da sessionStorage e mostra subito la scelta domande
+stato.nome = sessionStorage.getItem('nome') || '';
+stato.cognome = sessionStorage.getItem('cognome') || '';
+showScreen('screenScelta');
 
 </script>
 </body>
