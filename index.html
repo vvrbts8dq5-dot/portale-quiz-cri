@@ -354,7 +354,26 @@
     <div class="error-msg" id="errorMsg">Password non riconosciuta. Verifica e riprova.</div>
   </div>
 
-  <!-- SCHERMATA MENU TSSA -->
+  <!-- SCHERMATA NOME/COGNOME -->
+  <div class="card menu-screen" id="screenNomeCognome">
+    <button class="back-btn" onclick="goBackToLogin()">← Torna al login</button>
+    <div class="menu-header">
+      <h2 id="nomeCognomeTitle">Accesso</h2>
+      <p>Inserisci il tuo nome per iniziare</p>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
+      <div class="input-wrap">
+        <input type="text" id="inputNome" placeholder="Il tuo nome" autocomplete="given-name" />
+      </div>
+      <div class="input-wrap">
+        <input type="text" id="inputCognome" placeholder="Il tuo cognome" autocomplete="family-name" />
+      </div>
+      <div id="errNomeIndex" style="color:#cc0000;font-size:13px;display:none">
+        Inserisci nome e cognome per continuare.
+      </div>
+    </div>
+    <button class="btn-login" onclick="doNomeCognome()">Continua →</button>
+  </div>
   <div class="card menu-screen" id="menuTSSA">
     <button class="back-btn" onclick="goBack()">← Torna al login</button>
     <div class="menu-header">
@@ -496,28 +515,55 @@
     btn.classList.add('loading');
     btn.textContent = 'Accesso in corso';
 
-    // Salva sessione
     sessionStorage.setItem('corso', profilo.corso);
     sessionStorage.setItem('corsoLabel', profilo.label);
 
     setTimeout(() => {
-      if (profilo.corso === 'tssa') {
-        // Mostra menu categorie
-        document.getElementById('loginScreen').style.display = 'none';
-        document.getElementById('menuTSSA').classList.add('active');
-      } else {
-        // Vai direttamente al quiz
-        window.location.href = `quiz.html?corso=${profilo.corso}`;
-      }
+      // Dopo il login → sempre schermata nome/cognome
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('nomeCognomeTitle').textContent = profilo.label;
+      document.getElementById('screenNomeCognome').classList.add('active');
       btn.classList.remove('loading');
       btn.textContent = 'Accedi';
     }, 600);
   };
 
-  window.goBack = function() {
+  window.doNomeCognome = function() {
+    const nome = document.getElementById('inputNome').value.trim();
+    const cognome = document.getElementById('inputCognome').value.trim();
+    const err = document.getElementById('errNomeIndex');
+
+    if (!nome || !cognome) {
+      err.style.display = 'block';
+      return;
+    }
+    err.style.display = 'none';
+
+    // Salva nome/cognome in sessionStorage
+    sessionStorage.setItem('nome', nome);
+    sessionStorage.setItem('cognome', cognome);
+
+    const corso = sessionStorage.getItem('corso');
+
+    if (corso === 'tssa') {
+      // TSSA → mostra menu categorie
+      document.getElementById('screenNomeCognome').classList.remove('active');
+      document.getElementById('menuTSSA').classList.add('active');
+    } else {
+      // Base/Squadra → vai al quiz
+      window.location.href = `quiz.html?corso=${corso}`;
+    }
+  };
+
+  window.goBackToLogin = function() {
     document.getElementById('loginScreen').style.display = 'block';
-    document.getElementById('menuTSSA').classList.remove('active');
+    document.getElementById('screenNomeCognome').classList.remove('active');
     sessionStorage.clear();
+  };
+
+  window.goBack = function() {
+    document.getElementById('menuTSSA').classList.remove('active');
+    document.getElementById('screenNomeCognome').classList.add('active');
   };
 
   window.startQuiz = function(categoria) {
@@ -541,8 +587,16 @@
     if (e.key === 'Enter') window.doLogin();
   });
 
-  // Se si torna dal quiz TSSA, mostra subito il menu categorie
-  if (sessionStorage.getItem('corso') === 'tssa') {
+  document.getElementById('inputNome')?.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') document.getElementById('inputCognome').focus();
+  });
+
+  document.getElementById('inputCognome')?.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') window.doNomeCognome();
+  });
+
+  // Se si torna dal quiz TSSA, mostra direttamente il menu categorie
+  if (sessionStorage.getItem('corso') === 'tssa' && sessionStorage.getItem('nome')) {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('menuTSSA').classList.add('active');
   }

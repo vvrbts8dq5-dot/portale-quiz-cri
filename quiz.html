@@ -473,25 +473,8 @@
   </div>
 
   <!-- SCHERMATA 1: NOME E COGNOME -->
-  <div class="card screen active" id="screenNome">
-    <div class="reg-head">
-      <img src="logo-cri.png" alt="Croce Rossa Italiana" />
-      <div class="reg-title">Croce Rossa Italiana</div>
-      <div class="reg-comitato">Comitato di Padova</div>
-      <div class="reg-sub" id="corsoBadge">📋 Corso</div>
-    </div>
-    <div class="form-group">
-      <label>Nome</label>
-      <input type="text" id="inputNome" placeholder="Il tuo nome" autocomplete="given-name" />
-    </div>
-    <div class="form-group">
-      <label>Cognome</label>
-      <input type="text" id="inputCognome" placeholder="Il tuo cognome" autocomplete="family-name" />
-    </div>
-    <button class="btn-primary" onclick="goToScelta()" style="margin-top:8px">Continua →</button>
-    <div class="error-nome" id="errNome" style="color:var(--red);font-size:13px;margin-top:10px;display:none">
-      Inserisci nome e cognome per continuare.
-    </div>
+  <div class="card screen active" id="screenNome" style="display:none">
+    <!-- Schermata nome spostata su index.html -->
   </div>
 
   <!-- SCHERMATA 2: SCELTA NUMERO DOMANDE -->
@@ -725,15 +708,15 @@ async function caricaDomande() {
 }
 
 // Naviga a scelta numero domande
+// Leggi nome/cognome da sessionStorage (inseriti in index.html)
+stato.nome = sessionStorage.getItem('nome') || '';
+stato.cognome = sessionStorage.getItem('cognome') || '';
+
+// Parti direttamente dalla scelta domande
+showScreen('screenScelta');
+
 window.goToScelta = function() {
-  const nome = document.getElementById('inputNome').value.trim();
-  const cognome = document.getElementById('inputCognome').value.trim();
-  if (!nome || !cognome) {
-    document.getElementById('errNome').style.display = 'block';
-    return;
-  }
-  stato.nome = nome;
-  stato.cognome = cognome;
+  // Funzione mantenuta per compatibilità ma non più usata
   showScreen('screenScelta');
 };
 
