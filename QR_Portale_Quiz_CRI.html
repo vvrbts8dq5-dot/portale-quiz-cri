@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>QR Code — Portale Quiz CRI Padova</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Arial', sans-serif;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 40px 20px;
+  }
+  .card {
+    border: 3px solid #CC0000;
+    border-radius: 20px;
+    padding: 40px;
+    max-width: 400px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  }
+  .logo-wrap { margin-bottom: 20px; }
+  .logo-wrap img { width: 80px; height: 80px; }
+  h1 { color: #CC0000; font-size: 22px; margin-bottom: 6px; }
+  .sub { color: #555; font-size: 13px; margin-bottom: 28px; }
+  .qr-wrap {
+    background: white;
+    border: 2px solid #eee;
+    border-radius: 12px;
+    padding: 16px;
+    display: inline-block;
+    margin-bottom: 24px;
+  }
+  .qr-wrap img { width: 200px; height: 200px; display: block; }
+  .url {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: #CC0000;
+    background: #fff5f5;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 24px;
+    word-break: break-all;
+  }
+  .divider { border: none; border-top: 1px solid #eee; margin: 20px 0; }
+  .passwords { text-align: left; }
+  .passwords h3 { font-size: 13px; color: #333; font-weight: 700; margin-bottom: 12px; text-align: center; }
+  .pwd-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+  .pwd-item:last-child { border-bottom: none; }
+  .pwd-corso { font-size: 12px; color: #555; }
+  .pwd-value { font-family: 'Courier New', monospace; font-size: 11px; color: #CC0000; font-weight: 700; background: #fff5f5; padding: 3px 8px; border-radius: 4px; }
+  .footer { font-size: 11px; color: #aaa; margin-top: 24px; }
+  @media print {
+    body { padding: 0; min-height: auto; }
+    .card { box-shadow: none; max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo-wrap">
+    <img src="logo-cri.png" alt="CRI" onerror="this.style.display='none'">
+  </div>
+  <h1>Portale Quiz CRI</h1>
+  <div class="sub">Comitato di Padova — Formazione Volontari</div>
+
+  <div class="qr-wrap">
+    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://vvrbts8dq5-dot.github.io/portale-quiz-cri&color=CC0000&bgcolor=FFFFFF&format=png" alt="QR Code Portale Quiz CRI Padova" />
+  </div>
+
+  <div class="url">vvrbts8dq5-dot.github.io/portale-quiz-cri</div>
+
+  <hr class="divider">
+
+  <div class="passwords">
+    <h3>🔑 Password di accesso</h3>
+    <div class="pwd-item">
+      <span class="pwd-corso">Corso Base</span>
+      <span class="pwd-value">quiz.base.cri</span>
+    </div>
+    <div class="pwd-item">
+      <span class="pwd-corso">Corso TSSA</span>
+      <span class="pwd-value">quiz.tssa.cri</span>
+    </div>
+    <div class="pwd-item">
+      <span class="pwd-corso">Formazione Squadra</span>
+      <span class="pwd-value">quiz.squadra.cri</span>
+    </div>
+  </div>
+
+  <div class="footer">Croce Rossa Italiana — Comitato di Padova</div>
+</div>
+</body>
+</html>

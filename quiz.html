@@ -280,6 +280,33 @@
     background: var(--text); border-color: var(--text); color: white;
   }
 
+  /* Risposta selezionata corretta */
+  .option-btn.correct-sel {
+    border-color: var(--green); background: var(--green-bg);
+    pointer-events: none;
+  }
+  .option-btn.correct-sel .option-letter {
+    background: var(--green); border-color: var(--green); color: white;
+  }
+
+  /* Risposta selezionata errata */
+  .option-btn.wrong-sel {
+    border-color: var(--red); background: var(--wrong-bg);
+    pointer-events: none;
+  }
+  .option-btn.wrong-sel .option-letter {
+    background: var(--red); border-color: var(--red); color: white;
+  }
+
+  /* Evidenzia la risposta corretta quando si sbaglia */
+  .option-btn.correct-ans {
+    border-color: var(--green); background: var(--green-bg);
+    pointer-events: none;
+  }
+  .option-btn.correct-ans .option-letter {
+    background: var(--green); border-color: var(--green); color: white;
+  }
+
   .option-btn.correct {
     border-color: var(--green); background: var(--green-bg);
     pointer-events: none;
@@ -435,6 +462,14 @@
 
   .btn-retry:hover { background: var(--red-dark); }
 
+  .btn-storico {
+    width: 100%; padding: 14px; background: var(--bg); color: var(--text);
+    border: 1.5px solid var(--border); border-radius: 8px;
+    font-family: 'DM Sans', sans-serif; font-size: 15px; cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .btn-storico:hover { border-color: var(--red); color: var(--red); }
+
   .btn-home {
     width: 100%; padding: 14px; background: var(--bg); color: var(--text2);
     border: 1.5px solid var(--border); border-radius: 8px;
@@ -443,6 +478,21 @@
   }
 
   .btn-home:hover { border-color: var(--text2); }
+
+  /* Storico card */
+  .storico-item {
+    border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; margin-bottom: 10px; background: var(--bg);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .storico-left { flex: 1; }
+  .storico-corso { font-size: 13px; font-weight: 600; color: var(--text); }
+  .storico-data { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .storico-right { text-align: right; flex-shrink: 0; }
+  .storico-pct { font-size: 18px; font-weight: 700; }
+  .storico-pct.pass { color: var(--green); }
+  .storico-pct.fail { color: var(--red); }
+  .storico-domande { font-size: 11px; color: var(--text2); margin-top: 2px; }
 
   /* Esito badge */
   .esito-badge {
@@ -552,8 +602,19 @@
 
     <div class="result-actions">
       <button class="btn-retry" onclick="retryQuiz()">Rifai il test</button>
+      <button class="btn-storico" onclick="mostraStorico()">📊 I miei quiz</button>
       <button class="btn-home" onclick="goHome()">← Torna al portale</button>
     </div>
+  </div>
+
+  <!-- SCHERMATA STORICO PERSONALE -->
+  <div class="card screen" id="screenStorico">
+    <div style="margin-bottom:20px">
+      <button class="back-btn" onclick="showScreen('screenRisultati')" style="background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:0;font-family:'DM Sans',sans-serif">← Torna ai risultati</button>
+    </div>
+    <div style="font-size:18px;font-weight:600;margin-bottom:6px">📊 I miei quiz</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:20px" id="storicoSub"></div>
+    <div id="storicoList"></div>
   </div>
 
 </div>
@@ -561,7 +622,7 @@
 <!-- Firebase -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAQsAwG237CMsuqlNTvrGyfNphDSjlg4JM",
@@ -870,11 +931,27 @@ function selezionaRisposta(risposta, domanda, btnCliccato, wrap) {
     esito: esito
   });
 
-  // Disabilita tutti i bottoni e marca solo quello selezionato (senza mostrare la corretta)
+  // Disabilita tutti i bottoni
   wrap.querySelectorAll('.option-btn').forEach(b => {
     b.disabled = true;
+    // Evidenzia la risposta corretta in verde
+    if (b.querySelector('span:last-child').textContent === corretta) {
+      b.classList.add('correct-ans');
+    }
   });
-  btnCliccato.classList.add('selected');
+
+  // Evidenzia quella selezionata: verde se giusta, rossa se sbagliata
+  btnCliccato.classList.add(esito ? 'correct-sel' : 'wrong-sel');
+
+  // Feedback testuale
+  const feedback = document.getElementById('feedbackMsg');
+  if (esito) {
+    feedback.className = 'feedback-msg correct-fb';
+    feedback.innerHTML = '✓ Risposta corretta!';
+  } else {
+    feedback.className = 'feedback-msg wrong-fb';
+    feedback.innerHTML = `✗ Risposta errata — La risposta corretta è: <strong>${corretta}</strong>`;
+  }
 
   document.getElementById('btnNext').classList.add('visible');
 }
@@ -954,7 +1031,12 @@ async function mostraRisultati() {
       errate: err,
       percentuale: pct,
       superato: pass,
-      timestamp: serverTimestamp()
+      timestamp: serverTimestamp(),
+      // Salva le singole risposte per statistiche admin
+      risposte: stato.risposteDate.map(r => ({
+        domanda: r.domanda,
+        corretta: r.esito
+      }))
     });
     document.getElementById('savingMsg').textContent = '✓ Risultato salvato';
     document.getElementById('savingMsg').style.color = 'var(--green)';
@@ -965,7 +1047,55 @@ async function mostraRisultati() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// Rifai quiz
+// Storico personale
+window.mostraStorico = async function() {
+  showScreen('screenStorico');
+  const nome = stato.nome;
+  const cognome = stato.cognome;
+  document.getElementById('storicoSub').textContent = `Ultimi 20 quiz di ${nome} ${cognome}`;
+  const list = document.getElementById('storicoList');
+  list.innerHTML = '<div style="color:var(--text2);font-size:13px;padding:10px 0">Caricamento...</div>';
+
+  try {
+    const q = query(
+      collection(db, 'risultati'),
+      where('nome', '==', nome),
+      where('cognome', '==', cognome),
+      orderBy('timestamp', 'desc'),
+      limit(20)
+    );
+    const snap = await getDocs(q);
+
+    if (snap.empty) {
+      list.innerHTML = '<div style="color:var(--text2);font-size:13px;padding:10px 0">Nessun quiz trovato.</div>';
+      return;
+    }
+
+    let html = '';
+    snap.forEach(doc => {
+      const r = doc.data();
+      const data = r.timestamp ? r.timestamp.toDate() : new Date();
+      const dataStr = data.toLocaleDateString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+      const categoria = r.categoriaLabel || r.corsoLabel || '';
+      const pass = r.superato;
+      const pct = r.percentuale || 0;
+      html += `
+        <div class="storico-item">
+          <div class="storico-left">
+            <div class="storico-corso">${categoria}</div>
+            <div class="storico-data">📅 ${dataStr}</div>
+          </div>
+          <div class="storico-right">
+            <div class="storico-pct ${pass ? 'pass' : 'fail'}">${pct}%</div>
+            <div class="storico-domande">${r.corrette}/${r.numDomande} ${pass ? '✓' : '✗'}</div>
+          </div>
+        </div>`;
+    });
+    list.innerHTML = html;
+  } catch(e) {
+    list.innerHTML = `<div style="color:var(--red);font-size:13px">${e.message}</div>`;
+  }
+};
 window.retryQuiz = function() {
   fermaTimer();
   stato.current = 0;

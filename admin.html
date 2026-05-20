@@ -1087,12 +1087,74 @@ function renderCharts(catArr) {
 // (richiede che il quiz salvi anche le risposte date — futuro miglioramento)
 function renderCritical() {
   const wrap = document.getElementById('criticalList');
+
+  // Aggrega tutte le risposte da filteredResults
+  const conRisposte = filteredResults.filter(r => r.risposte && r.risposte.length > 0);
+
+  if (conRisposte.length === 0) {
+    wrap.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📊</div>
+        <div class="empty-title">Dati non ancora disponibili</div>
+        <div class="empty-sub">Le statistiche appariranno dopo i prossimi quiz completati con la versione aggiornata del portale.</div>
+      </div>`;
+    return;
+  }
+
+  // Conta errori per domanda
+  const contatore = {};
+  conRisposte.forEach(r => {
+    r.risposte.forEach(resp => {
+      if (!resp.domanda) return;
+      if (!contatore[resp.domanda]) {
+        contatore[resp.domanda] = { errori: 0, totale: 0 };
+      }
+      contatore[resp.domanda].totale++;
+      if (!resp.corretta) contatore[resp.domanda].errori++;
+    });
+  });
+
+  // Ordina per tasso di errore (minimo 3 tentativi)
+  const classifica = Object.entries(contatore)
+    .filter(([_, v]) => v.totale >= 3)
+    .map(([domanda, v]) => ({
+      domanda,
+      errori: v.errori,
+      totale: v.totale,
+      tassoErrore: Math.round((v.errori / v.totale) * 100)
+    }))
+    .sort((a, b) => b.tassoErrore - a.tassoErrore)
+    .slice(0, 15);
+
+  if (classifica.length === 0) {
+    wrap.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">✅</div>
+        <div class="empty-title">Dati insufficienti</div>
+        <div class="empty-sub">Servono almeno 3 tentativi per ogni domanda per calcolare le statistiche.</div>
+      </div>`;
+    return;
+  }
+
+  const rankClass = ['top1', 'top2', 'top3'];
   wrap.innerHTML = `
-    <div class="empty-state">
-      <div class="empty-icon">📊</div>
-      <div class="empty-title">Analisi domande in arrivo</div>
-      <div class="empty-sub">Questa sezione mostrerà le domande con tasso di errore più alto<br>una volta che il quiz salverà anche le singole risposte. Per ora vedi il riepilogo errori dai singoli test cliccando sui risultati.</div>
-    </div>`;
+    <div style="font-size:12px;color:var(--text2);margin-bottom:12px">
+      Analisi basata su ${conRisposte.length} quiz con dati dettagliati — Top 15 domande più difficili
+    </div>
+    ${classifica.map((item, i) => `
+      <div class="critical-item">
+        <div class="critical-rank ${i < 3 ? rankClass[i] : ''}">${i + 1}</div>
+        <div class="critical-body">
+          <div class="critical-q">${item.domanda}</div>
+          <div class="critical-meta">
+            ${item.errori} errori su ${item.totale} tentativi
+          </div>
+        </div>
+        <div style="flex-shrink:0;text-align:right">
+          <div style="font-size:18px;font-weight:700;color:${item.tassoErrore >= 70 ? '#dc2626' : item.tassoErrore >= 50 ? '#ea580c' : '#ca8a04'}">${item.tassoErrore}%</div>
+          <div style="font-size:10px;color:var(--text2)">errori</div>
+        </div>
+      </div>`).join('')}`;
 }
 
 // ========== TAB ==========
