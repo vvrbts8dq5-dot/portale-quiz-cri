@@ -601,20 +601,23 @@
     <div class="saving-msg" id="savingMsg">💾 Salvataggio risultato...</div>
 
     <div class="result-actions">
-      <button class="btn-retry" onclick="retryQuiz()">Rifai il test</button>
+      <button class="btn-retry" onclick="retryQuiz()">🔄 Rifai il test</button>
       <button class="btn-storico" onclick="mostraStorico()">📊 I miei quiz</button>
-      <button class="btn-home" onclick="goHome()">← Torna al portale</button>
+      <button class="btn-home" onclick="goHome()" style="color:var(--text2)">🏠 Torna alla home</button>
     </div>
   </div>
 
   <!-- SCHERMATA STORICO PERSONALE -->
   <div class="card screen" id="screenStorico">
     <div style="margin-bottom:20px">
-      <button class="back-btn" onclick="showScreen('screenRisultati')" style="background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:0;font-family:'DM Sans',sans-serif">← Torna ai risultati</button>
+      <button class="back-btn" onclick="backToResults()" style="background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:0;font-family:'DM Sans',sans-serif;transition:color 0.2s">← Torna ai risultati</button>
     </div>
     <div style="font-size:18px;font-weight:600;margin-bottom:6px">📊 I miei quiz</div>
     <div style="font-size:13px;color:var(--text2);margin-bottom:20px" id="storicoSub"></div>
     <div id="storicoList"></div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:24px">
+      <button class="btn-home" onclick="backToHome()" style="width:100%;padding:14px;background:var(--bg);color:var(--text2);border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:15px;cursor:pointer;transition:border-color 0.2s">🏠 Torna alla home</button>
+    </div>
   </div>
 
 </div>
@@ -1111,6 +1114,27 @@ function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
+
+// Torna ai risultati dal storico
+window.backToResults = function() {
+  showScreen('screenRisultati');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+// Torna alla home dal storico (scavalca i risultati)
+window.backToHome = function() {
+  fermaTimer();
+  if (stato.corso === 'tssa') {
+    window.location.href = 'index.html';
+  } else {
+    stato.current = 0;
+    stato.corrette = 0;
+    stato.risposteDate = [];
+    stato.domande = [];
+    stato.domandeSelezionate = [];
+    showScreen('screenScelta');
+  }
+};
 
 // INIT: leggi nome/cognome da sessionStorage e mostra subito la scelta domande
 stato.nome = sessionStorage.getItem('nome') || '';
