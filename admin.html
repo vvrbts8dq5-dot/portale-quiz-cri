@@ -1192,6 +1192,58 @@ window.showDettaglio = function(id) {
   const r = filteredResults.find(x => x._id === id);
   if (!r) return;
   const data = r._date.toLocaleString('it-IT', { dateStyle: 'medium', timeStyle: 'short' });
+
+  // Sezione risposte dettagliate
+  let risposteHTML = '';
+  if (r.risposte && r.risposte.length > 0) {
+    const haDettaglio = r.risposte.some(rsp => rsp.tuaRisposta);
+    if (haDettaglio) {
+      risposteHTML = `
+        <div style="margin-top:20px">
+          <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text2);margin-bottom:12px">
+            Risposte dettagliate
+          </div>
+          ${r.risposte.map((rsp, i) => `
+            <div style="border:1px solid ${rsp.corretta ? 'var(--green-border)' : '#ffd0d0'};border-radius:10px;padding:14px 16px;margin-bottom:10px;background:${rsp.corretta ? 'var(--green-bg)' : '#fff5f5'}">
+              <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px">
+                <div style="flex-shrink:0;width:22px;height:22px;border-radius:50%;background:${rsp.corretta ? 'var(--green)' : 'var(--red)'};color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;margin-top:1px">
+                  ${rsp.corretta ? '✓' : '✗'}
+                </div>
+                <div style="font-size:13px;font-weight:500;line-height:1.5;color:var(--text)">${i + 1}. ${rsp.domanda}</div>
+              </div>
+              <div style="padding-left:32px;display:flex;flex-direction:column;gap:6px">
+                <div style="font-size:12px;padding:6px 10px;border-radius:6px;background:${rsp.corretta ? 'rgba(26,122,60,0.1)' : 'rgba(204,0,0,0.08)'};color:${rsp.corretta ? 'var(--green)' : 'var(--red)'}">
+                  <span style="font-weight:600">La tua risposta:</span> ${rsp.tuaRisposta || '—'}
+                </div>
+                ${!rsp.corretta ? `
+                <div style="font-size:12px;padding:6px 10px;border-radius:6px;background:rgba(26,122,60,0.1);color:var(--green)">
+                  <span style="font-weight:600">Risposta corretta:</span> ${rsp.rispostaCorretta || '—'}
+                </div>` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>`;
+    } else {
+      // Dati vecchi: solo corretta/errata senza testo risposta
+      risposteHTML = `
+        <div style="margin-top:20px">
+          <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text2);margin-bottom:12px">
+            Risposte dettagliate
+          </div>
+          ${r.risposte.map((rsp, i) => `
+            <div style="border:1px solid ${rsp.corretta ? 'var(--green-border)' : '#ffd0d0'};border-radius:8px;padding:10px 14px;margin-bottom:8px;background:${rsp.corretta ? 'var(--green-bg)' : '#fff5f5'};display:flex;gap:10px;align-items:flex-start">
+              <div style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:${rsp.corretta ? 'var(--green)' : 'var(--red)'};color:white;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;margin-top:2px">
+                ${rsp.corretta ? '✓' : '✗'}
+              </div>
+              <div style="font-size:13px;line-height:1.5;color:var(--text)">${i + 1}. ${rsp.domanda}</div>
+            </div>
+          `).join('')}
+        </div>`;
+    }
+  } else {
+    risposteHTML = `<p style="margin-top:18px;font-size:12px;color:var(--text2);text-align:center">Nessun dettaglio disponibile per questo quiz.</p>`;
+  }
+
   document.getElementById('modalContent').innerHTML = `
     <div class="modal-head">
       <div>
@@ -1209,9 +1261,7 @@ window.showDettaglio = function(id) {
     <div style="text-align:center;padding:14px;background:${r.superato?'var(--green-bg)':'#fff0f0'};border-radius:10px;color:${r.superato?'var(--green)':'var(--red)'};font-weight:500">
       ${r.superato ? '✓ Test superato' : '✗ Test non superato'}
     </div>
-    <p style="margin-top:18px;font-size:12px;color:var(--text2);text-align:center">
-      Per vedere le singole risposte, è necessario abilitare il salvataggio dettagliato nel quiz.
-    </p>
+    ${risposteHTML}
   `;
   document.getElementById('modalOverlay').classList.add('active');
 };

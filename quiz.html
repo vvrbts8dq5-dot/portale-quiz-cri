@@ -1018,6 +1018,8 @@ async function mostraRisultati() {
       // Salva le singole risposte per statistiche admin
       risposte: stato.risposteDate.map(r => ({
         domanda: r.domanda,
+        tuaRisposta: r.tuaRisposta,
+        rispostaCorretta: r.rispostaCorretta,
         corretta: r.esito
       }))
     });
