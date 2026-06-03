@@ -6,6 +6,7 @@
 <title>Admin — Portale Quiz CRI</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   :root {
     --red: #CC0000;
@@ -541,29 +542,21 @@
     .modal-info-grid { grid-template-columns: repeat(2, 1fr); }
   }
 
-  /* Badge notifica nuovi test */
   .notifica-badge {
-    display: none;
-    background: var(--red); color: white;
+    display: none; background: var(--red); color: white;
     border-radius: 99px; font-size: 10px; font-weight: 700;
-    padding: 1px 6px; margin-left: 4px;
-    vertical-align: middle; line-height: 16px;
+    padding: 1px 6px; margin-left: 4px; vertical-align: middle;
   }
   .notifica-badge.visible { display: inline-block; }
 
-  /* Nome cliccabile in tabella */
   .nome-link {
     color: var(--text); font-weight: 600;
-    text-decoration: none; border-bottom: 1px dashed var(--border);
-    cursor: pointer; transition: color 0.15s, border-color 0.15s;
+    border-bottom: 1px dashed var(--border); cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
   }
   .nome-link:hover { color: var(--red); border-bottom-color: var(--red); }
 
-  /* Pannello corsista */
-  .corsista-header {
-    display: flex; align-items: center; gap: 14px;
-    margin-bottom: 20px;
-  }
+  .corsista-header { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; }
   .corsista-avatar {
     width: 48px; height: 48px; border-radius: 50%;
     background: var(--red); color: white;
@@ -572,19 +565,16 @@
   }
   .corsista-nome { font-size: 20px; font-weight: 600; }
   .corsista-meta { font-size: 13px; color: var(--text2); margin-top: 2px; }
-
   .corsista-kpi-grid {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
     gap: 12px; margin-bottom: 20px;
   }
-
   .cat-bar-wrap { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
   .cat-bar-row { display: flex; align-items: center; gap: 10px; }
   .cat-bar-label { font-size: 12px; color: var(--text); width: 140px; flex-shrink: 0; }
   .cat-bar-track { flex: 1; height: 8px; background: var(--border); border-radius: 99px; overflow: hidden; }
-  .cat-bar-fill { height: 100%; border-radius: 99px; transition: width 0.6s ease; }
+  .cat-bar-fill { height: 100%; border-radius: 99px; }
   .cat-bar-pct { font-size: 11px; font-family: 'DM Mono', monospace; width: 36px; text-align: right; flex-shrink: 0; }
-
   .corsista-test-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
   .corsista-test-item {
     display: flex; align-items: center; gap: 12px;
@@ -596,11 +586,9 @@
   .corsista-test-data { font-size: 12px; color: var(--text2); width: 90px; flex-shrink: 0; }
   .corsista-test-corso { font-size: 12px; color: var(--text); flex: 1; }
   .btn-back-corsista {
-    background: none; border: none; color: var(--text2);
-    font-size: 13px; cursor: pointer; display: inline-flex;
-    align-items: center; gap: 6px; padding: 0;
-    font-family: 'DM Sans', sans-serif; margin-bottom: 20px;
-    transition: color 0.2s;
+    background: none; border: none; color: var(--text2); font-size: 13px;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    padding: 0; font-family: 'DM Sans', sans-serif; margin-bottom: 20px; transition: color 0.2s;
   }
   .btn-back-corsista:hover { color: var(--red); }
 </style>
@@ -696,12 +684,21 @@
 
       <div class="filter-group">
         <span class="filter-label">Periodo</span>
-        <select class="filter-select" id="filterPeriodo" onchange="applyFilters()">
+        <select class="filter-select" id="filterPeriodo" onchange="onPeriodoChange()">
           <option value="all">Sempre</option>
           <option value="7">Ultimi 7 giorni</option>
           <option value="30">Ultimi 30 giorni</option>
           <option value="90">Ultimi 90 giorni</option>
+          <option value="custom">Personalizzato…</option>
         </select>
+      </div>
+      <div class="filter-group" id="filterDateRange" style="display:none">
+        <span class="filter-label">Da</span>
+        <input type="date" class="filter-input" id="filterDateFrom" onchange="applyFilters()" style="min-width:130px" />
+      </div>
+      <div class="filter-group" id="filterDateRangeTo" style="display:none">
+        <span class="filter-label">A</span>
+        <input type="date" class="filter-input" id="filterDateTo" onchange="applyFilters()" style="min-width:130px" />
       </div>
 
       <div class="filter-group" style="flex:1;min-width:180px">
@@ -824,8 +821,6 @@
 
     <!-- TAB CORSISTI -->
     <div class="tab-panel" id="panelCorsisti">
-
-      <!-- LISTA CORSISTI -->
       <div id="viewListaCorsisti">
         <div class="panel-head">
           <div>
@@ -834,12 +829,8 @@
           </div>
           <input class="filter-input" id="cercaNomeCorsista" placeholder="Cerca corsista…" oninput="filtraCorsisti()" style="min-width:200px" />
         </div>
-        <div id="listaCorsisti">
-          <div class="loader-wrap"><div class="loader"></div> Caricamento corsisti…</div>
-        </div>
+        <div id="listaCorsisti"><div class="loader-wrap"><div class="loader"></div> Caricamento…</div></div>
       </div>
-
-      <!-- SCHEDA CORSISTA -->
       <div id="viewSchedaCorsista" style="display:none">
         <button class="btn-back-corsista" onclick="tornaListaCorsisti()">← Tutti i corsisti</button>
         <div class="corsista-header">
@@ -849,9 +840,7 @@
             <div class="corsista-meta" id="corsistaMeta">—</div>
           </div>
         </div>
-
         <div class="corsista-kpi-grid" id="corsistaKpi"></div>
-
         <div class="charts-grid" style="margin-bottom:20px">
           <div class="chart-card">
             <div class="chart-title">Andamento nel tempo</div>
@@ -864,13 +853,11 @@
             <div style="margin-top:8px" id="corsistaCategorie"></div>
           </div>
         </div>
-
         <div class="chart-card">
           <div class="chart-title" style="margin-bottom:12px">Tutti i test</div>
           <div class="corsista-test-list" id="corsistaTestList"></div>
         </div>
       </div>
-
     </div>
 
   </div>
@@ -1007,19 +994,38 @@ if (savedUser) {
 }
 
 // ========== AGGIORNA DATI ==========
+let lastKnownCount = 0;
+let pollingInterval = null;
+
 window.aggiornaAdmin = async function() {
   const btn = document.getElementById('btnRefresh');
   btn.classList.add('loading');
-  btn.textContent = '⏳ Aggiornamento...';
+  btn.innerHTML = '⏳ Aggiornamento... <span class="notifica-badge" id="notificaBadge">0</span>';
+  document.getElementById('notificaBadge').classList.remove('visible');
   await caricaRisultati();
+  lastKnownCount = allResults.length;
   btn.classList.remove('loading');
-  btn.textContent = '🔄 Aggiorna';
+  btn.innerHTML = '🔄 Aggiorna <span class="notifica-badge" id="notificaBadge">0</span>';
 };
+
+function avviaPolling() {
+  if (pollingInterval) return;
+  pollingInterval = setInterval(async () => {
+    try {
+      const snap = await getDocs(collection(db, 'risultati'));
+      const nuovi = snap.size - lastKnownCount;
+      const badge = document.getElementById('notificaBadge');
+      if (badge && nuovi > 0 && lastKnownCount > 0) {
+        badge.textContent = nuovi;
+        badge.classList.add('visible');
+      }
+    } catch(e) { /* silenzioso */ }
+  }, 30000);
+}
 
 // ========== CARICAMENTO DATI ==========
 async function caricaRisultati() {
   try {
-    // Legge senza orderBy per evitare errori di indice Firebase
     const snap = await getDocs(collection(db, 'risultati'));
     allResults = [];
     snap.forEach(d => {
@@ -1028,7 +1034,6 @@ async function caricaRisultati() {
       data._date = data.timestamp ? data.timestamp.toDate() : new Date();
       allResults.push(data);
     });
-    // Ordina lato client: più recenti prima
     allResults.sort((a, b) => b._date - a._date);
     lastKnownCount = allResults.length;
     avviaPolling();
@@ -1044,6 +1049,14 @@ async function caricaRisultati() {
 }
 
 // ========== FILTRI ==========
+window.onPeriodoChange = function() {
+  const v = document.getElementById('filterPeriodo').value;
+  const show = v === 'custom';
+  document.getElementById('filterDateRange').style.display = show ? 'flex' : 'none';
+  document.getElementById('filterDateRangeTo').style.display = show ? 'flex' : 'none';
+  applyFilters();
+};
+
 window.applyFilters = function() {
   const corso = document.getElementById('filterCorso').value;
   const cat = document.getElementById('filterCategoria').value;
@@ -1051,20 +1064,27 @@ window.applyFilters = function() {
   const periodo = document.getElementById('filterPeriodo').value;
   const nome = document.getElementById('filterNome').value.trim().toLowerCase();
 
-  // Mostra/nascondi filtro categoria TSSA
   document.getElementById('filterCategoriaWrap').style.display = corso === 'tssa' ? 'flex' : 'none';
   if (corso !== 'tssa') document.getElementById('filterCategoria').value = '';
 
-  let now = Date.now();
-  let cutoff = 0;
-  if (periodo !== 'all') cutoff = now - parseInt(periodo) * 24 * 60 * 60 * 1000;
+  let cutoff = 0, cutoffTo = Infinity;
+  if (periodo !== 'all' && periodo !== 'custom') {
+    cutoff = Date.now() - parseInt(periodo) * 24 * 60 * 60 * 1000;
+  } else if (periodo === 'custom') {
+    const from = document.getElementById('filterDateFrom').value;
+    const to = document.getElementById('filterDateTo').value;
+    if (from) cutoff = new Date(from).getTime();
+    if (to) cutoffTo = new Date(to).getTime() + 86400000;
+  }
 
   filteredResults = allResults.filter(r => {
     if (corso && r.corso !== corso) return false;
     if (cat && r.categoria !== cat) return false;
     if (esito === 'true' && !r.superato) return false;
     if (esito === 'false' && r.superato) return false;
-    if (cutoff > 0 && r._date.getTime() < cutoff) return false;
+    const t = r._date.getTime();
+    if (cutoff > 0 && t < cutoff) return false;
+    if (cutoffTo < Infinity && t > cutoffTo) return false;
     if (nome) {
       const fullName = `${(r.nome||'').toLowerCase()} ${(r.cognome||'').toLowerCase()}`;
       if (!fullName.includes(nome)) return false;
@@ -1401,92 +1421,195 @@ window.switchTab = function(tab) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   event.target.classList.add('active');
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  if (tab === 'results')   document.getElementById('panelResults').classList.add('active');
-  if (tab === 'stats')     document.getElementById('panelStats').classList.add('active');
-  if (tab === 'critical')  document.getElementById('panelCritical').classList.add('active');
+  if (tab === 'results')  document.getElementById('panelResults').classList.add('active');
+  if (tab === 'stats')    document.getElementById('panelStats').classList.add('active');
+  if (tab === 'critical') document.getElementById('panelCritical').classList.add('active');
   if (tab === 'corsisti') {
     document.getElementById('panelCorsisti').classList.add('active');
     renderListaCorsisti();
   }
 };
 
-// ========== NOTIFICA NUOVI TEST ==========
-let lastKnownCount = 0;
-let pollingInterval = null;
+// ========== MODAL DETTAGLIO ==========
+window.showDettaglio = function(id) {
+  const r = allResults.find(x => x._id === id);
+  if (!r) return;
+  const data = r._date.toLocaleString('it-IT', { dateStyle: 'medium', timeStyle: 'short' });
 
-function avviaPolling() {
-  if (pollingInterval) return;
-  pollingInterval = setInterval(async () => {
-    try {
-      const snap = await getDocs(collection(db, 'risultati'));
-      const nuovi = snap.size - lastKnownCount;
-      const badge = document.getElementById('notificaBadge');
-      if (nuovi > 0 && lastKnownCount > 0) {
-        badge.textContent = nuovi;
-        badge.classList.add('visible');
-      }
-    } catch(e) { /* silenzioso */ }
-  }, 30000); // ogni 30 secondi
-}
+  let risposteHTML = '';
+  if (r.risposte && r.risposte.length > 0) {
+    const haDettaglio = r.risposte.some(rsp => rsp.tuaRisposta);
+    if (haDettaglio) {
+      risposteHTML = `
+        <div style="margin-top:20px">
+          <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text2);margin-bottom:12px">Risposte dettagliate</div>
+          ${r.risposte.map((rsp, i) => `
+            <div style="border:1px solid ${rsp.corretta ? 'var(--green-border)' : '#ffd0d0'};border-radius:10px;padding:14px 16px;margin-bottom:10px;background:${rsp.corretta ? 'var(--green-bg)' : '#fff5f5'}">
+              <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:${rsp.corretta ? '0' : '10px'}">
+                <div style="flex-shrink:0;width:22px;height:22px;border-radius:50%;background:${rsp.corretta ? 'var(--green)' : 'var(--red)'};color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;margin-top:1px">${rsp.corretta ? '✓' : '✗'}</div>
+                <div style="font-size:13px;font-weight:500;line-height:1.5;color:var(--text)">${i + 1}. ${rsp.domanda}</div>
+              </div>
+              ${!rsp.corretta ? `
+              <div style="padding-left:32px;display:flex;flex-direction:column;gap:6px">
+                <div style="font-size:12px;padding:6px 10px;border-radius:6px;background:rgba(204,0,0,0.08);color:var(--red)"><span style="font-weight:600">Tua risposta:</span> ${rsp.tuaRisposta || '—'}</div>
+                <div style="font-size:12px;padding:6px 10px;border-radius:6px;background:rgba(26,122,60,0.1);color:var(--green)"><span style="font-weight:600">Risposta corretta:</span> ${rsp.rispostaCorretta || '—'}</div>
+              </div>` : ''}
+            </div>`).join('')}
+        </div>`;
+    } else {
+      risposteHTML = `
+        <div style="margin-top:20px">
+          <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text2);margin-bottom:12px">Risposte</div>
+          ${r.risposte.map((rsp, i) => `
+            <div style="border:1px solid ${rsp.corretta ? 'var(--green-border)' : '#ffd0d0'};border-radius:8px;padding:10px 14px;margin-bottom:8px;background:${rsp.corretta ? 'var(--green-bg)' : '#fff5f5'};display:flex;gap:10px;align-items:flex-start">
+              <div style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:${rsp.corretta ? 'var(--green)' : 'var(--red)'};color:white;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;margin-top:2px">${rsp.corretta ? '✓' : '✗'}</div>
+              <div style="font-size:13px;line-height:1.5;color:var(--text)">${i + 1}. ${rsp.domanda}</div>
+            </div>`).join('')}
+        </div>`;
+    }
+  } else {
+    risposteHTML = `<p style="margin-top:18px;font-size:12px;color:var(--text2);text-align:center">Nessun dettaglio disponibile — test completato prima dell'aggiornamento del portale.</p>`;
+  }
 
-// Aggiorna aggiornaAdmin per resettare il badge
-window.aggiornaAdmin = async function() {
-  const btn = document.getElementById('btnRefresh');
-  btn.classList.add('loading');
-  btn.textContent = '⏳ Aggiornamento...';
-  document.getElementById('notificaBadge').classList.remove('visible');
-  await caricaRisultati();
-  lastKnownCount = allResults.length;
-  btn.classList.remove('loading');
-  btn.innerHTML = '🔄 Aggiorna <span class="notifica-badge" id="notificaBadge">0</span>';
+  document.getElementById('modalContent').innerHTML = `
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">${r.nome} ${r.cognome}</div>
+        <div class="modal-sub">${data} — ${r.corsoLabel || r.corso}${r.categoriaLabel ? ' / ' + r.categoriaLabel : ''}</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button onclick="exportPDFQuiz('${r._id}')" style="padding:7px 13px;background:var(--red);color:white;border:none;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer">⬇ PDF</button>
+        <button class="close-btn" onclick="closeModal()">✕</button>
+      </div>
+    </div>
+    <div class="modal-info-grid">
+      <div class="modal-info"><div class="modal-info-label">Domande</div><div class="modal-info-value">${r.numDomande}</div></div>
+      <div class="modal-info"><div class="modal-info-label">Corrette</div><div class="modal-info-value" style="color:var(--green)">${r.corrette}</div></div>
+      <div class="modal-info"><div class="modal-info-label">Errate</div><div class="modal-info-value" style="color:var(--red)">${r.errate}</div></div>
+      <div class="modal-info"><div class="modal-info-label">Punteggio</div><div class="modal-info-value">${r.percentuale}%</div></div>
+    </div>
+    <div style="text-align:center;padding:14px;background:${r.superato?'var(--green-bg)':'#fff0f0'};border-radius:10px;color:${r.superato?'var(--green)':'var(--red)'};font-weight:500">
+      ${r.superato ? '✓ Test superato' : '✗ Test non superato'}
+    </div>
+    ${risposteHTML}
+  `;
+  document.getElementById('modalOverlay').classList.add('active');
 };
 
-// ========== LISTA CORSISTI ==========
+window.closeModal = function() {
+  document.getElementById('modalOverlay').classList.remove('active');
+};
+
+// ========== EXPORT PDF SINGOLO QUIZ ==========
+window.exportPDFQuiz = function(id) {
+  const r = allResults.find(x => x._id === id);
+  if (!r) return;
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const W = 210, margin = 20;
+  let y = 20;
+  const RED = [204,0,0], GREEN = [26,122,60], GREY = [102,102,102];
+  const data = r._date.toLocaleString('it-IT', { dateStyle: 'medium', timeStyle: 'short' });
+
+  doc.setFontSize(9); doc.setTextColor(...GREY);
+  doc.text('Croce Rossa Italiana — Comitato di Padova', W/2, y, { align:'center' }); y += 6;
+  doc.setFontSize(16); doc.setTextColor(...RED); doc.setFont(undefined,'bold');
+  doc.text('Portale Quiz CRI', W/2, y, { align:'center' }); y += 7;
+  doc.setFontSize(10); doc.setTextColor(...GREY); doc.setFont(undefined,'normal');
+  doc.text('Resoconto test individuale', W/2, y, { align:'center' }); y += 8;
+  doc.setDrawColor(224,221,216); doc.line(margin, y, W-margin, y); y += 5;
+
+  doc.setFontSize(13); doc.setTextColor(26,26,26); doc.setFont(undefined,'bold');
+  doc.text(`${r.nome} ${r.cognome}`, margin, y); y += 6;
+  doc.setFontSize(9); doc.setTextColor(...GREY); doc.setFont(undefined,'normal');
+  doc.text(`${data} — ${r.corsoLabel||r.corso}${r.categoriaLabel?' / '+r.categoriaLabel:''}`, margin, y); y += 8;
+
+  const kpiY = y; const boxW = (W-margin*2)/4-2;
+  [
+    { label:'Domande', val:String(r.numDomande), color:[26,26,26] },
+    { label:'Corrette', val:String(r.corrette), color:GREEN },
+    { label:'Errate', val:String(r.errate), color:RED },
+    { label:'Punteggio', val:r.percentuale+'%', color:[26,86,176] },
+  ].forEach((k,i) => {
+    const x = margin+i*(boxW+2.5);
+    doc.setFillColor(247,245,242); doc.roundedRect(x, kpiY, boxW, 18, 2, 2, 'F');
+    doc.setFontSize(7); doc.setTextColor(...GREY); doc.setFont(undefined,'normal');
+    doc.text(k.label.toUpperCase(), x+boxW/2, kpiY+5, { align:'center' });
+    doc.setFontSize(14); doc.setTextColor(...k.color); doc.setFont(undefined,'bold');
+    doc.text(k.val, x+boxW/2, kpiY+14, { align:'center' });
+  });
+  y = kpiY+22;
+
+  doc.setFillColor(...(r.superato?[240,250,244]:[255,240,240]));
+  doc.roundedRect(margin, y, W-margin*2, 10, 2, 2, 'F');
+  doc.setFontSize(10); doc.setTextColor(...(r.superato?GREEN:RED)); doc.setFont(undefined,'bold');
+  doc.text(r.superato?'✓ Test superato':'✗ Test non superato', W/2, y+6.5, { align:'center' });
+  y += 15;
+
+  if (r.risposte && r.risposte.length > 0) {
+    const haDettaglio = r.risposte.some(rsp => rsp.tuaRisposta);
+    doc.setFontSize(8); doc.setTextColor(...GREY); doc.setFont(undefined,'bold');
+    doc.text('RISPOSTE DETTAGLIATE', margin, y); y += 5;
+    doc.setDrawColor(224,221,216); doc.line(margin, y, W-margin, y); y += 4;
+    r.risposte.forEach((rsp, i) => {
+      if (y > 265) { doc.addPage(); y = 20; }
+      const bgColor = rsp.corretta?[240,250,244]:[255,245,245];
+      const domandaLines = doc.splitTextToSize(`${i+1}. ${rsp.domanda}`, W-margin*2-8);
+      const blockH = haDettaglio&&!rsp.corretta ? domandaLines.length*4.5+16 : domandaLines.length*4.5+4;
+      doc.setFillColor(...bgColor); doc.roundedRect(margin, y, W-margin*2, blockH, 2, 2, 'F');
+      doc.setFillColor(...(rsp.corretta?GREEN:RED)); doc.circle(margin+4, y+blockH/2, 2.5, 'F');
+      doc.setFontSize(7); doc.setTextColor(255,255,255); doc.setFont(undefined,'bold');
+      doc.text(rsp.corretta?'✓':'✗', margin+4, y+blockH/2+0.8, { align:'center' });
+      doc.setFontSize(9); doc.setTextColor(26,26,26); doc.setFont(undefined,'normal');
+      doc.text(domandaLines, margin+9, y+5);
+      if (haDettaglio&&!rsp.corretta) {
+        const ry = y+domandaLines.length*4.5+4;
+        doc.setFontSize(8); doc.setTextColor(...RED);
+        doc.text(`Tua risposta: ${rsp.tuaRisposta||'—'}`, margin+9, ry);
+        doc.setTextColor(...GREEN);
+        doc.text(`Risposta corretta: ${rsp.rispostaCorretta||'—'}`, margin+9, ry+5);
+      }
+      y += blockH+3;
+    });
+  }
+  doc.setFontSize(7); doc.setTextColor(...GREY); doc.setFont(undefined,'normal');
+  doc.text('Croce Rossa Italiana — Comitato di Padova · Portale Quiz CRI', W/2, 290, { align:'center' });
+  const nomeFile = `quiz_${r.nome}_${r.cognome}_${r._date.toISOString().slice(0,10)}.pdf`.replace(/\s+/g,'_');
+  doc.save(nomeFile);
+};
+
+// ========== CORSISTI ==========
 function renderListaCorsisti() {
   const wrap = document.getElementById('listaCorsisti');
-  const q = (document.getElementById('cercaNomeCorsista').value || '').toLowerCase().trim();
-
-  // Aggrega per nome+cognome
+  const q = (document.getElementById('cercaNomeCorsista').value||'').toLowerCase().trim();
   const mappa = {};
   allResults.forEach(r => {
-    const key = `${r.nome || ''} ${r.cognome || ''}`.trim();
-    if (!mappa[key]) mappa[key] = { nome: r.nome || '', cognome: r.cognome || '', tests: [], totSup: 0 };
+    const key = `${r.nome||''} ${r.cognome||''}`.trim();
+    if (!mappa[key]) mappa[key] = { nome:r.nome||'', cognome:r.cognome||'', tests:[], totSup:0 };
     mappa[key].tests.push(r);
     if (r.superato) mappa[key].totSup++;
   });
-
-  let lista = Object.values(mappa).sort((a,b) => b.tests.length - a.tests.length);
+  let lista = Object.values(mappa).sort((a,b) => b.tests.length-a.tests.length);
   if (q) lista = lista.filter(c => `${c.nome} ${c.cognome}`.toLowerCase().includes(q));
-
   if (lista.length === 0) {
     wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">👤</div><div class="empty-title">Nessun corsista trovato</div></div>`;
     return;
   }
-
-  let html = `<table><thead><tr>
-    <th>Corsista</th><th>Test completati</th><th>Superati</th><th>Punteggio medio</th><th>Ultimo test</th>
-  </tr></thead><tbody>`;
-
+  let html = `<table><thead><tr><th>Corsista</th><th>Test</th><th>Superati</th><th>Media</th><th>Ultimo test</th></tr></thead><tbody>`;
   lista.forEach(c => {
-    const media = Math.round(c.tests.reduce((a,r) => a+(r.percentuale||0),0) / c.tests.length);
-    const ultimoTest = c.tests.slice().sort((a,b) => b._date-a._date)[0];
-    const ultimaData = ultimoTest._date.toLocaleDateString('it-IT', {day:'2-digit',month:'short',year:'2-digit'});
+    const media = Math.round(c.tests.reduce((a,r)=>a+(r.percentuale||0),0)/c.tests.length);
+    const ultimo = c.tests.slice().sort((a,b)=>b._date-a._date)[0];
+    const ultimaData = ultimo._date.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'2-digit'});
     const supPct = Math.round((c.totSup/c.tests.length)*100);
     const nomeCompleto = `${c.nome} ${c.cognome}`.trim();
     const iniziali = ((c.nome[0]||'')+(c.cognome[0]||'')).toUpperCase();
     html += `<tr style="cursor:pointer" onclick="apriSchedaCorsista('${nomeCompleto.replace(/'/g,"\\'")}')">
-      <td>
-        <div style="display:flex;align-items:center;gap:10px">
-          <div style="width:32px;height:32px;border-radius:50%;background:var(--red);color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${iniziali}</div>
-          <strong>${nomeCompleto}</strong>
-        </div>
-      </td>
+      <td><div style="display:flex;align-items:center;gap:10px">
+        <div style="width:32px;height:32px;border-radius:50%;background:var(--red);color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${iniziali}</div>
+        <strong>${nomeCompleto}</strong></div></td>
       <td>${c.tests.length}</td>
       <td><span class="badge ${supPct>=70?'badge-pass':'badge-fail'}">${c.totSup} (${supPct}%)</span></td>
-      <td>
-        <div class="score-bar"><div class="score-bar-fill ${media>=70?'':'fail'}" style="width:${media}%"></div></div>
-        <span style="font-family:'DM Mono',monospace;font-size:12px">${media}%</span>
-      </td>
+      <td><div class="score-bar"><div class="score-bar-fill ${media>=70?'':'fail'}" style="width:${media}%"></div></div><span style="font-family:'DM Mono',monospace;font-size:12px">${media}%</span></td>
       <td style="font-size:12px;color:var(--text2)">${ultimaData}</td>
     </tr>`;
   });
@@ -1496,23 +1619,17 @@ function renderListaCorsisti() {
 
 window.filtraCorsisti = function() { renderListaCorsisti(); };
 
-// ========== SCHEDA CORSISTA ==========
 let chartCorsistaAndamento = null;
-
 window.apriSchedaCorsista = function(nomeCompleto) {
-  // Passa al tab corsisti se non già attivo
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => { if (t.textContent.includes('Corsisti')) t.classList.add('active'); });
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.getElementById('panelCorsisti').classList.add('active');
-
-  // Mostra scheda, nascondi lista
   document.getElementById('viewListaCorsisti').style.display = 'none';
   document.getElementById('viewSchedaCorsista').style.display = 'block';
 
   const tests = allResults.filter(r => `${r.nome||''} ${r.cognome||''}`.trim() === nomeCompleto.trim());
   if (tests.length === 0) return;
-
   const r0 = tests[0];
   const iniziali = ((r0.nome||'')[0]+(r0.cognome||'')[0]).toUpperCase();
   const media = Math.round(tests.reduce((a,r)=>a+(r.percentuale||0),0)/tests.length);
@@ -1524,68 +1641,42 @@ window.apriSchedaCorsista = function(nomeCompleto) {
   document.getElementById('corsistaNome').textContent = nomeCompleto;
   document.getElementById('corsistaMeta').textContent = `${tests.length} test completati · Ultimo: ${ultimaData}`;
 
-  // KPI
   document.getElementById('corsistaKpi').innerHTML = [
     { label:'Test totali', val:tests.length, color:'var(--text)' },
     { label:'Superati', val:`${superati} (${supPct}%)`, color:'var(--green)' },
     { label:'Punteggio medio', val:media+'%', color:'var(--blue)' },
     { label:'Migliore', val:Math.max(...tests.map(r=>r.percentuale||0))+'%', color:'var(--green)' },
-  ].map(k=>`
-    <div class="kpi">
-      <div class="kpi-label">${k.label}</div>
-      <div class="kpi-value" style="color:${k.color};font-size:24px">${k.val}</div>
-    </div>`).join('');
+  ].map(k=>`<div class="kpi"><div class="kpi-label">${k.label}</div><div class="kpi-value" style="color:${k.color};font-size:24px">${k.val}</div></div>`).join('');
 
-  // Grafico andamento (ordine cronologico)
   const testsOrd = tests.slice().sort((a,b)=>a._date-b._date);
   if (chartCorsistaAndamento) chartCorsistaAndamento.destroy();
-  const ctx = document.getElementById('chartCorsistaAndamento');
-  chartCorsistaAndamento = new Chart(ctx, {
-    type: 'line',
-    data: {
+  chartCorsistaAndamento = new Chart(document.getElementById('chartCorsistaAndamento'), {
+    type:'line',
+    data:{
       labels: testsOrd.map(r=>r._date.toLocaleDateString('it-IT',{day:'2-digit',month:'short'})),
-      datasets: [{
-        label:'Punteggio',
-        data: testsOrd.map(r=>r.percentuale||0),
-        borderColor:'#CC0000', backgroundColor:'rgba(204,0,0,0.08)',
-        fill:true, tension:0.3, pointBackgroundColor:'#CC0000', pointRadius:4
-      }]
+      datasets:[{ label:'Punteggio', data:testsOrd.map(r=>r.percentuale||0), borderColor:'#CC0000', backgroundColor:'rgba(204,0,0,0.08)', fill:true, tension:0.3, pointBackgroundColor:'#CC0000', pointRadius:4 }]
     },
-    options: {
-      responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{ display:false } },
-      scales:{
-        y:{ beginAtZero:true, max:100, ticks:{ callback:v=>v+'%' } },
-        x:{ ticks:{ maxTicksLimit:8 } }
-      },
-      elements:{ point:{ hoverRadius:6 } }
-    }
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,max:100,ticks:{callback:v=>v+'%'}}} }
   });
 
-  // Barre categorie
   const catMap = {};
   tests.forEach(r => {
-    const cat = r.categoriaLabel || r.corsoLabel || r.corso || 'Generico';
+    const cat = r.categoriaLabel||r.corsoLabel||r.corso||'Generico';
     if (!catMap[cat]) catMap[cat] = { sum:0, count:0 };
-    catMap[cat].sum += r.percentuale||0;
-    catMap[cat].count++;
+    catMap[cat].sum += r.percentuale||0; catMap[cat].count++;
   });
-  const catArr = Object.entries(catMap)
+  document.getElementById('corsistaCategorie').innerHTML = Object.entries(catMap)
     .map(([label,v])=>({ label, media:Math.round(v.sum/v.count) }))
-    .sort((a,b)=>b.media-a.media);
+    .sort((a,b)=>b.media-a.media)
+    .map(c => {
+      const col = c.media>=70?'var(--green)':c.media>=50?'var(--amber)':'var(--red)';
+      return `<div class="cat-bar-row">
+        <div class="cat-bar-label" title="${c.label}">${c.label.length>18?c.label.slice(0,17)+'…':c.label}</div>
+        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${c.media}%;background:${col}"></div></div>
+        <div class="cat-bar-pct" style="color:${col}">${c.media}%</div>
+      </div>`;
+    }).join('');
 
-  document.getElementById('corsistaCategorie').innerHTML = catArr.map(c => {
-    const col = c.media>=70?'var(--green)':c.media>=50?'var(--amber)':'var(--red)';
-    const emoji = c.media>=70?'✓':c.media>=50?'⚠️':'✗';
-    return `<div class="cat-bar-row">
-      <div class="cat-bar-label" title="${c.label}">${c.label.length>18?c.label.slice(0,17)+'…':c.label}</div>
-      <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${c.media}%;background:${col}"></div></div>
-      <div class="cat-bar-pct" style="color:${col}">${c.media}%</div>
-      <div style="font-size:11px;width:16px">${emoji}</div>
-    </div>`;
-  }).join('');
-
-  // Lista test
   document.getElementById('corsistaTestList').innerHTML = tests.map(r => {
     const d = r._date.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'2-digit'});
     const ora = r._date.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
@@ -1605,39 +1696,6 @@ window.apriSchedaCorsista = function(nomeCompleto) {
 window.tornaListaCorsisti = function() {
   document.getElementById('viewSchedaCorsista').style.display = 'none';
   document.getElementById('viewListaCorsisti').style.display = 'block';
-};
-
-// ========== MODAL ==========
-window.showDettaglio = function(id) {
-  const r = filteredResults.find(x => x._id === id);
-  if (!r) return;
-  const data = r._date.toLocaleString('it-IT', { dateStyle: 'medium', timeStyle: 'short' });
-  document.getElementById('modalContent').innerHTML = `
-    <div class="modal-head">
-      <div>
-        <div class="modal-title">${r.nome} ${r.cognome}</div>
-        <div class="modal-sub">${data} — ${r.corsoLabel || r.corso}${r.categoriaLabel ? ' / ' + r.categoriaLabel : ''}</div>
-      </div>
-      <button class="close-btn" onclick="closeModal()">✕</button>
-    </div>
-    <div class="modal-info-grid">
-      <div class="modal-info"><div class="modal-info-label">Domande</div><div class="modal-info-value">${r.numDomande}</div></div>
-      <div class="modal-info"><div class="modal-info-label">Corrette</div><div class="modal-info-value" style="color:var(--green)">${r.corrette}</div></div>
-      <div class="modal-info"><div class="modal-info-label">Errate</div><div class="modal-info-value" style="color:var(--red)">${r.errate}</div></div>
-      <div class="modal-info"><div class="modal-info-label">Punteggio</div><div class="modal-info-value">${r.percentuale}%</div></div>
-    </div>
-    <div style="text-align:center;padding:14px;background:${r.superato?'var(--green-bg)':'#fff0f0'};border-radius:10px;color:${r.superato?'var(--green)':'var(--red)'};font-weight:500">
-      ${r.superato ? '✓ Test superato' : '✗ Test non superato'}
-    </div>
-    <p style="margin-top:18px;font-size:12px;color:var(--text2);text-align:center">
-      Per vedere le singole risposte, è necessario abilitare il salvataggio dettagliato nel quiz.
-    </p>
-  `;
-  document.getElementById('modalOverlay').classList.add('active');
-};
-
-window.closeModal = function() {
-  document.getElementById('modalOverlay').classList.remove('active');
 };
 
 // ========== AZZERA ==========
