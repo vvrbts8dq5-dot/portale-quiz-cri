@@ -291,6 +291,78 @@
 
   .btn-export:hover { background: #000; }
 
+  .btn-azzera {
+    padding: 7px 14px; background: white; color: var(--red);
+    border: 1.5px solid var(--red); border-radius: 6px;
+    font-family: 'DM Sans', sans-serif; font-size: 12px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-azzera:hover { background: #fff0f0; }
+
+  .btn-delete-row {
+    background: none; border: none; cursor: pointer;
+    color: var(--text3); font-size: 15px; padding: 4px 6px;
+    border-radius: 5px; transition: all 0.15s; line-height: 1;
+  }
+  .btn-delete-row:hover { color: var(--red); background: #fff0f0; }
+
+  /* Modal azzera */
+  .azzera-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    display: none; align-items: center; justify-content: center;
+    padding: 24px; z-index: 2000;
+  }
+  .azzera-overlay.active { display: flex; }
+  .azzera-modal {
+    background: white; border-radius: 14px;
+    max-width: 480px; width: 100%; padding: 28px;
+    animation: fadeUp 0.3s ease both;
+  }
+  .azzera-title { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+  .azzera-sub { font-size: 13px; color: var(--text2); margin-bottom: 20px; }
+  .azzera-section { margin-bottom: 20px; }
+  .azzera-section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text2); margin-bottom: 10px; }
+  .corso-btn-grid { display: flex; flex-direction: column; gap: 8px; }
+  .corso-btn {
+    padding: 11px 14px; border: 1.5px solid var(--border);
+    border-radius: 8px; background: var(--bg);
+    font-family: 'DM Sans', sans-serif; font-size: 13px;
+    cursor: pointer; text-align: left; transition: all 0.15s;
+    color: var(--text);
+  }
+  .corso-btn:hover { border-color: var(--red); background: #fff0f0; color: var(--red); }
+  .corsista-search { display: flex; gap: 8px; }
+  .corsista-search input {
+    flex: 1; padding: 10px 12px; border: 1.5px solid var(--border);
+    border-radius: 8px; font-family: 'DM Sans', sans-serif;
+    font-size: 13px; outline: none;
+  }
+  .corsista-search input:focus { border-color: var(--red); }
+  .btn-cerca-corsista {
+    padding: 10px 14px; background: var(--text); color: white;
+    border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif;
+    font-size: 13px; cursor: pointer;
+  }
+  .corsista-results { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .corsista-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 12px; border: 1px solid var(--border);
+    border-radius: 8px; background: var(--bg); font-size: 13px;
+  }
+  .btn-azzera-corsista {
+    padding: 4px 10px; background: white; color: var(--red);
+    border: 1.5px solid var(--red); border-radius: 5px;
+    font-size: 11px; cursor: pointer; font-family: 'DM Sans', sans-serif;
+  }
+  .btn-azzera-corsista:hover { background: #fff0f0; }
+  .azzera-close {
+    position: absolute; top: 16px; right: 16px;
+    background: var(--bg); border: 1px solid var(--border);
+    width: 30px; height: 30px; border-radius: 7px;
+    cursor: pointer; font-size: 15px; display: flex;
+    align-items: center; justify-content: center;
+  }
+
   table { width: 100%; border-collapse: collapse; }
 
   th {
@@ -602,7 +674,10 @@
       <div class="table-wrap">
         <div class="table-tools">
           <div class="results-count" id="resultsCount">Caricamento…</div>
-          <button class="btn-export" onclick="exportCSV()">⬇ Esporta CSV</button>
+          <div style="display:flex;gap:8px">
+            <button class="btn-azzera" onclick="apriModalAzzera()">🗑 Azzera</button>
+            <button class="btn-export" onclick="exportCSV()">⬇ Esporta CSV</button>
+          </div>
         </div>
         <div id="tableBody">
           <div class="loader-wrap"><div class="loader"></div> Caricamento risultati…</div>
@@ -686,6 +761,32 @@
   </div>
 </div>
 
+<!-- MODAL AZZERA -->
+<div class="azzera-overlay" id="azzeraOverlay" onclick="if(event.target===this) chiudiModalAzzera()">
+  <div class="azzera-modal" style="position:relative">
+    <button class="azzera-close" onclick="chiudiModalAzzera()">✕</button>
+    <div class="azzera-title">🗑 Azzera risultati</div>
+    <div class="azzera-sub">Scegli cosa vuoi eliminare. L'operazione è irreversibile.</div>
+
+    <div class="azzera-section">
+      <div class="azzera-section-title">Azzera per corso</div>
+      <div class="corso-btn-grid">
+        <button class="corso-btn" onclick="azzeraCorso('base','Corso Base')">📘 Corso Base</button>
+        <button class="corso-btn" onclick="azzeraCorso('tssa','Corso TSSA')">🏥 Corso TSSA</button>
+        <button class="corso-btn" onclick="azzeraCorso('squadra','Formazione Squadra')">🚑 Formazione Squadra</button>
+      </div>
+    </div>
+
+    <div class="azzera-section">
+      <div class="azzera-section-title">Azzera per corsista</div>
+      <div class="corsista-search">
+        <input type="text" id="inputCercaCorsista" placeholder="Es. Mario Rossi…" oninput="cercaCorsista()" />
+      </div>
+      <div class="corsista-results" id="corsistaResults"></div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL DETTAGLIO -->
 <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this) closeModal()">
   <div class="modal" id="modalContent"></div>
@@ -694,7 +795,7 @@
 <!-- Firebase -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, doc, getDoc, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, doc, getDoc, deleteDoc, writeBatch, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAQsAwG237CMsuqlNTvrGyfNphDSjlg4JM",
@@ -877,23 +978,24 @@ function renderTabella() {
   }
 
   let html = `<table><thead><tr>
-    <th>Data</th><th>Nome</th><th>Corso</th><th>Categoria</th><th>Punteggio</th><th>Esito</th>
+    <th>Data</th><th>Nome</th><th>Corso</th><th>Categoria</th><th>Punteggio</th><th>Esito</th><th></th>
   </tr></thead><tbody>`;
 
   filteredResults.forEach(r => {
     const data = r._date.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: '2-digit' });
     const ora = r._date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
     const pct = r.percentuale || 0;
-    html += `<tr style="cursor:pointer" onclick="showDettaglio('${r._id}')">
-      <td><div style="font-size:12px">${data}</div><div style="font-size:10px;color:var(--text2)">${ora}</div></td>
-      <td><strong>${r.nome || '—'} ${r.cognome || ''}</strong></td>
-      <td>${r.corsoLabel || r.corso || '—'}</td>
-      <td>${r.categoriaLabel || '<span style="color:var(--text3)">—</span>'}</td>
-      <td>
+    html += `<tr>
+      <td style="cursor:pointer" onclick="showDettaglio('${r._id}')"><div style="font-size:12px">${data}</div><div style="font-size:10px;color:var(--text2)">${ora}</div></td>
+      <td style="cursor:pointer" onclick="showDettaglio('${r._id}')"><strong>${r.nome || '—'} ${r.cognome || ''}</strong></td>
+      <td style="cursor:pointer" onclick="showDettaglio('${r._id}')">${r.corsoLabel || r.corso || '—'}</td>
+      <td style="cursor:pointer" onclick="showDettaglio('${r._id}')">${r.categoriaLabel || '<span style="color:var(--text3)">—</span>'}</td>
+      <td style="cursor:pointer" onclick="showDettaglio('${r._id}')">
         <div class="score-bar"><div class="score-bar-fill ${r.superato ? '' : 'fail'}" style="width:${pct}%"></div></div>
         <span style="font-family:'DM Mono',monospace;font-size:12px">${r.corrette}/${r.numDomande} (${pct}%)</span>
       </td>
-      <td><span class="badge ${r.superato ? 'badge-pass' : 'badge-fail'}">${r.superato ? '✓ Superato' : '✗ Non sup.'}</span></td>
+      <td style="cursor:pointer" onclick="showDettaglio('${r._id}')"><span class="badge ${r.superato ? 'badge-pass' : 'badge-fail'}">${r.superato ? '✓ Superato' : '✗ Non sup.'}</span></td>
+      <td><button class="btn-delete-row" title="Elimina questo test" onclick="eliminaSingoloTest('${r._id}')">🗑</button></td>
     </tr>`;
   });
   html += `</tbody></table>`;
@@ -1192,58 +1294,6 @@ window.showDettaglio = function(id) {
   const r = filteredResults.find(x => x._id === id);
   if (!r) return;
   const data = r._date.toLocaleString('it-IT', { dateStyle: 'medium', timeStyle: 'short' });
-
-  // Sezione risposte dettagliate
-  let risposteHTML = '';
-  if (r.risposte && r.risposte.length > 0) {
-    const haDettaglio = r.risposte.some(rsp => rsp.tuaRisposta);
-    if (haDettaglio) {
-      risposteHTML = `
-        <div style="margin-top:20px">
-          <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text2);margin-bottom:12px">
-            Risposte dettagliate
-          </div>
-          ${r.risposte.map((rsp, i) => `
-            <div style="border:1px solid ${rsp.corretta ? 'var(--green-border)' : '#ffd0d0'};border-radius:10px;padding:14px 16px;margin-bottom:10px;background:${rsp.corretta ? 'var(--green-bg)' : '#fff5f5'}">
-              <div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px">
-                <div style="flex-shrink:0;width:22px;height:22px;border-radius:50%;background:${rsp.corretta ? 'var(--green)' : 'var(--red)'};color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;margin-top:1px">
-                  ${rsp.corretta ? '✓' : '✗'}
-                </div>
-                <div style="font-size:13px;font-weight:500;line-height:1.5;color:var(--text)">${i + 1}. ${rsp.domanda}</div>
-              </div>
-              <div style="padding-left:32px;display:flex;flex-direction:column;gap:6px">
-                <div style="font-size:12px;padding:6px 10px;border-radius:6px;background:${rsp.corretta ? 'rgba(26,122,60,0.1)' : 'rgba(204,0,0,0.08)'};color:${rsp.corretta ? 'var(--green)' : 'var(--red)'}">
-                  <span style="font-weight:600">La tua risposta:</span> ${rsp.tuaRisposta || '—'}
-                </div>
-                ${!rsp.corretta ? `
-                <div style="font-size:12px;padding:6px 10px;border-radius:6px;background:rgba(26,122,60,0.1);color:var(--green)">
-                  <span style="font-weight:600">Risposta corretta:</span> ${rsp.rispostaCorretta || '—'}
-                </div>` : ''}
-              </div>
-            </div>
-          `).join('')}
-        </div>`;
-    } else {
-      // Dati vecchi: solo corretta/errata senza testo risposta
-      risposteHTML = `
-        <div style="margin-top:20px">
-          <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text2);margin-bottom:12px">
-            Risposte dettagliate
-          </div>
-          ${r.risposte.map((rsp, i) => `
-            <div style="border:1px solid ${rsp.corretta ? 'var(--green-border)' : '#ffd0d0'};border-radius:8px;padding:10px 14px;margin-bottom:8px;background:${rsp.corretta ? 'var(--green-bg)' : '#fff5f5'};display:flex;gap:10px;align-items:flex-start">
-              <div style="flex-shrink:0;width:20px;height:20px;border-radius:50%;background:${rsp.corretta ? 'var(--green)' : 'var(--red)'};color:white;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;margin-top:2px">
-                ${rsp.corretta ? '✓' : '✗'}
-              </div>
-              <div style="font-size:13px;line-height:1.5;color:var(--text)">${i + 1}. ${rsp.domanda}</div>
-            </div>
-          `).join('')}
-        </div>`;
-    }
-  } else {
-    risposteHTML = `<p style="margin-top:18px;font-size:12px;color:var(--text2);text-align:center">Nessun dettaglio disponibile per questo quiz.</p>`;
-  }
-
   document.getElementById('modalContent').innerHTML = `
     <div class="modal-head">
       <div>
@@ -1261,13 +1311,93 @@ window.showDettaglio = function(id) {
     <div style="text-align:center;padding:14px;background:${r.superato?'var(--green-bg)':'#fff0f0'};border-radius:10px;color:${r.superato?'var(--green)':'var(--red)'};font-weight:500">
       ${r.superato ? '✓ Test superato' : '✗ Test non superato'}
     </div>
-    ${risposteHTML}
+    <p style="margin-top:18px;font-size:12px;color:var(--text2);text-align:center">
+      Per vedere le singole risposte, è necessario abilitare il salvataggio dettagliato nel quiz.
+    </p>
   `;
   document.getElementById('modalOverlay').classList.add('active');
 };
 
 window.closeModal = function() {
   document.getElementById('modalOverlay').classList.remove('active');
+};
+
+// ========== AZZERA ==========
+window.apriModalAzzera = function() {
+  document.getElementById('inputCercaCorsista').value = '';
+  document.getElementById('corsistaResults').innerHTML = '';
+  document.getElementById('azzeraOverlay').classList.add('active');
+};
+
+window.chiudiModalAzzera = function() {
+  document.getElementById('azzeraOverlay').classList.remove('active');
+};
+
+window.azzeraCorso = async function(corso, label) {
+  if (!confirm(`Sei sicuro di voler eliminare TUTTI i risultati del "${label}"?\n\nQuesta operazione è irreversibile.`)) return;
+  const da_eliminare = allResults.filter(r => r.corso === corso);
+  if (da_eliminare.length === 0) { alert('Nessun risultato trovato per questo corso.'); return; }
+  try {
+    const batch = writeBatch(db);
+    da_eliminare.forEach(r => batch.delete(doc(db, 'risultati', r._id)));
+    await batch.commit();
+    chiudiModalAzzera();
+    await caricaRisultati();
+    alert(`✓ Eliminati ${da_eliminare.length} risultati del ${label}.`);
+  } catch(e) {
+    alert('Errore durante l\'eliminazione: ' + e.message);
+  }
+};
+
+window.cercaCorsista = function() {
+  const q = document.getElementById('inputCercaCorsista').value.trim().toLowerCase();
+  const wrap = document.getElementById('corsistaResults');
+  if (q.length < 2) { wrap.innerHTML = ''; return; }
+  const trovati = {};
+  allResults.forEach(r => {
+    const key = (r.nome + ' ' + r.cognome).trim();
+    if (key.toLowerCase().includes(q)) trovati[key] = (trovati[key] || 0) + 1;
+  });
+  if (Object.keys(trovati).length === 0) {
+    wrap.innerHTML = '<div style="font-size:12px;color:var(--text2);padding:6px 0">Nessun corsista trovato.</div>';
+    return;
+  }
+  wrap.innerHTML = Object.entries(trovati).map(([nome, count]) => `
+    <div class="corsista-item">
+      <span><strong>${nome}</strong> <span style="font-size:11px;color:var(--text2)">(${count} test)</span></span>
+      <button class="btn-azzera-corsista" onclick="azzeraCorsista('${nome}')">Azzera</button>
+    </div>`).join('');
+};
+
+window.azzeraCorsista = async function(nomeCompleto) {
+  if (!confirm(`Eliminare tutti i test di "${nomeCompleto}"?\n\nQuesta operazione è irreversibile.`)) return;
+  const parti = nomeCompleto.split(' ');
+  const da_eliminare = allResults.filter(r => (r.nome + ' ' + r.cognome).trim() === nomeCompleto);
+  if (da_eliminare.length === 0) { alert('Nessun risultato trovato.'); return; }
+  try {
+    const batch = writeBatch(db);
+    da_eliminare.forEach(r => batch.delete(doc(db, 'risultati', r._id)));
+    await batch.commit();
+    chiudiModalAzzera();
+    await caricaRisultati();
+    alert(`✓ Eliminati ${da_eliminare.length} test di ${nomeCompleto}.`);
+  } catch(e) {
+    alert('Errore durante l\'eliminazione: ' + e.message);
+  }
+};
+
+window.eliminaSingoloTest = async function(id) {
+  const r = allResults.find(x => x._id === id);
+  if (!r) return;
+  const nome = `${r.nome} ${r.cognome}`;
+  const data = r._date.toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' });
+  if (!confirm(`Eliminare il test di "${nome}" del ${data}?\n\nQuesta operazione è irreversibile.`)) return;
+  try {
+    await deleteDoc(doc(db, 'risultati', id));
+    await caricaRisultati();
+  } catch(e) {
+    alert('Errore durante l\'eliminazione: ' + e.message);
+  }
 };
 
 // ========== EXPORT CSV ==========
