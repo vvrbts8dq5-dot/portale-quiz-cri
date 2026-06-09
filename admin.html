@@ -2036,253 +2036,293 @@ window.aggiornaArgomentiEsame = function() {
 
 window.generaEsamePDF = async function() {
   const corso = document.getElementById('esameCorso').value;
+  const corsoLabel = corso === 'base' ? 'Corso Base' : corso === 'tssa' ? 'Corso TSSA' : 'Formazione Squadra';
   const titolo = document.getElementById('esameTitolo').value.trim() ||
-    `Esame ${corso === 'base' ? 'Corso Base' : corso === 'tssa' ? 'Corso TSSA' : 'Formazione Squadra'} — ${new Date().toLocaleDateString('it-IT',{month:'long',year:'numeric'})}`;
+    `Esame ${corsoLabel} - ${new Date().toLocaleDateString('it-IT',{month:'long',year:'numeric'})}`;
   const args = ARGOMENTI_ESAME[corso] || [];
+  const LETTERE = ['A', 'B', 'C', 'D', 'E'];
 
   const btn = document.querySelector('.btn-esame-pdf');
-  btn.textContent = '⏳ Generazione...';
+  btn.textContent = 'Generazione...';
   btn.disabled = true;
 
   try {
-    // Carica domande da Firebase per gli argomenti selezionati
-    const selezione = [];
+    // --- Carica e mescola domande ---
+    const tuttiDomande = []; // lista piatta di tutte le domande selezionate
     for (const a of args) {
       const chk = document.getElementById(`chk_${a.key}`);
       const nInput = document.getElementById(`n_${a.key}`);
       if (!chk || !chk.checked) continue;
       const n = parseInt(nInput.value) || 5;
-
       const snap = await getDocs(collection(db, a.key));
-      let domande = [];
-      snap.forEach(d => domande.push(d.data()));
-
-      // Mescola e prendi n domande
-      domande = domande.sort(() => Math.random() - 0.5).slice(0, n);
-      selezione.push({ ...a, domande, n });
+      let pool = [];
+      snap.forEach(d => pool.push(d.data()));
+      pool = pool.sort(() => Math.random() - 0.5).slice(0, n);
+      tuttiDomande.push(...pool);
     }
 
-    if (selezione.every(s => s.domande.length === 0)) {
-      alert('Nessuna domanda trovata. Controlla le collezioni Firebase.');
+    if (tuttiDomande.length === 0) {
+      alert('Nessuna domanda trovata. Controlla le selezioni.');
       return;
     }
 
-    // Genera PDF con jsPDF
+    // --- Setup jsPDF ---
     const { jsPDF } = window.jspdf;
-
-    // ============ FOGLIO DOMANDE ============
-    const docPDF = new jsPDF({ unit: 'mm', format: 'a4' });
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const W = 210, H = 297;
-    const margin = 18;
-    const contentW = W - margin * 2;
-    let y = margin;
+    const ML = 18, MR = 18, MT = 18, MB = 16;
+    const CW = W - ML - MR; // larghezza contenuto
+    const BOTTOM = H - MB;
+    let y = MT;
     let pageNum = 1;
 
-    function addHeader(isFirst) {
-      if (isFirst) {
-        // Logo e titolo centrati
-        docPDF.setFillColor(204, 0, 0);
-        docPDF.rect(margin, y, contentW, 0.7, 'F');
-        y += 4;
-        docPDF.setFont('helvetica', 'bold');
-        docPDF.setFontSize(16);
-        docPDF.setTextColor(204, 0, 0);
-        docPDF.text('Croce Rossa Italiana — Comitato di Padova', W / 2, y, { align: 'center' });
-        y += 7;
-        docPDF.setFontSize(13);
-        docPDF.setTextColor(30, 30, 30);
-        docPDF.text(titolo, W / 2, y, { align: 'center' });
-        y += 5;
-        docPDF.setFillColor(204, 0, 0);
-        docPDF.rect(margin, y, contentW, 0.7, 'F');
-        y += 6;
-
-        // Spazio nome candidato
-        docPDF.setFont('helvetica', 'normal');
-        docPDF.setFontSize(11);
-        docPDF.setTextColor(80, 80, 80);
-        docPDF.text('Nome e Cognome: _______________________________________________', margin, y);
-        y += 6;
-        docPDF.text('Data: ___________________________', margin, y);
-        y += 10;
-      } else {
-        docPDF.setFont('helvetica', 'italic');
-        docPDF.setFontSize(9);
-        docPDF.setTextColor(150, 150, 150);
-        docPDF.text(`${titolo} — pag. ${pageNum}`, W / 2, y + 3, { align: 'center' });
-        y += 8;
-      }
+    // --- Helper: footer pagina ---
+    function stampaFooter() {
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(7.5);
+      doc.setTextColor(170, 170, 170);
+      doc.text('Croce Rossa Italiana - Comitato di Padova', ML, H - 8);
+      doc.text(`Pag. ${pageNum}`, W - MR, H - 8, { align: 'right' });
     }
 
-    function addFooter() {
-      docPDF.setFont('helvetica', 'italic');
-      docPDF.setFontSize(8);
-      docPDF.setTextColor(180, 180, 180);
-      docPDF.text('Croce Rossa Italiana — Comitato di Padova · Portale CRI', W / 2, H - 8, { align: 'center' });
-      docPDF.text(`${pageNum}`, W - margin, H - 8, { align: 'right' });
-    }
-
+    // --- Helper: nuova pagina ---
     function nuovaPagina() {
-      addFooter();
-      docPDF.addPage();
+      stampaFooter();
+      doc.addPage();
       pageNum++;
-      y = margin;
-      addHeader(false);
+      y = MT;
+      // Header mini sulle pagine successive
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text(titolo, W / 2, y + 2, { align: 'center' });
+      doc.setDrawColor(220, 220, 220);
+      doc.setLineWidth(0.3);
+      doc.line(ML, y + 5, W - MR, y + 5);
+      y += 10;
     }
 
-    function checkSpazio(needed) {
-      if (y + needed > H - 18) nuovaPagina();
+    // --- Helper: controlla spazio ---
+    function checkY(needed) {
+      if (y + needed > BOTTOM) nuovaPagina();
     }
 
-    addHeader(true);
+    // =============================================
+    // PAGINA 1 — INTESTAZIONE
+    // =============================================
 
-    let numDom = 0;
-    const soluzioni = []; // per foglio soluzioni
+    // Riga rossa superiore
+    doc.setFillColor(204, 0, 0);
+    doc.rect(ML, y, CW, 1, 'F');
+    y += 5;
 
-    for (const sezione of selezione) {
-      if (sezione.domande.length === 0) continue;
-
-      // Titolo sezione
-      checkSpazio(14);
-      docPDF.setFillColor(245, 245, 245);
-      docPDF.roundedRect(margin, y, contentW, 9, 2, 2, 'F');
-      docPDF.setFont('helvetica', 'bold');
-      docPDF.setFontSize(10);
-      docPDF.setTextColor(204, 0, 0);
-      docPDF.text(`${sezione.icon}  ${sezione.label.toUpperCase()}`, margin + 4, y + 6);
-      y += 13;
-
-      for (const dom of sezione.domande) {
-        numDom++;
-        const testo = dom.testo || dom.domanda || '';
-        const opzioni = dom.opzioni || dom.risposte || [];
-        const corretta = dom.corretta;
-
-        // Calcola altezza totale della domanda
-        docPDF.setFontSize(10);
-        const testoLines = docPDF.splitTextToSize(`${numDom}. ${testo}`, contentW - 6);
-        let altezzaDom = testoLines.length * 5.5 + 3;
-        opzioni.forEach(op => {
-          const opLines = docPDF.splitTextToSize(`○  ${op}`, contentW - 16);
-          altezzaDom += opLines.length * 5 + 1.5;
-        });
-        altezzaDom += 6; // margine sotto
-
-        // Se non c'è spazio per tutta la domanda, vai a nuova pagina
-        checkSpazio(altezzaDom);
-
-        // Numero + testo domanda
-        docPDF.setFont('helvetica', 'bold');
-        docPDF.setFontSize(10);
-        docPDF.setTextColor(20, 20, 20);
-        docPDF.text(testoLines, margin + 3, y);
-        y += testoLines.length * 5.5 + 2;
-
-        // Opzioni
-        docPDF.setFont('helvetica', 'normal');
-        docPDF.setFontSize(9.5);
-        docPDF.setTextColor(50, 50, 50);
-        opzioni.forEach(op => {
-          const opLines = docPDF.splitTextToSize(`○  ${op}`, contentW - 14);
-          docPDF.text(opLines, margin + 10, y);
-          y += opLines.length * 5 + 1.5;
-        });
-
-        // Linea separatrice leggera
-        docPDF.setDrawColor(220, 220, 220);
-        docPDF.setLineWidth(0.3);
-        docPDF.line(margin, y + 1, W - margin, y + 1);
-        y += 5;
-
-        // Salva per soluzioni
-        soluzioni.push({ num: numDom, sezione: sezione.label, testo, corretta });
-      }
-    }
-    addFooter();
-
-    // ============ FOGLIO SOLUZIONI ============
-    docPDF.addPage();
-    pageNum++;
-    y = margin;
-
-    // Header soluzioni
-    docPDF.setFillColor(204, 0, 0);
-    docPDF.rect(margin, y, contentW, 0.7, 'F');
-    y += 4;
-    docPDF.setFont('helvetica', 'bold');
-    docPDF.setFontSize(15);
-    docPDF.setTextColor(204, 0, 0);
-    docPDF.text('FOGLIO SOLUZIONI', W / 2, y, { align: 'center' });
+    // Titolo istituzione
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(204, 0, 0);
+    doc.text('CROCE ROSSA ITALIANA', W / 2, y, { align: 'center' });
     y += 6;
-    docPDF.setFontSize(11);
-    docPDF.setTextColor(60, 60, 60);
-    docPDF.text(titolo, W / 2, y, { align: 'center' });
-    y += 4;
-    docPDF.setFillColor(204, 0, 0);
-    docPDF.rect(margin, y, contentW, 0.7, 'F');
-    y += 10;
 
-    // Raggruppa soluzioni per sezione
-    const solPerSezione = {};
-    soluzioni.forEach(s => {
-      if (!solPerSezione[s.sezione]) solPerSezione[s.sezione] = [];
-      solPerSezione[s.sezione].push(s);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(80, 80, 80);
+    doc.text('Comitato di Padova', W / 2, y, { align: 'center' });
+    y += 7;
+
+    // Titolo esame
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(20, 20, 20);
+    doc.text(titolo, W / 2, y, { align: 'center' });
+    y += 5;
+
+    // Riga rossa inferiore
+    doc.setFillColor(204, 0, 0);
+    doc.rect(ML, y, CW, 1, 'F');
+    y += 9;
+
+    // Campi candidato — box grigio chiaro
+    doc.setFillColor(248, 248, 248);
+    doc.setDrawColor(210, 210, 210);
+    doc.setLineWidth(0.4);
+    doc.roundedRect(ML, y, CW, 18, 2, 2, 'FD');
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(60, 60, 60);
+    const fieldY1 = y + 7;
+    const fieldY2 = y + 14;
+    doc.text('Nome e Cognome:', ML + 4, fieldY1);
+    doc.setDrawColor(150, 150, 150);
+    doc.setLineWidth(0.3);
+    doc.line(ML + 38, fieldY1 + 1, ML + CW - 4, fieldY1 + 1);
+    doc.text('Data:', ML + 4, fieldY2);
+    doc.line(ML + 14, fieldY2 + 1, ML + 70, fieldY2 + 1);
+    doc.text('Punteggio:', ML + 80, fieldY2);
+    doc.line(ML + 98, fieldY2 + 1, ML + CW - 4, fieldY2 + 1);
+    y += 24;
+
+    // =============================================
+    // FOGLIO DOMANDE
+    // =============================================
+    const soluzioni = []; // { num, lettera }
+
+    tuttiDomande.forEach((dom, idx) => {
+      const numDom = idx + 1;
+      const testo = (dom.testo || dom.domanda || '').trim();
+      let opzioni = (dom.opzioni || dom.risposte || []).slice();
+      const corretta = (dom.corretta || '').trim();
+
+      // Mescola le opzioni tenendo traccia di quale lettera tocca alla corretta
+      opzioni = opzioni.sort(() => Math.random() - 0.5);
+      const idxCorretta = opzioni.findIndex(o => o.trim() === corretta);
+      const letteraCorretta = LETTERE[idxCorretta >= 0 ? idxCorretta : 0];
+
+      // Pre-calcola altezza totale domanda per anti-taglio
+      doc.setFontSize(10.5);
+      const testoLines = doc.splitTextToSize(`${numDom}. ${testo}`, CW - 4);
+      let hDom = testoLines.length * 5.8 + 3;
+      doc.setFontSize(9.5);
+      opzioni.forEach((op, i) => {
+        const opLines = doc.splitTextToSize(`${LETTERE[i]}.  ${op}`, CW - 20);
+        hDom += opLines.length * 5.2 + 1.5;
+      });
+      hDom += 7; // spazio sotto
+
+      checkY(hDom);
+
+      // Testo domanda
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10.5);
+      doc.setTextColor(15, 15, 15);
+      doc.text(testoLines, ML + 2, y);
+      y += testoLines.length * 5.8 + 2;
+
+      // Opzioni A/B/C/D
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9.5);
+      doc.setTextColor(45, 45, 45);
+      opzioni.forEach((op, i) => {
+        const label = `${LETTERE[i]}.`;
+        const opText = op.trim();
+        const opLines = doc.splitTextToSize(opText, CW - 22);
+        // Lettera in bold
+        doc.setFont('helvetica', 'bold');
+        doc.text(label, ML + 10, y);
+        // Testo risposta in normal
+        doc.setFont('helvetica', 'normal');
+        doc.text(opLines, ML + 17, y);
+        y += opLines.length * 5.2 + 1.5;
+      });
+
+      // Separatore leggero
+      doc.setDrawColor(210, 210, 210);
+      doc.setLineWidth(0.25);
+      doc.line(ML, y + 2, W - MR, y + 2);
+      y += 7;
+
+      soluzioni.push({ num: numDom, lettera: letteraCorretta });
     });
 
-    for (const [sezLabel, items] of Object.entries(solPerSezione)) {
-      // Titolo sezione
-      if (y + 12 > H - 18) { docPDF.addPage(); pageNum++; y = margin; }
-      docPDF.setFillColor(245, 245, 245);
-      docPDF.roundedRect(margin, y, contentW, 8, 2, 2, 'F');
-      docPDF.setFont('helvetica', 'bold');
-      docPDF.setFontSize(10);
-      docPDF.setTextColor(204, 0, 0);
-      docPDF.text(sezLabel.toUpperCase(), margin + 4, y + 5.5);
-      y += 12;
+    stampaFooter();
 
-      for (const sol of items) {
-        // Calcola altezza voce soluzione
-        docPDF.setFontSize(9);
-        const domLines = docPDF.splitTextToSize(`${sol.num}. ${sol.testo}`, contentW - 8);
-        const corrLines = docPDF.splitTextToSize(`✓  ${sol.corretta}`, contentW - 18);
-        const needed = domLines.length * 4.8 + corrLines.length * 4.8 + 5;
-        if (y + needed > H - 18) { docPDF.addPage(); pageNum++; y = margin; }
+    // =============================================
+    // FOGLIO SOLUZIONI — pagina separata
+    // =============================================
+    doc.addPage();
+    pageNum++;
+    y = MT;
 
-        // Testo domanda (grigio)
-        docPDF.setFont('helvetica', 'normal');
-        docPDF.setFontSize(9);
-        docPDF.setTextColor(100, 100, 100);
-        docPDF.text(domLines, margin + 4, y);
-        y += domLines.length * 4.8 + 1;
+    // Intestazione soluzioni
+    doc.setFillColor(204, 0, 0);
+    doc.rect(ML, y, CW, 1, 'F');
+    y += 5;
 
-        // Risposta corretta (verde scuro)
-        docPDF.setFont('helvetica', 'bold');
-        docPDF.setFontSize(9.5);
-        docPDF.setTextColor(0, 130, 60);
-        docPDF.text(corrLines, margin + 14, y);
-        y += corrLines.length * 4.8 + 4;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(204, 0, 0);
+    doc.text('FOGLIO SOLUZIONI', W / 2, y, { align: 'center' });
+    y += 6;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(80, 80, 80);
+    doc.text(titolo, W / 2, y, { align: 'center' });
+    y += 5;
+
+    doc.setFillColor(204, 0, 0);
+    doc.rect(ML, y, CW, 1, 'F');
+    y += 10;
+
+    // Griglia soluzioni — 5 colonne
+    const COLS = 5;
+    const cellW = CW / COLS;
+    const cellH = 10;
+    const startX = ML;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+
+    soluzioni.forEach((sol, idx) => {
+      const col = idx % COLS;
+      const row = Math.floor(idx / COLS);
+      const cx = startX + col * cellW;
+      const cy = y + row * cellH;
+
+      // Controlla se serve nuova pagina
+      if (cy + cellH > BOTTOM) {
+        stampaFooter();
+        doc.addPage();
+        pageNum++;
+        y = MT + 6;
+        // ricalcola posizione
+        const newRow = Math.floor(idx / COLS);
+        // resetta: ricomincia da y corrente
       }
-      y += 2;
-    }
+
+      const actualCy = y + Math.floor(idx / COLS) * cellH;
+      if (actualCy > BOTTOM - cellH) return; // safety
+
+      // Box risposta
+      const isEven = Math.floor(idx / COLS) % 2 === 0;
+      doc.setFillColor(isEven ? 250 : 244, isEven ? 250 : 244, isEven ? 250 : 244);
+      doc.setDrawColor(220, 220, 220);
+      doc.setLineWidth(0.2);
+      doc.rect(cx, actualCy - 6, cellW - 1, cellH - 1, 'FD');
+
+      // Numero domanda
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(120, 120, 120);
+      doc.text(`${sol.num}.`, cx + 2, actualCy - 0.5);
+
+      // Lettera risposta
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.setTextColor(0, 130, 60);
+      doc.text(sol.lettera, cx + cellW / 2, actualCy - 0.5, { align: 'center' });
+    });
 
     // Footer ultima pagina
-    docPDF.setFont('helvetica', 'italic');
-    docPDF.setFontSize(8);
-    docPDF.setTextColor(180, 180, 180);
-    docPDF.text('Croce Rossa Italiana — Comitato di Padova · Portale CRI', W / 2, H - 8, { align: 'center' });
-    docPDF.text(`${pageNum}`, W - margin, H - 8, { align: 'right' });
+    const lastRow = Math.floor((soluzioni.length - 1) / COLS);
+    y = y + (lastRow + 1) * cellH + 6;
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text(`Totale domande: ${soluzioni.length}`, ML, y);
 
-    // Salva PDF
+    stampaFooter();
+
+    // Salva
     const dataStr = new Date().toISOString().slice(0, 10);
-    docPDF.save(`esame_cri_${corso}_${dataStr}.pdf`);
-
+    doc.save(`esame_cri_${corso}_${dataStr}.pdf`);
     document.getElementById('modalEsameOverlay').classList.remove('open');
 
   } catch(e) {
     console.error(e);
     alert('Errore nella generazione PDF: ' + e.message);
   } finally {
-    btn.textContent = '⬇ Genera PDF';
+    btn.textContent = 'Genera PDF';
     btn.disabled = false;
   }
 };
