@@ -2047,8 +2047,8 @@ window.generaEsamePDF = async function() {
   btn.disabled = true;
 
   try {
-    // --- Carica e mescola domande ---
-    const tuttiDomande = []; // lista piatta di tutte le domande selezionate
+    // --- Carica e mescola domande in lista piatta ---
+    const tuttiDomande = [];
     for (const a of args) {
       const chk = document.getElementById(`chk_${a.key}`);
       const nInput = document.getElementById(`n_${a.key}`);
@@ -2071,12 +2071,11 @@ window.generaEsamePDF = async function() {
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     const W = 210, H = 297;
     const ML = 18, MR = 18, MT = 18, MB = 16;
-    const CW = W - ML - MR; // larghezza contenuto
+    const CW = W - ML - MR;
     const BOTTOM = H - MB;
     let y = MT;
     let pageNum = 1;
 
-    // --- Helper: footer pagina ---
     function stampaFooter() {
       doc.setFont('helvetica', 'italic');
       doc.setFontSize(7.5);
@@ -2085,13 +2084,11 @@ window.generaEsamePDF = async function() {
       doc.text(`Pag. ${pageNum}`, W - MR, H - 8, { align: 'right' });
     }
 
-    // --- Helper: nuova pagina ---
     function nuovaPagina() {
       stampaFooter();
       doc.addPage();
       pageNum++;
       y = MT;
-      // Header mini sulle pagine successive
       doc.setFont('helvetica', 'italic');
       doc.setFontSize(8);
       doc.setTextColor(150, 150, 150);
@@ -2102,21 +2099,15 @@ window.generaEsamePDF = async function() {
       y += 10;
     }
 
-    // --- Helper: controlla spazio ---
     function checkY(needed) {
       if (y + needed > BOTTOM) nuovaPagina();
     }
 
-    // =============================================
-    // PAGINA 1 — INTESTAZIONE
-    // =============================================
-
-    // Riga rossa superiore
+    // --- INTESTAZIONE PRIMA PAGINA ---
     doc.setFillColor(204, 0, 0);
     doc.rect(ML, y, CW, 1, 'F');
     y += 5;
 
-    // Titolo istituzione
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
     doc.setTextColor(204, 0, 0);
@@ -2129,65 +2120,59 @@ window.generaEsamePDF = async function() {
     doc.text('Comitato di Padova', W / 2, y, { align: 'center' });
     y += 7;
 
-    // Titolo esame
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(13);
     doc.setTextColor(20, 20, 20);
     doc.text(titolo, W / 2, y, { align: 'center' });
     y += 5;
 
-    // Riga rossa inferiore
     doc.setFillColor(204, 0, 0);
     doc.rect(ML, y, CW, 1, 'F');
     y += 9;
 
-    // Campi candidato — box grigio chiaro
+    // Box candidato
     doc.setFillColor(248, 248, 248);
     doc.setDrawColor(210, 210, 210);
     doc.setLineWidth(0.4);
     doc.roundedRect(ML, y, CW, 18, 2, 2, 'FD');
-
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.setTextColor(60, 60, 60);
-    const fieldY1 = y + 7;
-    const fieldY2 = y + 14;
-    doc.text('Nome e Cognome:', ML + 4, fieldY1);
+    doc.text('Nome e Cognome:', ML + 4, y + 7);
     doc.setDrawColor(150, 150, 150);
     doc.setLineWidth(0.3);
-    doc.line(ML + 38, fieldY1 + 1, ML + CW - 4, fieldY1 + 1);
-    doc.text('Data:', ML + 4, fieldY2);
-    doc.line(ML + 14, fieldY2 + 1, ML + 70, fieldY2 + 1);
-    doc.text('Punteggio:', ML + 80, fieldY2);
-    doc.line(ML + 98, fieldY2 + 1, ML + CW - 4, fieldY2 + 1);
+    doc.line(ML + 40, y + 8, ML + CW - 4, y + 8);
+    doc.text('Data:', ML + 4, y + 14);
+    doc.line(ML + 14, y + 15, ML + 70, y + 15);
+    doc.text('Punteggio:', ML + 80, y + 14);
+    doc.line(ML + 98, y + 15, ML + CW - 4, y + 15);
     y += 24;
 
-    // =============================================
-    // FOGLIO DOMANDE
-    // =============================================
-    const soluzioni = []; // { num, lettera }
+    // --- FOGLIO DOMANDE ---
+    const soluzioni = [];
 
     tuttiDomande.forEach((dom, idx) => {
       const numDom = idx + 1;
-      const testo = (dom.testo || dom.domanda || '').trim();
+      const testo = String(dom.testo || dom.domanda || '').trim();
       let opzioni = (dom.opzioni || dom.risposte || []).slice();
-      const corretta = (dom.corretta || '').trim();
+      // Normalizza corretta sempre a stringa
+      const corretta = String(Array.isArray(dom.corretta) ? dom.corretta[0] : (dom.corretta || '')).trim();
 
-      // Mescola le opzioni tenendo traccia di quale lettera tocca alla corretta
+      // Mescola opzioni e trova lettera corretta
       opzioni = opzioni.sort(() => Math.random() - 0.5);
-      const idxCorretta = opzioni.findIndex(o => o.trim() === corretta);
+      const idxCorretta = opzioni.findIndex(o => String(o).trim() === corretta);
       const letteraCorretta = LETTERE[idxCorretta >= 0 ? idxCorretta : 0];
 
-      // Pre-calcola altezza totale domanda per anti-taglio
+      // Calcola altezza domanda completa
       doc.setFontSize(10.5);
       const testoLines = doc.splitTextToSize(`${numDom}. ${testo}`, CW - 4);
       let hDom = testoLines.length * 5.8 + 3;
       doc.setFontSize(9.5);
-      opzioni.forEach((op, i) => {
-        const opLines = doc.splitTextToSize(`${LETTERE[i]}.  ${op}`, CW - 20);
+      opzioni.forEach((op) => {
+        const opLines = doc.splitTextToSize(String(op).trim(), CW - 22);
         hDom += opLines.length * 5.2 + 1.5;
       });
-      hDom += 7; // spazio sotto
+      hDom += 7;
 
       checkY(hDom);
 
@@ -2199,23 +2184,20 @@ window.generaEsamePDF = async function() {
       y += testoLines.length * 5.8 + 2;
 
       // Opzioni A/B/C/D
-      doc.setFont('helvetica', 'normal');
       doc.setFontSize(9.5);
       doc.setTextColor(45, 45, 45);
       opzioni.forEach((op, i) => {
         const label = `${LETTERE[i]}.`;
-        const opText = op.trim();
+        const opText = String(op).trim();
         const opLines = doc.splitTextToSize(opText, CW - 22);
-        // Lettera in bold
         doc.setFont('helvetica', 'bold');
         doc.text(label, ML + 10, y);
-        // Testo risposta in normal
         doc.setFont('helvetica', 'normal');
         doc.text(opLines, ML + 17, y);
         y += opLines.length * 5.2 + 1.5;
       });
 
-      // Separatore leggero
+      // Separatore
       doc.setDrawColor(210, 210, 210);
       doc.setLineWidth(0.25);
       doc.line(ML, y + 2, W - MR, y + 2);
@@ -2226,14 +2208,11 @@ window.generaEsamePDF = async function() {
 
     stampaFooter();
 
-    // =============================================
-    // FOGLIO SOLUZIONI — pagina separata
-    // =============================================
+    // --- FOGLIO SOLUZIONI ---
     doc.addPage();
     pageNum++;
     y = MT;
 
-    // Intestazione soluzioni
     doc.setFillColor(204, 0, 0);
     doc.rect(ML, y, CW, 1, 'F');
     y += 5;
@@ -2254,58 +2233,38 @@ window.generaEsamePDF = async function() {
     doc.rect(ML, y, CW, 1, 'F');
     y += 10;
 
-    // Griglia soluzioni — 5 colonne
+    // Griglia 5 colonne
     const COLS = 5;
     const cellW = CW / COLS;
     const cellH = 10;
-    const startX = ML;
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
 
     soluzioni.forEach((sol, idx) => {
       const col = idx % COLS;
       const row = Math.floor(idx / COLS);
-      const cx = startX + col * cellW;
+      const cx = ML + col * cellW;
       const cy = y + row * cellH;
 
-      // Controlla se serve nuova pagina
-      if (cy + cellH > BOTTOM) {
-        stampaFooter();
-        doc.addPage();
-        pageNum++;
-        y = MT + 6;
-        // ricalcola posizione
-        const newRow = Math.floor(idx / COLS);
-        // resetta: ricomincia da y corrente
-      }
+      if (cy + cellH > BOTTOM) return; // safety overflow
 
-      const actualCy = y + Math.floor(idx / COLS) * cellH;
-      if (actualCy > BOTTOM - cellH) return; // safety
-
-      // Box risposta
-      const isEven = Math.floor(idx / COLS) % 2 === 0;
+      const isEven = row % 2 === 0;
       doc.setFillColor(isEven ? 250 : 244, isEven ? 250 : 244, isEven ? 250 : 244);
       doc.setDrawColor(220, 220, 220);
       doc.setLineWidth(0.2);
-      doc.rect(cx, actualCy - 6, cellW - 1, cellH - 1, 'FD');
+      doc.rect(cx, cy - 6, cellW - 1, cellH - 1, 'FD');
 
-      // Numero domanda
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8.5);
       doc.setTextColor(120, 120, 120);
-      doc.text(`${sol.num}.`, cx + 2, actualCy - 0.5);
+      doc.text(`${sol.num}.`, cx + 2, cy - 0.5);
 
-      // Lettera risposta
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(12);
       doc.setTextColor(0, 130, 60);
-      doc.text(sol.lettera, cx + cellW / 2, actualCy - 0.5, { align: 'center' });
+      doc.text(sol.lettera, cx + cellW / 2, cy - 0.5, { align: 'center' });
     });
 
-    // Footer ultima pagina
     const lastRow = Math.floor((soluzioni.length - 1) / COLS);
-    y = y + (lastRow + 1) * cellH + 6;
+    y = y + (lastRow + 2) * cellH;
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
