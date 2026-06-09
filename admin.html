@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Admin — Portale Quiz CRI</title>
+<title>Admin — Portale CRI</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -109,6 +109,115 @@
   }
 
   .login-err.show { display: block; }
+
+  /* ========== BENVENUTO ========== */
+  .welcome-wrap {
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .welcome-card {
+    background: var(--bg2);
+    width: 100%; max-width: 480px;
+    border-radius: var(--radius);
+    padding: 40px 36px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    animation: fadeUp 0.4s ease both;
+    text-align: center;
+  }
+  .welcome-title {
+    font-size: 22px; font-weight: 700; margin-bottom: 6px;
+  }
+  .welcome-sub {
+    font-size: 14px; color: var(--text2); margin-bottom: 32px;
+  }
+  .welcome-label {
+    font-size: 12px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.6px; color: var(--text2); margin-bottom: 14px;
+  }
+  .welcome-btns {
+    display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+  }
+  .welcome-btn {
+    flex: 1; min-width: 120px;
+    padding: 18px 12px;
+    border-radius: 12px;
+    border: 2px solid var(--border);
+    background: var(--bg);
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px; font-weight: 600;
+    color: var(--text);
+    transition: border-color 0.2s, background 0.2s, transform 0.15s;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .welcome-btn:hover {
+    border-color: var(--red); background: #fff5f5; transform: translateY(-2px);
+  }
+  .welcome-btn .wb-icon { font-size: 28px; }
+  .welcome-btn .wb-label { font-size: 13px; }
+
+  /* ========== MODAL ESPORTA ESAME ========== */
+  .modal-esame-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45); z-index: 1000;
+    align-items: center; justify-content: center;
+  }
+  .modal-esame-overlay.open { display: flex; }
+  .modal-esame {
+    background: white; border-radius: 14px;
+    padding: 28px 28px 24px;
+    width: 100%; max-width: 520px;
+    max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    animation: fadeUp 0.25s ease both;
+  }
+  .modal-esame h2 {
+    font-size: 18px; font-weight: 700; margin: 0 0 4px;
+  }
+  .modal-esame .modal-esame-sub {
+    font-size: 13px; color: var(--text2); margin-bottom: 22px;
+  }
+  .esame-sezione {
+    margin-bottom: 18px;
+  }
+  .esame-sezione label {
+    display: block; font-size: 12px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--text2); margin-bottom: 8px;
+  }
+  .esame-row {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--bg); border-radius: 8px;
+    padding: 10px 14px; margin-bottom: 8px;
+    border: 1px solid var(--border);
+  }
+  .esame-row .er-icon { font-size: 18px; }
+  .esame-row .er-label { flex: 1; font-size: 14px; font-weight: 500; }
+  .esame-row input[type=number] {
+    width: 70px; padding: 6px 10px;
+    border: 1.5px solid var(--border); border-radius: 6px;
+    font-size: 14px; font-family: 'DM Mono', monospace;
+    text-align: center; outline: none;
+  }
+  .esame-row input[type=number]:focus { border-color: var(--red); }
+  .esame-row input[type=checkbox] { width: 18px; height: 18px; cursor: pointer; accent-color: var(--red); }
+  .esame-footer { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+  .btn-esame-pdf {
+    background: var(--red); color: white; border: none;
+    padding: 11px 20px; border-radius: 8px;
+    font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .btn-esame-pdf:hover { background: #a00; }
+  .btn-esame-cancel {
+    background: var(--bg); color: var(--text2); border: 1.5px solid var(--border);
+    padding: 11px 20px; border-radius: 8px;
+    font-family: 'DM Sans', sans-serif; font-size: 14px;
+    cursor: pointer; transition: border-color 0.2s;
+  }
+  .btn-esame-cancel:hover { border-color: var(--text2); }
 
   /* ========== DASHBOARD ========== */
   .dashboard { display: none; }
@@ -619,6 +728,67 @@
   </div>
 </div>
 
+<!-- SCHERMATA BENVENUTO -->
+<div class="welcome-wrap" id="welcomeScreen" style="display:none">
+  <div class="welcome-card">
+    <img src="logo-cri.png" alt="CRI" style="width:90px;margin-bottom:16px" />
+    <div class="welcome-title" id="welcomeTitle">Benvenuto/a</div>
+    <div class="welcome-sub">Seleziona il corso da visualizzare</div>
+    <div class="welcome-label">Quale corso vuoi gestire?</div>
+    <div class="welcome-btns">
+      <button class="welcome-btn" onclick="entraDashboard('base')">
+        <span class="wb-icon">📘</span>
+        <span class="wb-label">Corso Base</span>
+      </button>
+      <button class="welcome-btn" onclick="entraDashboard('tssa')">
+        <span class="wb-icon">🚑</span>
+        <span class="wb-label">Corso TSSA</span>
+      </button>
+      <button class="welcome-btn" onclick="entraDashboard('squadra')">
+        <span class="wb-icon">👥</span>
+        <span class="wb-label">Formazione Squadra</span>
+      </button>
+      <button class="welcome-btn" onclick="entraDashboard('')">
+        <span class="wb-icon">📋</span>
+        <span class="wb-label">Tutti i corsi</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ESPORTA ESAME -->
+<div class="modal-esame-overlay" id="modalEsameOverlay" onclick="chiudiModalEsame(event)">
+  <div class="modal-esame" onclick="event.stopPropagation()">
+    <h2>📄 Esporta Esame Cartaceo</h2>
+    <div class="modal-esame-sub">Scegli quante domande per argomento. Verrà generato un PDF con foglio domande + foglio soluzioni.</div>
+
+    <div class="esame-sezione">
+      <label>Corso</label>
+      <select id="esameCorso" onchange="aggiornaArgomentiEsame()" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none">
+        <option value="base">Corso Base</option>
+        <option value="tssa">Corso TSSA</option>
+        <option value="squadra">Formazione Squadra</option>
+      </select>
+    </div>
+
+    <div class="esame-sezione">
+      <label>Argomenti e numero domande</label>
+      <div id="esameArgomenti"></div>
+    </div>
+
+    <div class="esame-sezione">
+      <label>Titolo esame (opzionale)</label>
+      <input type="text" id="esameTitolo" placeholder="es. Esame Corso Base — Giugno 2026"
+        style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;box-sizing:border-box" />
+    </div>
+
+    <div class="esame-footer">
+      <button class="btn-esame-cancel" onclick="document.getElementById('modalEsameOverlay').classList.remove('open')">Annulla</button>
+      <button class="btn-esame-pdf" onclick="generaEsamePDF()">⬇ Genera PDF</button>
+    </div>
+  </div>
+</div>
+
 <!-- DASHBOARD -->
 <div class="dashboard" id="dashboard">
 
@@ -645,6 +815,7 @@
     <button class="tab" onclick="switchTab('stats')">📊 Statistiche</button>
     <button class="tab" onclick="switchTab('critical')">⚠️ Domande critiche</button>
     <button class="tab" onclick="switchTab('corsisti')">👤 Corsisti</button>
+    <button class="tab" onclick="apriModalEsame()">📄 Esporta Esame</button>
   </div>
 
   <div class="content">
@@ -965,10 +1136,7 @@ window.doAdminLogin = async function() {
     } catch(e) { console.warn('Log accesso fallito', e); }
 
     document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('dashboard').classList.add('active');
-    document.getElementById('userBadge').textContent = '👤 ' + user;
-
-    caricaRisultati();
+    mostraBenvenuto(user);
   } catch(e) {
     err.textContent = 'Errore di connessione al database. Riprova.';
     err.classList.add('show');
@@ -991,9 +1159,7 @@ const savedUser = sessionStorage.getItem('adminUser');
 if (savedUser) {
   currentUser = savedUser;
   document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('dashboard').classList.add('active');
-  document.getElementById('userBadge').textContent = '👤 ' + savedUser;
-  caricaRisultati();
+  mostraBenvenuto(savedUser);
 }
 
 // ========== NOTIFICA + AGGIORNA DATI ==========
@@ -1133,7 +1299,7 @@ function renderTabella() {
     const pct = r.percentuale || 0;
     html += `<tr>
       <td style="cursor:pointer" onclick="showDettaglio('${r._id}')"><div style="font-size:12px">${data}</div><div style="font-size:10px;color:var(--text2)">${ora}</div></td>
-      <td><span class="nome-link" onclick="event.stopPropagation(); apriSchedaCorsista('${(r.nome||'').replace(/'/g,"\\'")} ${(r.cognome||'').replace(/'/g,"\\'")}')"><strong>${r.nome || '—'} ${r.cognome || ''}</strong></span></td>
+      <td><span class="nome-link" onclick="event.stopPropagation(); apriSchedaCorsista('${(r.nome||'').replace(/'/g,"\\'")} ${(r.cognome||'').replace(/'/g,"\\'")}')"><strong>${capitalizeNome(r.nome || '')} ${capitalizeNome(r.cognome || '')}</strong></span></td>
       <td style="cursor:pointer" onclick="showDettaglio('${r._id}')">${r.corsoLabel || r.corso || '—'}</td>
       <td style="cursor:pointer" onclick="showDettaglio('${r._id}')">${r.categoriaLabel || '<span style="color:var(--text3)">—</span>'}</td>
       <td style="cursor:pointer" onclick="showDettaglio('${r._id}')">
@@ -1482,7 +1648,7 @@ window.showDettaglio = function(id) {
   document.getElementById('modalContent').innerHTML = `
     <div class="modal-head">
       <div>
-        <div class="modal-title">${r.nome} ${r.cognome}</div>
+        <div class="modal-title">${capitalizeNome(r.nome)} ${capitalizeNome(r.cognome)}</div>
         <div class="modal-sub">${data} — ${r.corsoLabel||r.corso}${r.categoriaLabel?' / '+r.categoriaLabel:''}</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
@@ -1521,13 +1687,13 @@ window.exportPDFQuiz = function(id) {
   doc.setFontSize(9); doc.setTextColor(...GREY);
   doc.text('Croce Rossa Italiana — Comitato di Padova',W/2,y,{align:'center'}); y+=6;
   doc.setFontSize(16); doc.setTextColor(...RED); doc.setFont(undefined,'bold');
-  doc.text('Portale Quiz CRI',W/2,y,{align:'center'}); y+=7;
+  doc.text('Portale CRI',W/2,y,{align:'center'}); y+=7;
   doc.setFontSize(10); doc.setTextColor(...GREY); doc.setFont(undefined,'normal');
   doc.text('Resoconto test individuale',W/2,y,{align:'center'}); y+=8;
   doc.setDrawColor(224,221,216); doc.line(margin,y,W-margin,y); y+=5;
 
   doc.setFontSize(13); doc.setTextColor(26,26,26); doc.setFont(undefined,'bold');
-  doc.text(`${r.nome} ${r.cognome}`,margin,y); y+=6;
+  doc.text(`${capitalizeNome(r.nome)} ${capitalizeNome(r.cognome)}`,margin,y); y+=6;
   doc.setFontSize(9); doc.setTextColor(...GREY); doc.setFont(undefined,'normal');
   doc.text(`${dataStr} — ${r.corsoLabel||r.corso}${r.categoriaLabel?' / '+r.categoriaLabel:''}`,margin,y); y+=8;
 
@@ -1576,7 +1742,7 @@ window.exportPDFQuiz = function(id) {
     });
   }
   doc.setFontSize(7); doc.setTextColor(...GREY); doc.setFont(undefined,'normal');
-  doc.text('Croce Rossa Italiana — Comitato di Padova · Portale Quiz CRI',W/2,290,{align:'center'});
+  doc.text('Croce Rossa Italiana — Comitato di Padova · Portale CRI',W/2,290,{align:'center'});
   doc.save(`quiz_${r.nome}_${r.cognome}_${r._date.toISOString().slice(0,10)}.pdf`.replace(/\s+/g,'_'));
 };
 
@@ -1600,7 +1766,7 @@ function renderListaCorsisti() {
     const ultimo=c.tests.slice().sort((a,b)=>b._date-a._date)[0];
     const ultimaData=ultimo._date.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'2-digit'});
     const supPct=Math.round((c.totSup/c.tests.length)*100);
-    const nc=`${c.nome} ${c.cognome}`.trim();
+    const nc=`${capitalizeNome(c.nome)} ${capitalizeNome(c.cognome)}`.trim();
     const ini=((c.nome[0]||'')+(c.cognome[0]||'')).toUpperCase();
     html+=`<tr style="cursor:pointer" onclick="apriSchedaCorsista('${nc.replace(/'/g,"\\'")}')">
       <td><div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:50%;background:var(--red);color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${ini}</div><strong>${nc}</strong></div></td>
@@ -1786,6 +1952,339 @@ window.exportCSV = function() {
   a.href = URL.createObjectURL(blob);
   a.download = `risultati-cri-${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
+};
+
+// ========== CAPITALIZZA NOME ==========
+function capitalizeNome(str) {
+  if (!str) return '';
+  return str.trim().split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+}
+
+// ========== SCHERMATA BENVENUTO ==========
+function mostraBenvenuto(user) {
+  const nomeDisplay = capitalizeNome(user.replace(/\./g, ' '));
+  document.getElementById('welcomeTitle').textContent = `Benvenuto/a, ${nomeDisplay}`;
+  document.getElementById('welcomeScreen').style.display = 'flex';
+}
+
+window.entraDashboard = function(corso) {
+  document.getElementById('welcomeScreen').style.display = 'none';
+  document.getElementById('dashboard').classList.add('active');
+  document.getElementById('userBadge').textContent = '👤 ' + currentUser;
+
+  // Pre-imposta il filtro corso
+  const filterCorso = document.getElementById('filterCorso');
+  if (filterCorso) filterCorso.value = corso;
+
+  caricaRisultati();
+};
+
+// ========== CAPITALIZZA IN TABELLA ==========
+// Override renderTabella per capitalizzare nomi
+const _origRenderTabella = window.renderTabella;
+
+// ========== MODAL ESPORTA ESAME ==========
+const ARGOMENTI_ESAME = {
+  base: [
+    { key: 'domande_base_diu',       label: 'DIU',                  icon: '⚖️' },
+    { key: 'domande_base_movimento',  label: 'Movimento CRI',        icon: '🌍' },
+    { key: 'domande_base_principi',   label: 'Principi ed Emblema',  icon: '🔴' },
+    { key: 'domande_base_strategia',  label: 'Strategia 2030',       icon: '📋' },
+    { key: 'domande_base_salvavita',  label: 'Manovre Salvavita',    icon: '🫀' },
+  ],
+  tssa: [
+    { key: 'domande_tssa_adulto',     label: 'Protocolli adulto',    icon: '🫀' },
+    { key: 'domande_tssa_pediatrico', label: 'Protocolli pediatrico',icon: '👶' },
+    { key: 'domande_tssa_resp',       label: 'Problematica resp.',   icon: '🫁' },
+    { key: 'domande_tssa_neuro',      label: 'Problematica neuro.',  icon: '🧠' },
+    { key: 'domande_tssa_cardio',     label: 'Problematica cardiaca',icon: '❤️' },
+    { key: 'domande_tssa_farmaci',    label: 'Farmaci',              icon: '💊' },
+    { key: 'domande_tssa_ossigeno',   label: 'Ossigeno',             icon: '🫧' },
+    { key: 'trauma',                  label: 'Trauma',               icon: '🦴' },
+    { key: 'domande_tssa_anatomia',   label: 'Anatomia e Fisiologia',icon: '📖' },
+  ],
+  squadra: [
+    { key: 'domande_squadra', label: 'Formazione Squadra', icon: '👥' },
+  ],
+};
+
+window.apriModalEsame = function() {
+  document.getElementById('modalEsameOverlay').classList.add('open');
+  aggiornaArgomentiEsame();
+};
+
+window.chiudiModalEsame = function(e) {
+  if (e.target === document.getElementById('modalEsameOverlay')) {
+    document.getElementById('modalEsameOverlay').classList.remove('open');
+  }
+};
+
+window.aggiornaArgomentiEsame = function() {
+  const corso = document.getElementById('esameCorso').value;
+  const args = ARGOMENTI_ESAME[corso] || [];
+  const container = document.getElementById('esameArgomenti');
+  container.innerHTML = args.map(a => `
+    <div class="esame-row">
+      <input type="checkbox" id="chk_${a.key}" checked />
+      <span class="er-icon">${a.icon}</span>
+      <span class="er-label">${a.label}</span>
+      <input type="number" id="n_${a.key}" value="5" min="1" max="30" />
+      <span style="font-size:12px;color:var(--text2)">dom.</span>
+    </div>
+  `).join('');
+};
+
+window.generaEsamePDF = async function() {
+  const corso = document.getElementById('esameCorso').value;
+  const titolo = document.getElementById('esameTitolo').value.trim() ||
+    `Esame ${corso === 'base' ? 'Corso Base' : corso === 'tssa' ? 'Corso TSSA' : 'Formazione Squadra'} — ${new Date().toLocaleDateString('it-IT',{month:'long',year:'numeric'})}`;
+  const args = ARGOMENTI_ESAME[corso] || [];
+
+  const btn = document.querySelector('.btn-esame-pdf');
+  btn.textContent = '⏳ Generazione...';
+  btn.disabled = true;
+
+  try {
+    // Carica domande da Firebase per gli argomenti selezionati
+    const selezione = [];
+    for (const a of args) {
+      const chk = document.getElementById(`chk_${a.key}`);
+      const nInput = document.getElementById(`n_${a.key}`);
+      if (!chk || !chk.checked) continue;
+      const n = parseInt(nInput.value) || 5;
+
+      const snap = await getDocs(collection(db, a.key));
+      let domande = [];
+      snap.forEach(d => domande.push(d.data()));
+
+      // Mescola e prendi n domande
+      domande = domande.sort(() => Math.random() - 0.5).slice(0, n);
+      selezione.push({ ...a, domande, n });
+    }
+
+    if (selezione.every(s => s.domande.length === 0)) {
+      alert('Nessuna domanda trovata. Controlla le collezioni Firebase.');
+      return;
+    }
+
+    // Genera PDF con jsPDF
+    const { jsPDF } = window.jspdf;
+
+    // ============ FOGLIO DOMANDE ============
+    const docPDF = new jsPDF({ unit: 'mm', format: 'a4' });
+    const W = 210, H = 297;
+    const margin = 18;
+    const contentW = W - margin * 2;
+    let y = margin;
+    let pageNum = 1;
+
+    function addHeader(isFirst) {
+      if (isFirst) {
+        // Logo e titolo centrati
+        docPDF.setFillColor(204, 0, 0);
+        docPDF.rect(margin, y, contentW, 0.7, 'F');
+        y += 4;
+        docPDF.setFont('helvetica', 'bold');
+        docPDF.setFontSize(16);
+        docPDF.setTextColor(204, 0, 0);
+        docPDF.text('Croce Rossa Italiana — Comitato di Padova', W / 2, y, { align: 'center' });
+        y += 7;
+        docPDF.setFontSize(13);
+        docPDF.setTextColor(30, 30, 30);
+        docPDF.text(titolo, W / 2, y, { align: 'center' });
+        y += 5;
+        docPDF.setFillColor(204, 0, 0);
+        docPDF.rect(margin, y, contentW, 0.7, 'F');
+        y += 6;
+
+        // Spazio nome candidato
+        docPDF.setFont('helvetica', 'normal');
+        docPDF.setFontSize(11);
+        docPDF.setTextColor(80, 80, 80);
+        docPDF.text('Nome e Cognome: _______________________________________________', margin, y);
+        y += 6;
+        docPDF.text('Data: ___________________________', margin, y);
+        y += 10;
+      } else {
+        docPDF.setFont('helvetica', 'italic');
+        docPDF.setFontSize(9);
+        docPDF.setTextColor(150, 150, 150);
+        docPDF.text(`${titolo} — pag. ${pageNum}`, W / 2, y + 3, { align: 'center' });
+        y += 8;
+      }
+    }
+
+    function addFooter() {
+      docPDF.setFont('helvetica', 'italic');
+      docPDF.setFontSize(8);
+      docPDF.setTextColor(180, 180, 180);
+      docPDF.text('Croce Rossa Italiana — Comitato di Padova · Portale CRI', W / 2, H - 8, { align: 'center' });
+      docPDF.text(`${pageNum}`, W - margin, H - 8, { align: 'right' });
+    }
+
+    function nuovaPagina() {
+      addFooter();
+      docPDF.addPage();
+      pageNum++;
+      y = margin;
+      addHeader(false);
+    }
+
+    function checkSpazio(needed) {
+      if (y + needed > H - 18) nuovaPagina();
+    }
+
+    addHeader(true);
+
+    let numDom = 0;
+    const soluzioni = []; // per foglio soluzioni
+
+    for (const sezione of selezione) {
+      if (sezione.domande.length === 0) continue;
+
+      // Titolo sezione
+      checkSpazio(14);
+      docPDF.setFillColor(245, 245, 245);
+      docPDF.roundedRect(margin, y, contentW, 9, 2, 2, 'F');
+      docPDF.setFont('helvetica', 'bold');
+      docPDF.setFontSize(10);
+      docPDF.setTextColor(204, 0, 0);
+      docPDF.text(`${sezione.icon}  ${sezione.label.toUpperCase()}`, margin + 4, y + 6);
+      y += 13;
+
+      for (const dom of sezione.domande) {
+        numDom++;
+        const testo = dom.testo || dom.domanda || '';
+        const opzioni = dom.opzioni || dom.risposte || [];
+        const corretta = dom.corretta;
+
+        // Calcola altezza totale della domanda
+        docPDF.setFontSize(10);
+        const testoLines = docPDF.splitTextToSize(`${numDom}. ${testo}`, contentW - 6);
+        let altezzaDom = testoLines.length * 5.5 + 3;
+        opzioni.forEach(op => {
+          const opLines = docPDF.splitTextToSize(`○  ${op}`, contentW - 16);
+          altezzaDom += opLines.length * 5 + 1.5;
+        });
+        altezzaDom += 6; // margine sotto
+
+        // Se non c'è spazio per tutta la domanda, vai a nuova pagina
+        checkSpazio(altezzaDom);
+
+        // Numero + testo domanda
+        docPDF.setFont('helvetica', 'bold');
+        docPDF.setFontSize(10);
+        docPDF.setTextColor(20, 20, 20);
+        docPDF.text(testoLines, margin + 3, y);
+        y += testoLines.length * 5.5 + 2;
+
+        // Opzioni
+        docPDF.setFont('helvetica', 'normal');
+        docPDF.setFontSize(9.5);
+        docPDF.setTextColor(50, 50, 50);
+        opzioni.forEach(op => {
+          const opLines = docPDF.splitTextToSize(`○  ${op}`, contentW - 14);
+          docPDF.text(opLines, margin + 10, y);
+          y += opLines.length * 5 + 1.5;
+        });
+
+        // Linea separatrice leggera
+        docPDF.setDrawColor(220, 220, 220);
+        docPDF.setLineWidth(0.3);
+        docPDF.line(margin, y + 1, W - margin, y + 1);
+        y += 5;
+
+        // Salva per soluzioni
+        soluzioni.push({ num: numDom, sezione: sezione.label, testo, corretta });
+      }
+    }
+    addFooter();
+
+    // ============ FOGLIO SOLUZIONI ============
+    docPDF.addPage();
+    pageNum++;
+    y = margin;
+
+    // Header soluzioni
+    docPDF.setFillColor(204, 0, 0);
+    docPDF.rect(margin, y, contentW, 0.7, 'F');
+    y += 4;
+    docPDF.setFont('helvetica', 'bold');
+    docPDF.setFontSize(15);
+    docPDF.setTextColor(204, 0, 0);
+    docPDF.text('FOGLIO SOLUZIONI', W / 2, y, { align: 'center' });
+    y += 6;
+    docPDF.setFontSize(11);
+    docPDF.setTextColor(60, 60, 60);
+    docPDF.text(titolo, W / 2, y, { align: 'center' });
+    y += 4;
+    docPDF.setFillColor(204, 0, 0);
+    docPDF.rect(margin, y, contentW, 0.7, 'F');
+    y += 10;
+
+    // Raggruppa soluzioni per sezione
+    const solPerSezione = {};
+    soluzioni.forEach(s => {
+      if (!solPerSezione[s.sezione]) solPerSezione[s.sezione] = [];
+      solPerSezione[s.sezione].push(s);
+    });
+
+    for (const [sezLabel, items] of Object.entries(solPerSezione)) {
+      // Titolo sezione
+      if (y + 12 > H - 18) { docPDF.addPage(); pageNum++; y = margin; }
+      docPDF.setFillColor(245, 245, 245);
+      docPDF.roundedRect(margin, y, contentW, 8, 2, 2, 'F');
+      docPDF.setFont('helvetica', 'bold');
+      docPDF.setFontSize(10);
+      docPDF.setTextColor(204, 0, 0);
+      docPDF.text(sezLabel.toUpperCase(), margin + 4, y + 5.5);
+      y += 12;
+
+      for (const sol of items) {
+        // Calcola altezza voce soluzione
+        docPDF.setFontSize(9);
+        const domLines = docPDF.splitTextToSize(`${sol.num}. ${sol.testo}`, contentW - 8);
+        const corrLines = docPDF.splitTextToSize(`✓  ${sol.corretta}`, contentW - 18);
+        const needed = domLines.length * 4.8 + corrLines.length * 4.8 + 5;
+        if (y + needed > H - 18) { docPDF.addPage(); pageNum++; y = margin; }
+
+        // Testo domanda (grigio)
+        docPDF.setFont('helvetica', 'normal');
+        docPDF.setFontSize(9);
+        docPDF.setTextColor(100, 100, 100);
+        docPDF.text(domLines, margin + 4, y);
+        y += domLines.length * 4.8 + 1;
+
+        // Risposta corretta (verde scuro)
+        docPDF.setFont('helvetica', 'bold');
+        docPDF.setFontSize(9.5);
+        docPDF.setTextColor(0, 130, 60);
+        docPDF.text(corrLines, margin + 14, y);
+        y += corrLines.length * 4.8 + 4;
+      }
+      y += 2;
+    }
+
+    // Footer ultima pagina
+    docPDF.setFont('helvetica', 'italic');
+    docPDF.setFontSize(8);
+    docPDF.setTextColor(180, 180, 180);
+    docPDF.text('Croce Rossa Italiana — Comitato di Padova · Portale CRI', W / 2, H - 8, { align: 'center' });
+    docPDF.text(`${pageNum}`, W - margin, H - 8, { align: 'right' });
+
+    // Salva PDF
+    const dataStr = new Date().toISOString().slice(0, 10);
+    docPDF.save(`esame_cri_${corso}_${dataStr}.pdf`);
+
+    document.getElementById('modalEsameOverlay').classList.remove('open');
+
+  } catch(e) {
+    console.error(e);
+    alert('Errore nella generazione PDF: ' + e.message);
+  } finally {
+    btn.textContent = '⬇ Genera PDF';
+    btn.disabled = false;
+  }
 };
 
 </script>
