@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Quiz — Portale CRI</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   :root {
     --red: #CC0000;
@@ -480,14 +479,6 @@
 
   .btn-home:hover { border-color: var(--text2); }
 
-  .btn-pdf {
-    width: 100%; padding: 14px; background: white; color: var(--red);
-    border: 1.5px solid var(--red); border-radius: 8px;
-    font-family: 'DM Sans', sans-serif; font-size: 15px; cursor: pointer;
-    transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;
-  }
-  .btn-pdf:hover { background: #fff0f0; }
-
   /* Storico card */
   .storico-item {
     border: 1.5px solid var(--border); border-radius: 10px;
@@ -611,7 +602,6 @@
 
     <div class="result-actions">
       <button class="btn-retry" onclick="retryQuiz()">🔄 Rifai il test</button>
-      <button class="btn-pdf" onclick="exportPDFQuiz()">⬇ Esporta PDF</button>
       <button class="btn-storico" onclick="mostraStorico()">📊 I miei quiz</button>
       <button class="btn-home" onclick="goHome()" style="color:var(--text2)">🏠 Torna alla home</button>
     </div>
@@ -673,7 +663,9 @@ const categoriaLabels = {
   tssa_adulto: 'Protocolli adulto', tssa_pediatrico: 'Protocolli pediatrico',
   tssa_resp: 'Problematica respiratoria', tssa_neuro: 'Problematica neurologica',
   tssa_cardio: 'Problematica cardiaca', tssa_farmaci: 'Farmaci',
-  tssa_ossigeno: 'Ossigeno', tssa_trauma: 'Trauma', tssa_anatomia: 'Anatomia e Fisiologia', tssa_generale: 'Quiz Generale TSSA'
+  tssa_ossigeno: 'Ossigeno', tssa_trauma: 'Trauma', tssa_anatomia: 'Anatomia e Fisiologia', tssa_generale: 'Quiz Generale TSSA',
+  base_diu: 'DIU', base_movimento: 'Movimento CRI', base_principi: 'Principi ed Emblema',
+  base_strategia: 'Strategia 2030', base_salvavita: 'Manovre Salvavita', base_generale: 'Quiz Generale Corso Base'
 };
 
 stato.corsoLabel = corsoLabels[stato.corso] || stato.corso;
@@ -688,11 +680,18 @@ if (topbarSubEl) topbarSubEl.textContent = stato.badgeText;
 
 // Collezione Firebase da usare
 function getCollezione() {
-  if (stato.corso === 'base') return 'domande_base';
   if (stato.corso === 'squadra') return 'domande_squadra';
-  if (stato.categoria === 'tssa_generale') return null; // multipla
+  if (stato.categoria === 'tssa_generale') return null; // multipla TSSA
   if (stato.categoria === 'tssa_trauma') return 'trauma'; // collezione dedicata
-  return 'domande_' + stato.categoria;
+  if (stato.corso === 'tssa') return 'domande_' + stato.categoria;
+  // Corso Base per argomento
+  if (stato.categoria === 'base_diu')       return 'domande_base_diu';
+  if (stato.categoria === 'base_movimento') return 'domande_base_movimento';
+  if (stato.categoria === 'base_principi')  return 'domande_base_principi';
+  if (stato.categoria === 'base_strategia') return 'domande_base_strategia';
+  if (stato.categoria === 'base_salvavita') return 'domande_base_salvavita';
+  if (stato.categoria === 'base_generale')  return null; // multipla Base
+  return 'domande_base'; // fallback
 }
 
 // Normalizza domande dal formato nuovo (domanda/risposte/corretta numerico)
@@ -767,6 +766,13 @@ async function caricaDomande() {
       const categorieTSSA = ['tssa_adulto','tssa_pediatrico','tssa_resp','tssa_neuro','tssa_cardio','tssa_farmaci','tssa_ossigeno','tssa_trauma','tssa_anatomia'];
       for (const cat of categorieTSSA) {
         const nomeCol = cat === 'tssa_trauma' ? 'trauma' : 'domande_' + cat;
+        const snap = await getDocs(collection(db, nomeCol));
+        snap.forEach(doc => tuttiDocumenti.push(normalizzaDomanda(doc.data())));
+      }
+    } else if (stato.categoria === 'base_generale') {
+      // Carica da tutte le collezioni Base
+      const collezioniBase = ['domande_base_diu','domande_base_movimento','domande_base_principi','domande_base_strategia','domande_base_salvavita'];
+      for (const nomeCol of collezioniBase) {
         const snap = await getDocs(collection(db, nomeCol));
         snap.forEach(doc => tuttiDocumenti.push(normalizzaDomanda(doc.data())));
       }
@@ -1028,8 +1034,6 @@ async function mostraRisultati() {
       // Salva le singole risposte per statistiche admin
       risposte: stato.risposteDate.map(r => ({
         domanda: r.domanda,
-        tuaRisposta: r.tuaRisposta,
-        rispostaCorretta: r.rispostaCorretta,
         corretta: r.esito
       }))
     });
@@ -1109,7 +1113,7 @@ window.retryQuiz = function() {
 
 window.goHome = function() {
   fermaTimer();
-  if (stato.corso === 'tssa') {
+  if (stato.corso === 'tssa' || stato.corso === 'base') {
     window.location.href = 'index.html';
   } else {
     stato.current = 0;
@@ -1136,7 +1140,7 @@ window.backToResults = function() {
 // Torna alla home dal storico (scavalca i risultati)
 window.backToHome = function() {
   fermaTimer();
-  if (stato.corso === 'tssa') {
+  if (stato.corso === 'tssa' || stato.corso === 'base') {
     window.location.href = 'index.html';
   } else {
     stato.current = 0;
@@ -1152,97 +1156,6 @@ window.backToHome = function() {
 stato.nome = sessionStorage.getItem('nome') || '';
 stato.cognome = sessionStorage.getItem('cognome') || '';
 showScreen('screenScelta');
-
-// ========== EXPORT PDF QUIZ ==========
-window.exportPDFQuiz = function() {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-  const W = 210, margin = 20;
-  let y = 20;
-
-  const RED = [204,0,0], GREEN = [26,122,60], GREY = [102,102,102];
-  const tot = stato.domandeSelezionate.length;
-  const corr = stato.corrette;
-  const err = tot - corr;
-  const pct = Math.round((corr / tot) * 100);
-  const pass = pct >= 70;
-  const now = new Date().toLocaleString('it-IT', { dateStyle: 'medium', timeStyle: 'short' });
-
-  // Header
-  doc.setFontSize(9); doc.setTextColor(...GREY);
-  doc.text('Croce Rossa Italiana — Comitato di Padova', W/2, y, { align:'center' }); y += 6;
-  doc.setFontSize(16); doc.setTextColor(...RED); doc.setFont(undefined,'bold');
-  doc.text('Portale Quiz CRI', W/2, y, { align:'center' }); y += 7;
-  doc.setFontSize(10); doc.setTextColor(...GREY); doc.setFont(undefined,'normal');
-  doc.text('Resoconto test individuale', W/2, y, { align:'center' }); y += 8;
-  doc.setDrawColor(224,221,216); doc.line(margin, y, W-margin, y); y += 5;
-
-  // Info corsista
-  doc.setFontSize(13); doc.setTextColor(26,26,26); doc.setFont(undefined,'bold');
-  doc.text(`${stato.nome} ${stato.cognome}`, margin, y); y += 6;
-  doc.setFontSize(9); doc.setTextColor(...GREY); doc.setFont(undefined,'normal');
-  doc.text(`${now} — ${stato.badgeText || stato.corsoLabel || ''}`, margin, y); y += 8;
-
-  // KPI box
-  const kpiY = y; const boxW = (W - margin*2)/4 - 2;
-  [
-    { label:'Domande', val:String(tot), color:[26,26,26] },
-    { label:'Corrette', val:String(corr), color:GREEN },
-    { label:'Errate', val:String(err), color:RED },
-    { label:'Punteggio', val:pct+'%', color:[26,86,176] },
-  ].forEach((k,i) => {
-    const x = margin + i*(boxW+2.5);
-    doc.setFillColor(247,245,242); doc.roundedRect(x, kpiY, boxW, 18, 2, 2, 'F');
-    doc.setFontSize(7); doc.setTextColor(...GREY); doc.setFont(undefined,'normal');
-    doc.text(k.label.toUpperCase(), x+boxW/2, kpiY+5, { align:'center' });
-    doc.setFontSize(14); doc.setTextColor(...k.color); doc.setFont(undefined,'bold');
-    doc.text(k.val, x+boxW/2, kpiY+14, { align:'center' });
-  });
-  y = kpiY + 22;
-
-  // Esito banner
-  doc.setFillColor(...(pass ? [240,250,244] : [255,240,240]));
-  doc.roundedRect(margin, y, W-margin*2, 10, 2, 2, 'F');
-  doc.setFontSize(10); doc.setTextColor(...(pass ? GREEN : RED)); doc.setFont(undefined,'bold');
-  doc.text(pass ? '✓ Test superato' : '✗ Test non superato', W/2, y+6.5, { align:'center' });
-  y += 15;
-
-  // Risposte
-  if (stato.risposteDate && stato.risposteDate.length > 0) {
-    doc.setFontSize(8); doc.setTextColor(...GREY); doc.setFont(undefined,'bold');
-    doc.text('RISPOSTE DETTAGLIATE', margin, y); y += 5;
-    doc.setDrawColor(224,221,216); doc.line(margin, y, W-margin, y); y += 4;
-
-    stato.risposteDate.forEach((rsp, i) => {
-      if (y > 265) { doc.addPage(); y = 20; }
-      const bgColor = rsp.esito ? [240,250,244] : [255,245,245];
-      const domandaLines = doc.splitTextToSize(`${i+1}. ${rsp.domanda}`, W-margin*2-8);
-      const blockH = !rsp.esito ? domandaLines.length*4.5+16 : domandaLines.length*4.5+4;
-      doc.setFillColor(...bgColor);
-      doc.roundedRect(margin, y, W-margin*2, blockH, 2, 2, 'F');
-      doc.setFillColor(...(rsp.esito ? GREEN : RED));
-      doc.circle(margin+4, y+blockH/2, 2.5, 'F');
-      doc.setFontSize(7); doc.setTextColor(255,255,255); doc.setFont(undefined,'bold');
-      doc.text(rsp.esito ? '✓' : '✗', margin+4, y+blockH/2+0.8, { align:'center' });
-      doc.setFontSize(9); doc.setTextColor(26,26,26); doc.setFont(undefined,'normal');
-      doc.text(domandaLines, margin+9, y+5);
-      if (!rsp.esito) {
-        const ry = y+domandaLines.length*4.5+4;
-        doc.setFontSize(8); doc.setTextColor(...RED);
-        doc.text(`Tua risposta: ${rsp.tuaRisposta || '—'}`, margin+9, ry);
-        doc.setTextColor(...GREEN);
-        doc.text(`Risposta corretta: ${rsp.rispostaCorretta || '—'}`, margin+9, ry+5);
-      }
-      y += blockH+3;
-    });
-  }
-
-  doc.setFontSize(7); doc.setTextColor(...GREY); doc.setFont(undefined,'normal');
-  doc.text('Croce Rossa Italiana — Comitato di Padova · Portale Quiz CRI', W/2, 290, { align:'center' });
-
-  const nomeFile = `quiz_${stato.nome}_${stato.cognome}_${new Date().toISOString().slice(0,10)}.pdf`.replace(/\s+/g,'_');
-  doc.save(nomeFile);
-};
 
 </script>
 </body>

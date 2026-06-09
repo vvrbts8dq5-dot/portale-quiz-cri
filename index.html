@@ -468,6 +468,69 @@
     </div>
   </div>
 
+  <!-- MENU CORSO BASE -->
+  <div class="card menu-screen" id="menuBase">
+    <button class="back-btn" onclick="goBackBase()">← Torna al login</button>
+    <div class="menu-header">
+      <h2>Corso Base</h2>
+      <p>Seleziona l'argomento del quiz</p>
+    </div>
+    <div class="menu-grid">
+
+      <button class="menu-item" onclick="startQuizBase('base_diu')">
+        <div class="menu-icon">⚖️</div>
+        <div class="menu-item-text">
+          <div class="menu-item-title">Diritto Internazionale Umanitario</div>
+        </div>
+        <span style="color:#ccc">›</span>
+      </button>
+
+      <button class="menu-item" onclick="startQuizBase('base_movimento')">
+        <div class="menu-icon">🌍</div>
+        <div class="menu-item-text">
+          <div class="menu-item-title">Movimento CRI e Mezzaluna Rossa</div>
+        </div>
+        <span style="color:#ccc">›</span>
+      </button>
+
+      <button class="menu-item" onclick="startQuizBase('base_principi')">
+        <div class="menu-icon">🔴</div>
+        <div class="menu-item-text">
+          <div class="menu-item-title">Principi ed Emblema</div>
+        </div>
+        <span style="color:#ccc">›</span>
+      </button>
+
+      <button class="menu-item" onclick="startQuizBase('base_strategia')">
+        <div class="menu-icon">📋</div>
+        <div class="menu-item-text">
+          <div class="menu-item-title">Strategia CRI 2030</div>
+        </div>
+        <span style="color:#ccc">›</span>
+      </button>
+
+      <button class="menu-item" onclick="startQuizBase('base_salvavita')">
+        <div class="menu-icon">🫀</div>
+        <div class="menu-item-text">
+          <div class="menu-item-title">Manovre Salvavita</div>
+        </div>
+        <span style="color:#ccc">›</span>
+      </button>
+
+      <div class="menu-divider"></div>
+
+      <button class="menu-item generale" onclick="startQuizBase('base_generale')">
+        <div class="menu-icon">🏥</div>
+        <div class="menu-item-text">
+          <div class="menu-item-title">Quiz Generale Corso Base</div>
+          <div class="menu-item-sub">Domande da tutti gli argomenti</div>
+        </div>
+        <span style="color:var(--red)">›</span>
+      </button>
+
+    </div>
+  </div>
+
   <div class="footer">
     Portale riservato ai volontari CRI · v1.0
   </div>
@@ -549,8 +612,12 @@
       // TSSA → mostra menu categorie
       document.getElementById('screenNomeCognome').classList.remove('active');
       document.getElementById('menuTSSA').classList.add('active');
+    } else if (corso === 'base') {
+      // Base → mostra menu argomenti
+      document.getElementById('screenNomeCognome').classList.remove('active');
+      document.getElementById('menuBase').classList.add('active');
     } else {
-      // Base/Squadra → vai al quiz
+      // Squadra → vai al quiz
       window.location.href = `quiz.html?corso=${corso}`;
     }
   };
@@ -566,8 +633,17 @@
     document.getElementById('screenNomeCognome').classList.add('active');
   };
 
+  window.goBackBase = function() {
+    document.getElementById('menuBase').classList.remove('active');
+    document.getElementById('screenNomeCognome').classList.add('active');
+  };
+
   window.startQuiz = function(categoria) {
     window.location.href = `quiz.html?corso=tssa&categoria=${categoria}`;
+  };
+
+  window.startQuizBase = function(categoria) {
+    window.location.href = `quiz.html?corso=base&categoria=${categoria}`;
   };
 
   window.togglePassword = function() {
@@ -599,6 +675,11 @@
   if (sessionStorage.getItem('corso') === 'tssa' && sessionStorage.getItem('nome')) {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('menuTSSA').classList.add('active');
+  }
+  // Se si torna dal quiz Base, mostra direttamente il menu argomenti
+  if (sessionStorage.getItem('corso') === 'base' && sessionStorage.getItem('nome')) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('menuBase').classList.add('active');
   }
 </script>
 
