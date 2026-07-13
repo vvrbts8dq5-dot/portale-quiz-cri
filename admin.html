@@ -929,6 +929,7 @@
         <button class="btn-refresh" onclick="aggiornaAdmin()" id="btnRefresh" title="Aggiorna dati">🔄 Aggiorna</button>
         <span class="notifica-badge" id="notificaBadge" style="position:absolute;top:-6px;right:-6px">0</span>
       </div>
+      <button class="btn-refresh" onclick="apriGateIstruttori()" title="Gestione istruttori">🔑 Istruttori</button>
       <button class="btn-logout" onclick="doLogout()">Esci</button>
     </div>
   </div>
@@ -1186,6 +1187,65 @@
   </div>
 </div>
 
+<!-- GATE PASSWORD GESTIONE ISTRUTTORI -->
+<div class="modal-overlay" id="instrGateOverlay" onclick="if(event.target===this) chiudiGateIstruttori()">
+  <div class="modal" style="max-width:380px" onclick="event.stopPropagation()">
+    <div class="modal-head" style="border-bottom:none;margin-bottom:0;padding-bottom:0">
+      <div>
+        <div class="modal-title">🔑 Gestione istruttori</div>
+        <div class="modal-sub">Inserisci la password per accedere</div>
+      </div>
+      <button class="close-btn" onclick="chiudiGateIstruttori()">✕</button>
+    </div>
+    <div class="form-group" style="margin-top:16px">
+      <label>Password</label>
+      <input type="password" id="instrGatePwd" placeholder="••••••••" autocomplete="off" />
+    </div>
+    <button class="btn-primary" onclick="verificaGateIstruttori()">Sblocca</button>
+    <div class="login-err" id="instrGateErr">Password errata.</div>
+  </div>
+</div>
+
+<!-- PANNELLO GESTIONE ISTRUTTORI -->
+<div class="modal-overlay" id="instrManageOverlay" onclick="if(event.target===this) chiudiPannelloIstruttori()">
+  <div class="modal" style="max-width:920px" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">🔑 Gestione istruttori</div>
+        <div class="modal-sub">Abilita, metti in pausa o elimina gli accessi alla dashboard</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn-export" onclick="apriFormNuovoIstruttore()">＋ Aggiungi</button>
+        <button class="close-btn" onclick="chiudiPannelloIstruttori()">✕</button>
+      </div>
+    </div>
+    <div class="table-wrap" style="border:none">
+      <div id="istruttoriTableBody">
+        <div class="loader-wrap"><div class="loader"></div> Caricamento…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FORM NUOVO ISTRUTTORE -->
+<div class="modal-overlay" id="nuovoIstrOverlay" style="z-index:1100" onclick="if(event.target===this) chiudiFormNuovoIstruttore()">
+  <div class="modal" style="max-width:420px" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">＋ Nuovo istruttore</div>
+        <div class="modal-sub">Verrà abilitato automaticamente</div>
+      </div>
+      <button class="close-btn" onclick="chiudiFormNuovoIstruttore()">✕</button>
+    </div>
+    <div class="form-group"><label>Nome</label><input type="text" id="nuovoIstrNome" autocomplete="off" /></div>
+    <div class="form-group"><label>Cognome</label><input type="text" id="nuovoIstrCognome" autocomplete="off" /></div>
+    <div class="form-group"><label>Username</label><input type="text" id="nuovoIstrUsername" placeholder="nome.cognome" autocomplete="off" /></div>
+    <div class="form-group"><label>Password</label><input type="text" id="nuovoIstrPassword" autocomplete="off" /></div>
+    <button class="btn-primary" onclick="salvaNuovoIstruttore()">Aggiungi istruttore</button>
+    <div class="login-err" id="nuovoIstrErr">Compila tutti i campi.</div>
+  </div>
+</div>
+
 <!-- MODAL DETTAGLIO -->
 <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this) closeModal()">
   <div class="modal" id="modalContent"></div>
@@ -1194,7 +1254,7 @@
 <!-- Firebase -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, doc, getDoc, deleteDoc, writeBatch, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, deleteDoc, writeBatch, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAQsAwG237CMsuqlNTvrGyfNphDSjlg4JM",
@@ -1208,8 +1268,11 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Password admin unica
-const ADMIN_PWD = 'admin.quiz.cri';
+// Password legacy condivisa — usata solo come fallback per account non ancora migrati a password individuale
+const ADMIN_PWD_LEGACY = 'admin.quiz.cri';
+
+// Password di sblocco del pannello "Gestione istruttori" (nessun nome utente richiesto)
+const ISTRUTTORI_GATE_PWD = 'FCRIS1864';
 
 // Stato globale
 let allResults = [];
@@ -1230,17 +1293,25 @@ window.doAdminLogin = async function() {
     return;
   }
 
-  if (pwd !== ADMIN_PWD) {
-    err.textContent = 'Password errata.';
-    err.classList.add('show');
-    return;
-  }
-
-  // Verifica utente abilitato su Firebase
+  // Verifica utente su Firebase — password individuale, con fallback alla password legacy condivisa
   try {
     const userDoc = await getDoc(doc(db, 'admins', user));
-    if (!userDoc.exists() || userDoc.data().abilitato !== true) {
-      err.textContent = `Utente "${user}" non abilitato. Contatta l'amministratore.`;
+    if (!userDoc.exists()) {
+      err.textContent = `Utente "${user}" non trovato. Contatta l'amministratore.`;
+      err.classList.add('show');
+      return;
+    }
+
+    const dati = userDoc.data();
+    if (dati.abilitato !== true) {
+      err.textContent = `Utente "${user}" in pausa. Contatta l'amministratore.`;
+      err.classList.add('show');
+      return;
+    }
+
+    const passwordAttesa = dati.password || ADMIN_PWD_LEGACY;
+    if (pwd !== passwordAttesa) {
+      err.textContent = 'Password errata.';
       err.classList.add('show');
       return;
     }
@@ -1284,6 +1355,156 @@ if (savedUser) {
   document.getElementById('loginScreen').style.display = 'none';
   mostraBenvenuto(savedUser);
 }
+
+// ========== GESTIONE ISTRUTTORI ==========
+let listaIstruttori = [];
+
+window.apriGateIstruttori = function() {
+  document.getElementById('instrGateOverlay').classList.add('active');
+  document.getElementById('instrGatePwd').value = '';
+  document.getElementById('instrGateErr').classList.remove('show');
+  setTimeout(() => document.getElementById('instrGatePwd').focus(), 50);
+};
+
+window.chiudiGateIstruttori = function() {
+  document.getElementById('instrGateOverlay').classList.remove('active');
+};
+
+window.verificaGateIstruttori = function() {
+  const pwd = document.getElementById('instrGatePwd').value;
+  const err = document.getElementById('instrGateErr');
+  if (pwd !== ISTRUTTORI_GATE_PWD) {
+    err.textContent = 'Password errata.';
+    err.classList.add('show');
+    return;
+  }
+  document.getElementById('instrGateOverlay').classList.remove('active');
+  apriPannelloIstruttori();
+};
+
+document.getElementById('instrGatePwd').addEventListener('keydown', e => {
+  if (e.key === 'Enter') window.verificaGateIstruttori();
+});
+
+window.apriPannelloIstruttori = async function() {
+  document.getElementById('instrManageOverlay').classList.add('active');
+  await caricaIstruttori();
+};
+
+window.chiudiPannelloIstruttori = function() {
+  document.getElementById('instrManageOverlay').classList.remove('active');
+};
+
+async function caricaIstruttori() {
+  const wrap = document.getElementById('istruttoriTableBody');
+  wrap.innerHTML = `<div class="loader-wrap"><div class="loader"></div> Caricamento istruttori…</div>`;
+  try {
+    const snap = await getDocs(collection(db, 'admins'));
+    listaIstruttori = [];
+    snap.forEach(d => listaIstruttori.push({ id: d.id, ...d.data() }));
+    listaIstruttori.sort((a, b) => (a.cognome || a.id || '').localeCompare(b.cognome || b.id || ''));
+    renderIstruttori();
+  } catch(e) {
+    wrap.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">⚠️</div>
+        <div class="empty-title">Errore di caricamento</div>
+        <div class="empty-sub">${e.message}</div>
+      </div>`;
+  }
+}
+
+function renderIstruttori() {
+  const wrap = document.getElementById('istruttoriTableBody');
+  if (listaIstruttori.length === 0) {
+    wrap.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">👤</div>
+        <div class="empty-title">Nessun istruttore</div>
+        <div class="empty-sub">Aggiungine uno con il pulsante "＋ Aggiungi".</div>
+      </div>`;
+    return;
+  }
+  let html = `<table><thead><tr>
+    <th>Nome</th><th>Cognome</th><th>Username</th><th>Password</th><th>Stato</th><th></th><th></th>
+  </tr></thead><tbody>`;
+  listaIstruttori.forEach(u => {
+    const abilitato = u.abilitato === true;
+    html += `<tr>
+      <td>${u.nome || '—'}</td>
+      <td>${u.cognome || '—'}</td>
+      <td style="font-family:'DM Mono',monospace">${u.id}</td>
+      <td style="font-family:'DM Mono',monospace">${u.password || '<span style=\'color:var(--text3)\'>legacy</span>'}</td>
+      <td><span class="badge ${abilitato ? 'badge-pass' : 'badge-amber'}">${abilitato ? '✓ Abilitato' : '⏸ In pausa'}</span></td>
+      <td><button class="btn-refresh" onclick="toggleIstruttore('${u.id}', ${abilitato})">${abilitato ? '⏸ Pausa' : '▶ Abilita'}</button></td>
+      <td><button class="btn-delete-row" title="Elimina istruttore" onclick="eliminaIstruttore('${u.id}')">🗑</button></td>
+    </tr>`;
+  });
+  html += `</tbody></table>`;
+  wrap.innerHTML = html;
+}
+
+window.toggleIstruttore = async function(username, statoAttuale) {
+  try {
+    await setDoc(doc(db, 'admins', username), { abilitato: !statoAttuale }, { merge: true });
+    await caricaIstruttori();
+  } catch(e) {
+    alert('Errore: ' + e.message);
+  }
+};
+
+window.eliminaIstruttore = async function(username) {
+  if (!confirm(`Eliminare l'istruttore "${username}"?\n\nQuesta operazione è irreversibile.`)) return;
+  try {
+    await deleteDoc(doc(db, 'admins', username));
+    await caricaIstruttori();
+  } catch(e) {
+    alert('Errore: ' + e.message);
+  }
+};
+
+window.apriFormNuovoIstruttore = function() {
+  document.getElementById('nuovoIstrNome').value = '';
+  document.getElementById('nuovoIstrCognome').value = '';
+  document.getElementById('nuovoIstrUsername').value = '';
+  document.getElementById('nuovoIstrPassword').value = '';
+  document.getElementById('nuovoIstrErr').classList.remove('show');
+  document.getElementById('nuovoIstrOverlay').classList.add('active');
+};
+
+window.chiudiFormNuovoIstruttore = function() {
+  document.getElementById('nuovoIstrOverlay').classList.remove('active');
+};
+
+window.salvaNuovoIstruttore = async function() {
+  const nome = document.getElementById('nuovoIstrNome').value.trim();
+  const cognome = document.getElementById('nuovoIstrCognome').value.trim();
+  const username = document.getElementById('nuovoIstrUsername').value.trim().toLowerCase();
+  const password = document.getElementById('nuovoIstrPassword').value;
+  const err = document.getElementById('nuovoIstrErr');
+  err.classList.remove('show');
+
+  if (!nome || !cognome || !username || !password) {
+    err.textContent = 'Compila tutti i campi.';
+    err.classList.add('show');
+    return;
+  }
+
+  try {
+    const esistente = await getDoc(doc(db, 'admins', username));
+    if (esistente.exists()) {
+      err.textContent = `Esiste già un istruttore con username "${username}".`;
+      err.classList.add('show');
+      return;
+    }
+    await setDoc(doc(db, 'admins', username), { nome, cognome, username, password, abilitato: true });
+    document.getElementById('nuovoIstrOverlay').classList.remove('active');
+    await caricaIstruttori();
+  } catch(e) {
+    err.textContent = 'Errore: ' + e.message;
+    err.classList.add('show');
+  }
+};
 
 // ========== NOTIFICA + AGGIORNA DATI ==========
 let lastKnownCount = 0;
