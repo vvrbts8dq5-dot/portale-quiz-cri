@@ -762,20 +762,21 @@ async function caricaDomande() {
       const snap = await getDocs(collection(db, col));
       snap.forEach(doc => tuttiDocumenti.push(normalizzaDomanda(doc.data())));
     } else if (stato.categoria === 'tssa_generale') {
-      // Carica da tutte le collezioni TSSA
+      // Carica da tutte le collezioni TSSA in parallelo (prima erano richieste
+      // in sequenza una dopo l'altra: con 9 collezioni il caricamento poteva
+      // richiedere diversi secondi. In parallelo il tempo totale è quello
+      // della richiesta più lenta, non la somma di tutte).
       const categorieTSSA = ['tssa_adulto','tssa_pediatrico','tssa_resp','tssa_neuro','tssa_cardio','tssa_farmaci','tssa_ossigeno','tssa_trauma','tssa_anatomia'];
-      for (const cat of categorieTSSA) {
+      const snapsTSSA = await Promise.all(categorieTSSA.map(cat => {
         const nomeCol = cat === 'tssa_trauma' ? 'trauma' : 'domande_' + cat;
-        const snap = await getDocs(collection(db, nomeCol));
-        snap.forEach(doc => tuttiDocumenti.push(normalizzaDomanda(doc.data())));
-      }
+        return getDocs(collection(db, nomeCol));
+      }));
+      snapsTSSA.forEach(snap => snap.forEach(doc => tuttiDocumenti.push(normalizzaDomanda(doc.data()))));
     } else if (stato.categoria === 'base_generale') {
-      // Carica da tutte le collezioni Base
+      // Carica da tutte le collezioni Base in parallelo (stesso motivo di sopra)
       const collezioniBase = ['domande_base_diu','domande_base_movimento','domande_base_principi','domande_base_strategia','domande_base_salvavita'];
-      for (const nomeCol of collezioniBase) {
-        const snap = await getDocs(collection(db, nomeCol));
-        snap.forEach(doc => tuttiDocumenti.push(normalizzaDomanda(doc.data())));
-      }
+      const snapsBase = await Promise.all(collezioniBase.map(nomeCol => getDocs(collection(db, nomeCol))));
+      snapsBase.forEach(snap => snap.forEach(doc => tuttiDocumenti.push(normalizzaDomanda(doc.data()))));
     }
 
     // Se Firebase è vuoto usa le domande di esempio
