@@ -56,11 +56,12 @@ export const vociCorsi = corsi => corsi.map(c => {
 export const riquadriAree = gruppi => `<div class="griglia-aree">${gruppi.map(g => g.corsi.length ? `
   <a class="riquadro-area" href="area.html?a=${encodeURIComponent(g.id)}">
     <span class="ic" style="background:${g.tinta};color:${g.colore}">${g.icona}</span>
-    <span class="nome">${esc(g.nome)}</span>
-    <span class="sub">${g.corsi.length === 1 ? '1 corso' : g.corsi.length + ' corsi'}</span>
+    <span class="testi"><span class="nome">${esc(g.nome)}</span>
+    <span class="sub">${g.corsi.length === 1 ? '1 corso' : g.corsi.length + ' corsi'}</span></span>
+    <span class="freccia">${ICONA.avanti}</span>
   </a>` : `
   <div class="riquadro-area vuota" aria-disabled="true">
     <span class="ic" style="background:${g.tinta};color:${g.colore}">${g.icona}</span>
-    <span class="nome">${esc(g.nome)}</span>
-    <span class="sub">Corsi in arrivo</span>
+    <span class="testi"><span class="nome">${esc(g.nome)}</span>
+    <span class="sub">Corsi in arrivo</span></span>
   </div>`).join('')}</div>`;
