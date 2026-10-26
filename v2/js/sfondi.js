@@ -37,7 +37,7 @@ function sacchetto(r, elementi) {
 // Parole grandi e marcate in basso, sempre più piccole salendo (la sfumatura è nel CSS)
 function disegnaPrincipi(el) {
   const r = casuale(11), prossimo = sacchetto(r, PRINCIPI);
-  const W = el.clientWidth, H = el.clientHeight;
+  const { W, H } = misura(el);
   const parti = [];
   let y = H - 6, sz = 40, op = 0.24;
   while (y > H * 0.3) {
@@ -56,7 +56,7 @@ function disegnaPrincipi(el) {
 // Attrezzature sparse su tutta la pagina, ruotate a caso
 function disegnaAttrezzature(el) {
   const r = casuale(9), prossimo = sacchetto(r, ATTREZZATURE);
-  const W = el.clientWidth, H = el.clientHeight;
+  const { W, H } = misura(el);
   const parti = [];
   let y = -6, riga = 0;
   while (y < H + 10) {
@@ -71,17 +71,32 @@ function disegnaAttrezzature(el) {
   el.innerHTML = parti.join('');
 }
 
+// Area da riempire: almeno tutto lo schermo, così allargando o allungando la finestra lo sfondo è già pronto.
+// La trama dei principi segue invece la finestra, perché deve partire dal fondo visibile.
+function misura(el) {
+  return el.classList.contains('principi')
+    ? { W: el.clientWidth, H: el.clientHeight }
+    : { W: Math.max(el.clientWidth, screen.width || 0), H: Math.max(el.clientHeight, screen.height || 0) };
+}
+
 function monta(classe, disegna) {
   const el = document.createElement('div');
   el.className = 'sfondo ' + classe;
   el.setAttribute('aria-hidden', 'true');
   document.body.prepend(el);
   disegna(el);
-  let t, larghezza = innerWidth;
-  // ridisegna solo se cambia la larghezza (su telefono lo scroll cambia l'altezza della barra degli indirizzi)
+  let t, larghezza = innerWidth, altezza = innerHeight, coperto = misura(el);
+  // Ridisegna quando la finestra cambia davvero: larghezza diversa, oppure più alta della parte già riempita
+  // (su telefono lo scroll fa variare di poco l'altezza per la barra degli indirizzi: quello si ignora)
   addEventListener('resize', () => {
     clearTimeout(t);
-    t = setTimeout(() => { if (Math.abs(innerWidth - larghezza) > 20) { larghezza = innerWidth; disegna(el); } }, 200);
+    t = setTimeout(() => {
+      const piuGrande = innerWidth > coperto.W || innerHeight > coperto.H;
+      const principiCambiati = classe === 'principi' && Math.abs(innerHeight - altezza) > 120;
+      if (Math.abs(innerWidth - larghezza) > 20 || piuGrande || principiCambiati) {
+        larghezza = innerWidth; altezza = innerHeight; disegna(el); coperto = misura(el);
+      }
+    }, 200);
   });
 }
 
