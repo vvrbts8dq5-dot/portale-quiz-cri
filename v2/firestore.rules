@@ -1,0 +1,209 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =====================================================================
+    // PORTALE ATTUALE — stesso comportamento delle regole del 13/07/2026.
+    // Vale solo per le collezioni elencate qui; le nuove collezioni
+    // (utenti, inviti, ...) sono escluse e hanno regole proprie sotto.
+    // Da eliminare al passaggio definitivo al portale v2.
+    // =====================================================================
+    function collezioneVecchia(col) {
+      return col in [
+        'domande_squadra', 'trauma',
+        'domande_tssa_adulto', 'domande_tssa_pediatrico', 'domande_tssa_resp',
+        'domande_tssa_neuro', 'domande_tssa_cardio', 'domande_tssa_farmaci',
+        'domande_tssa_ossigeno', 'domande_tssa_anatomia',
+        'domande_base', 'domande_base_diu', 'domande_base_movimento',
+        'domande_base_principi', 'domande_base_strategia', 'domande_base_salvavita',
+        'risultati', 'admins', 'accessi_admin'
+      ];
+    }
+
+    match /{col}/{resto=**} {
+      allow read: if collezioneVecchia(col);
+      allow write: if col in ['risultati', 'admins', 'accessi_admin'];
+    }
+
+    // =====================================================================
+    // PORTALE V2 — accesso con account personale (Firebase Auth)
+    //
+    // Ruoli (campo `ruolo` del profilo):
+    //   volontario  fa i quiz dei propri `corsi`
+    //   istruttore  livello 1: gestisce solo i corsi in `corsiGestiti`
+    //               (codici invito, domande, statistiche, esami)
+    //   admin       livello 2 (responsabile): tutto, più utenti, ruoli
+    //               e registro delle operazioni
+    // =====================================================================
+    function loggato() {
+      return request.auth != null;
+    }
+    function haProfilo() {
+      return loggato() && exists(/databases/$(database)/documents/utenti/$(request.auth.uid));
+    }
+    function profilo() {
+      return get(/databases/$(database)/documents/utenti/$(request.auth.uid)).data;
+    }
+    function attivo() {
+      return haProfilo() && profilo().attivo == true;
+    }
+    function isAdmin() {
+      return attivo() && profilo().ruolo == 'admin';
+    }
+    function isIstruttore() {
+      return attivo() && profilo().ruolo == 'istruttore';
+    }
+    function isStaff() {
+      return isAdmin() || isIstruttore();
+    }
+    function gestiti() {
+      return profilo().get('corsiGestiti', []);
+    }
+    // Il responsabile gestisce tutto, l'istruttore solo i suoi corsi
+    function gestisce(corso) {
+      return isAdmin() || (isIstruttore() && corso in gestiti());
+    }
+    function gestisceTutti(lista) {
+      return isAdmin() || (isIstruttore() && lista.hasOnly(gestiti()));
+    }
+    function haCorso(corso) {
+      return attivo() && corso in profilo().corsi;
+    }
+    function invito(codice) {
+      return get(/databases/$(database)/documents/inviti/$(codice)).data;
+    }
+    function invitoValido(codice) {
+      return exists(/databases/$(database)/documents/inviti/$(codice))
+        && invito(codice).attivo == true
+        && invito(codice).scadenza > request.time;
+    }
+
+    // ---------- Profili utente ----------
+    match /utenti/{uid} {
+      // Ognuno legge il proprio; l'istruttore legge i volontari dei suoi corsi
+      allow get: if loggato() && (request.auth.uid == uid || isAdmin()
+        || (isIstruttore() && resource.data.corsi.hasAny(gestiti())));
+      // Elenco completo solo al responsabile; l'istruttore vede chi si è
+      // registrato con un codice dei suoi corsi (query per codiceInvito)
+      allow list: if isAdmin()
+        || (isIstruttore() && invito(resource.data.codiceInvito).corsi.hasAny(gestiti()));
+
+      // Registrazione: solo come volontario, con un codice invito valido,
+      // e con esattamente i corsi previsti dall'invito
+      allow create: if loggato()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['nome', 'cognome', 'email', 'ruolo', 'attivo', 'corsi', 'codiceInvito', 'creatoIl', 'privacyIl'])
+        && request.resource.data.nome is string && request.resource.data.nome.size() > 0
+        && request.resource.data.cognome is string && request.resource.data.cognome.size() > 0
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.ruolo == 'volontario'
+        && request.resource.data.attivo == true
+        && request.resource.data.creatoIl == request.time
+        && request.resource.data.get('privacyIl', request.time) == request.time
+        && invitoValido(request.resource.data.codiceInvito)
+        && request.resource.data.corsi == invito(request.resource.data.codiceInvito).corsi;
+
+      // L'utente cambia solo nome, cognome e presa visione privacy;
+      // ruoli, corsi e stato li cambia solo il responsabile
+      allow update: if isAdmin()
+        || (loggato() && request.auth.uid == uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nome', 'cognome', 'privacyIl']));
+      // Il responsabile, oppure l'utente stesso che elimina il proprio account
+      allow delete: if isAdmin() || (loggato() && request.auth.uid == uid);
+    }
+
+    // ---------- Codici invito ----------
+    match /inviti/{codice} {
+      allow get: if loggato();
+      allow list: if isAdmin() || (isIstruttore() && resource.data.creatoDa == request.auth.uid);
+      allow create: if isStaff()
+        && request.resource.data.creatoDa == request.auth.uid
+        && request.resource.data.corsi is list && request.resource.data.corsi.size() > 0
+        && gestisceTutti(request.resource.data.corsi);
+      // L'istruttore può solo disattivare/riattivare i codici che ha creato
+      allow update: if isAdmin()
+        || (isIstruttore() && resource.data.creatoDa == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attivo']));
+      allow delete: if isAdmin();
+    }
+
+    // ---------- Corsi: il menu del portale ----------
+    match /corsi/{corso} {
+      allow read: if loggato();
+      allow write: if isAdmin();
+    }
+
+    // ---------- Archivio domande, comprese le bozze ----------
+    match /domande/{id} {
+      allow read: if gestisce(resource.data.corso);
+      allow create: if gestisce(request.resource.data.corso)
+        && request.resource.data.aggiornataDa == request.auth.uid;
+      allow update: if gestisce(resource.data.corso) && gestisce(request.resource.data.corso)
+        && request.resource.data.aggiornataDa == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    // ---------- Pacchetti pubblicati (le domande attive di un argomento) ----------
+    match /pacchetti/{categoria} {
+      allow get: if gestisce(resource.data.corso) || haCorso(resource.data.corso);
+      allow list: if gestisce(resource.data.corso);
+      allow create: if gestisce(request.resource.data.corso)
+        && request.resource.data.pubblicatoDa == request.auth.uid;
+      allow update: if gestisce(resource.data.corso) && gestisce(request.resource.data.corso)
+        && request.resource.data.pubblicatoDa == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    // ---------- Esiti dei quiz ----------
+    match /esiti/{id} {
+      allow create: if loggato()
+        && request.resource.data.uid == request.auth.uid
+        && haCorso(request.resource.data.corso)
+        && request.resource.data.keys().hasOnly(['uid', 'nome', 'cognome', 'corso', 'categoria', 'categoriaNome',
+             'numeroDomande', 'corrette', 'percentuale', 'superato', 'durataSec', 'tempoScaduto', 'risposte',
+             'timestamp', 'modalita', 'edizione'])
+        && request.resource.data.timestamp == request.time
+        && request.resource.data.numeroDomande is int
+        && request.resource.data.numeroDomande <= 60
+        && request.resource.data.corrette <= request.resource.data.numeroDomande
+        && request.resource.data.risposte.size() == request.resource.data.numeroDomande
+        && request.resource.data.get('modalita', 'quiz') in ['quiz', 'allenamento', 'ripasso'];
+      allow read: if loggato() && (resource.data.uid == request.auth.uid || gestisce(resource.data.corso));
+      allow update: if false;
+      allow delete: if gestisce(resource.data.corso) || (loggato() && resource.data.uid == request.auth.uid);
+    }
+
+    // ---------- Segnalazioni di errori nelle domande ----------
+    match /segnalazioni/{id} {
+      allow create: if loggato()
+        && request.resource.data.uid == request.auth.uid
+        && haCorso(request.resource.data.corso)
+        && request.resource.data.keys().hasOnly(['uid', 'nome', 'cognome', 'corso', 'categoria', 'idDomanda',
+             'testoDomanda', 'motivo', 'testo', 'stato', 'creataIl'])
+        && request.resource.data.stato == 'aperta'
+        && request.resource.data.creataIl == request.time
+        && request.resource.data.testo is string && request.resource.data.testo.size() <= 1000;
+      allow read: if loggato() && (resource.data.uid == request.auth.uid || gestisce(resource.data.corso));
+      allow update: if gestisce(resource.data.corso)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stato', 'gestitaDa', 'gestitaIl', 'nota'])
+        && request.resource.data.gestitaDa == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    // ---------- Registro delle operazioni (solo aggiunta) ----------
+    // Lo scrivono istruttori e responsabile; nessuno può modificarlo o cancellarlo.
+    // Lo legge solo il responsabile.
+    match /registro/{id} {
+      allow create: if isStaff()
+        && request.resource.data.keys().hasOnly(['uid', 'nome', 'ruolo', 'azione', 'dettaglio', 'corso', 'rif', 'quando'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.ruolo == profilo().ruolo
+        && request.resource.data.quando == request.time
+        && request.resource.data.azione is string && request.resource.data.azione.size() <= 40
+        && request.resource.data.get('dettaglio', '') is string
+        && request.resource.data.get('dettaglio', '').size() <= 500;
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+  }
+}

@@ -20,8 +20,9 @@ export async function leggiProfilo(uid) {
 }
 
 // Da chiamare all'apertura di ogni pagina protetta.
-// Rimanda al login chi non è autenticato, ha il profilo disattivato o (con admin:true) non è admin.
-export async function richiediUtente({ admin = false } = {}) {
+// Rimanda al login chi non è autenticato o ha il profilo disattivato.
+// staff:true  → pannello (istruttori e responsabile); admin:true → solo responsabile (livello 2).
+export async function richiediUtente({ admin = false, staff = false } = {}) {
   const user = await utenteCorrente();
   if (!user) { location.replace(urlPagina('index.html')); return new Promise(() => {}); }
   const profilo = await leggiProfilo(user.uid);
@@ -30,12 +31,20 @@ export async function richiediUtente({ admin = false } = {}) {
     location.replace(urlPagina('index.html?msg=' + (profilo ? 'disattivato' : 'profilo')));
     return new Promise(() => {});
   }
-  if (admin && profilo.ruolo !== 'admin') {
-    location.replace(urlPagina('home.html'));
+  if ((admin && !eResponsabile(profilo)) || (staff && !eStaff(profilo))) {
+    location.replace(urlPagina(eStaff(profilo) ? 'admin/index.html' : 'home.html'));
     return new Promise(() => {});
   }
   return { user, profilo };
 }
+
+// Livelli: volontario → istruttore (livello 1, solo i suoi corsi) → admin (livello 2, responsabile)
+export const eResponsabile = p => p?.ruolo === 'admin';
+export const eStaff = p => p?.ruolo === 'admin' || p?.ruolo === 'istruttore';
+export const NOMI_RUOLO = { volontario: 'Volontario', istruttore: 'Istruttore', admin: 'Responsabile' };
+// Corsi che una persona può gestire nel pannello (null = tutti)
+export const corsiGestiti = p => eResponsabile(p) ? null : (p?.ruolo === 'istruttore' ? (p.corsiGestiti || []) : []);
+export const gestisce = (p, corso) => { const g = corsiGestiti(p); return g === null || g.includes(corso); };
 
 export async function esci() {
   sessionStorage.clear();

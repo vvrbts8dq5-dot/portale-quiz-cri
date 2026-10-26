@@ -2,11 +2,16 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Domande — Pannello admin CRI Padova</title>
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="icon" href="../img/icona-180.png">
 <link rel="apple-touch-icon" href="../img/icona-180.png">
+<link rel="manifest" href="../manifest.webmanifest">
+<meta name="theme-color" content="#C8102E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Formazione CRI">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="stylesheet" href="../css/style.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
@@ -40,15 +45,7 @@
 </head>
 <body>
 <div class="wrap largo">
-  <div class="topbar">
-    <img src="../img/emblema-cri-padova.png" alt="CRI">
-    <div><div class="t1">Pannello admin · Domande</div><div class="t2" id="chiSono"></div></div>
-    <div class="spazio"></div>
-    <a class="link" href="index.html" style="margin-right:14px">Utenti e inviti</a>
-    <a class="link" href="statistiche.html" style="margin-right:14px">Statistiche</a>
-    <a class="link" href="esame.html" style="margin-right:14px">Esame PDF</a>
-    <a class="link" href="../home.html">I miei corsi</a>
-  </div>
+  <div class="topbar" id="barraPannello"></div>
 
   <!-- PUBBLICAZIONE -->
   <div class="card">
@@ -142,15 +139,19 @@
 
 <script type="module">
 import { db } from '../js/firebase.js';
-import { richiediUtente, esc, messaggioErrore } from '../js/auth.js';
-import { leggiTuttiCorsi, valida, chiaveTesto, daRigaCsv, aRigaCsv, COLONNE_CSV, pubblicaCategoria } from '../js/domande.js';
+import { richiediUtente, esc, messaggioErrore, corsiGestiti } from '../js/auth.js';
+import { barraPannello, corsiDelPannello, avvisoSenzaCorsi, registra } from '../js/pannello.js';
+import { valida, chiaveTesto, daRigaCsv, aRigaCsv, COLONNE_CSV, pubblicaCategoria } from '../js/domande.js';
 import {
-  collection, doc, getDocs, addDoc, updateDoc, writeBatch, serverTimestamp, Timestamp
+  collection, doc, getDocs, addDoc, updateDoc, writeBatch, query, where, serverTimestamp, Timestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const $ = id => document.getElementById(id);
-const { user, profilo } = await richiediUtente({ admin: true });
-$('chiSono').textContent = `${profilo.nome} ${profilo.cognome} · admin`;
+const { user, profilo } = await richiediUtente({ staff: true });
+barraPannello(profilo, 'domande', 'Domande');
+// L'istruttore legge e modifica solo le domande dei suoi corsi
+const soloCorsi = corsiGestiti(profilo);
+const filtroCorsi = col => soloCorsi === null ? collection(db, col) : query(collection(db, col), where('corso', 'in', soloCorsi));
 
 let corsi = [], categorie = [], perCat = new Map(), domande = [], pacchetti = new Map();
 let mostrate = 50;
@@ -161,7 +162,9 @@ const ms = ts => ts?.toMillis ? ts.toMillis() : 0;
 
 // ---------- caricamento ----------
 async function carica() {
-  const [cs, sd, sp] = await Promise.all([leggiTuttiCorsi(), getDocs(collection(db, 'domande')), getDocs(collection(db, 'pacchetti'))]);
+  const cs = await corsiDelPannello(profilo);
+  if (!cs.length) { document.querySelectorAll('.wrap > .card').forEach(c => c.remove()); $('barraPannello').insertAdjacentHTML('afterend', avvisoSenzaCorsi()); return; }
+  const [sd, sp] = await Promise.all([getDocs(filtroCorsi('domande')), getDocs(filtroCorsi('pacchetti'))]);
   corsi = cs;
   categorie = cs.flatMap(c => c.categorie.map(cat => ({ ...cat, corso: c.id, nomeCorso: c.nome })));
   perCat = new Map(categorie.map(c => [c.id, c]));
@@ -215,6 +218,7 @@ async function pubblica(ids) {
       const n = await pubblicaCategoria(perCat.get(id).corso, id, user.uid);
       pacchetti.set(id, { corso: perCat.get(id).corso, numero: n, pubblicatoIl: Timestamp.now() });
       fatti.push(`${nomeCat(id)} (${n})`);
+      registra('pubblica', `${nomeCat(id)}: ${n} domande nei quiz`, { corso: perCat.get(id).corso, rif: id });
     }
     $('msgPubblica').innerHTML = `<div class="msg ok">Pubblicato: ${esc(fatti.join(', '))}. I volontari vedono le modifiche dal prossimo quiz.</div>`;
   } catch (e) { $('msgPubblica').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; }
@@ -267,6 +271,8 @@ $('btnAttivaBozze').addEventListener('click', async () => {
     }
     const ora = Timestamp.now();
     bozze.forEach(d => { d.stato = 'attiva'; d.aggiornataIl = ora; });
+    registra('domande.attiva', `${bozze.length} bozze rese attive (${[...new Set(bozze.map(d => nomeCat(d.categoria)))].join(', ')})`,
+      { corso: [...new Set(bozze.map(d => d.corso))].length === 1 ? bozze[0].corso : null });
     disegnaPubblica(); disegnaElenco();
   } catch (e) { alert(messaggioErrore(e)); }
 });
@@ -346,9 +352,11 @@ $('edSalva').addEventListener('click', async () => {
     if (inModifica) {
       await updateDoc(doc(db, 'domande', inModifica), { ...dati, ...meta });
       Object.assign(domande.find(d => d.id === inModifica), dati, { aggiornataIl: ora });
+      registra('domanda.modifica', `${nomeCat(dati.categoria)} · ${dati.stato} · ${dati.testo.slice(0, 160)}`, { corso: dati.corso, rif: inModifica });
     } else {
       const r = await addDoc(collection(db, 'domande'), { ...dati, ...meta, creataIl: serverTimestamp() });
       domande.push({ id: r.id, ...dati, aggiornataIl: ora });
+      registra('domanda.crea', `${nomeCat(dati.categoria)} · ${dati.stato} · ${dati.testo.slice(0, 160)}`, { corso: dati.corso, rif: r.id });
     }
     $('modEditor').classList.add('hidden');
     disegnaPubblica(); disegnaElenco();
@@ -365,7 +373,9 @@ function scaricaCsv(righe, nome) {
 }
 $('btnEsporta').addEventListener('click', () => {
   const oggi = new Date().toISOString().slice(0, 10);
-  scaricaCsv(filtrate().map(aRigaCsv), `domande_${$('fCategoria').value || 'tutte'}_${oggi}.csv`);
+  const L = filtrate();
+  scaricaCsv(L.map(aRigaCsv), `domande_${$('fCategoria').value || 'tutte'}_${oggi}.csv`);
+  registra('domande.esporta', `${L.length} domande · ${$('fCategoria').value ? nomeCat($('fCategoria').value) : 'tutti gli argomenti'}`);
 });
 $('btnModello').addEventListener('click', () => scaricaCsv([
   { categoria: 'tssa_cardio', tipo: 'multipla', testo: 'Testo della domanda a risposta multipla', opzione_a: 'Prima risposta', opzione_b: 'Seconda risposta', opzione_c: 'Terza risposta', opzione_d: 'Quarta risposta', corretta: 'B', difficolta: 'medio', spiegazione: 'Perché la B è corretta' },
@@ -446,6 +456,7 @@ $('impConferma').addEventListener('click', async () => {
       }
       await b.commit();
     }
+    registra('domande.importa', `${righe.length} domande come bozze (${[...new Set(righe.map(r => nomeCat(r.domanda.categoria)))].join(', ')})`);
     $('impMsg').innerHTML = `<div class="msg ok">${righe.length} domande importate come bozze. Controllale nell'elenco (filtro "Bozze"), poi rendile attive e pubblica.</div>`;
     daImportare = [];
     $('fStato').value = 'bozza'; mostrate = 50;

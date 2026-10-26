@@ -2,11 +2,16 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Il mio profilo — Portale Formazione CRI Padova</title>
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="icon" href="img/icona-180.png">
 <link rel="apple-touch-icon" href="img/icona-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#C8102E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Formazione CRI">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -43,15 +48,39 @@
     <div id="msgPwd"></div>
   </div>
 
+  <div class="card" id="cardInstalla">
+    <div class="card-title">App sul telefono</div>
+    <p class="nota" id="testoInstalla" style="margin-bottom:14px">Puoi aggiungere il portale alla schermata Home e aprirlo come un'app.</p>
+    <button class="btn sec hidden" type="button" id="btnInstalla">Installa l'app</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">I miei dati</div>
+    <p class="nota" style="margin-bottom:14px">Scarica una copia di tutto ciò che il portale conserva su di te: profilo e risultati dei quiz.
+      Leggi l'<a href="privacy.html">informativa</a> per sapere come sono usati.</p>
+    <button class="btn sec" type="button" id="btnDati">Scarica i miei dati</button>
+    <div id="msgDati"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Elimina l'account</div>
+    <p class="nota" style="margin-bottom:14px">Cancella il profilo e tutti i tuoi risultati. Non si può annullare: per tornare dovrai registrarti di nuovo con un codice invito.</p>
+    <div class="campo hidden" id="boxPwdElimina"><label for="pwdElimina">Per sicurezza, scrivi la tua password</label>
+      <input type="password" id="pwdElimina" autocomplete="current-password"></div>
+    <button class="btn sec" type="button" id="btnElimina" style="color:var(--red-dark)">Elimina il mio account</button>
+    <div id="msgElimina"></div>
+  </div>
+
   <button class="btn sec" type="button" id="btnEsci">Esci</button>
+  <div class="footer"><a href="privacy.html" style="color:inherit">Informativa privacy</a></div>
 </div>
 
 <script type="module">
 import { db, auth } from './js/firebase.js';
 import { richiediUtente, esci, esc, messaggioErrore, urlPagina } from './js/auth.js';
 import { leggiCorsi } from './js/domande.js';
-import { doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { sendPasswordResetEmail, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { doc, updateDoc, getDocs, collection, query, where, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { sendPasswordResetEmail, updateProfile, deleteUser, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const $ = id => document.getElementById(id);
 $('btnEsci').onclick = esci;
@@ -88,6 +117,53 @@ $('btnPassword').addEventListener('click', async () => {
     $('msgPwd').innerHTML = `<div class="msg ok">Email inviata a <strong>${esc(profilo.email)}</strong>. Controlla anche lo spam.</div>`;
   } catch (e) { $('msgPwd').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; $('btnPassword').disabled = false; }
 });
+
+// ---------- i miei dati ----------
+const mieiEsiti = async () => (await getDocs(query(collection(db, 'esiti'), where('uid', '==', user.uid)))).docs;
+const jsonData = v => v && typeof v.toDate === 'function' ? v.toDate().toISOString() : v;
+$('btnDati').addEventListener('click', async () => {
+  try {
+    const esiti = (await mieiEsiti()).map(d => ({ id: d.id, ...d.data() }));
+    const { uid, ...prof } = profilo;
+    const testo = JSON.stringify({ esportatoIl: new Date().toISOString(), profilo: prof, risultati: esiti }, (k, v) => jsonData(v), 2);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([testo], { type: 'application/json' }));
+    a.download = `miei_dati_portale_formazione_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+  } catch (e) { $('msgDati').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; }
+});
+
+// ---------- eliminazione account ----------
+$('btnElimina').addEventListener('click', async () => {
+  const box = $('boxPwdElimina');
+  if (box.classList.contains('hidden')) { box.classList.remove('hidden'); $('pwdElimina').focus(); $('btnElimina').textContent = 'Conferma eliminazione'; return; }
+  if (!$('pwdElimina').value) return $('pwdElimina').focus();
+  if (!confirm('Eliminare definitivamente il tuo account e tutti i tuoi risultati?')) return;
+  $('btnElimina').disabled = true;
+  try {
+    await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, $('pwdElimina').value));
+    const esiti = await mieiEsiti();
+    for (let i = 0; i < esiti.length; i += 400) {
+      const b = writeBatch(db); esiti.slice(i, i + 400).forEach(d => b.delete(d.ref)); await b.commit();
+    }
+    const b = writeBatch(db); b.delete(doc(db, 'utenti', user.uid)); await b.commit();
+    await deleteUser(user);
+    sessionStorage.clear();
+    location.replace(urlPagina('index.html?msg=eliminato'));
+  } catch (e) {
+    $('msgElimina').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`;
+    $('btnElimina').disabled = false;
+  }
+});
+
+// ---------- installazione come app ----------
+const installata = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+if (installata) $('cardInstalla').classList.add('hidden');
+else if (/iphone|ipad|ipod/i.test(navigator.userAgent)) $('testoInstalla').innerHTML = 'Su iPhone: apri questa pagina in <strong>Safari</strong>, tocca <strong>Condividi</strong> e poi <strong>Aggiungi alla schermata Home</strong>.';
+else $('testoInstalla').innerHTML = 'Dal menu del browser scegli <strong>Installa app</strong> o <strong>Aggiungi a schermata Home</strong>.';
+let richiesta = null;
+addEventListener('beforeinstallprompt', ev => { ev.preventDefault(); richiesta = ev; $('btnInstalla').classList.remove('hidden'); });
+$('btnInstalla').addEventListener('click', async () => { if (!richiesta) return; richiesta.prompt(); await richiesta.userChoice; richiesta = null; $('btnInstalla').classList.add('hidden'); });
 </script>
 </body>
 </html>

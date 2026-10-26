@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Segnalazioni — Pannello formazione CRI Padova</title>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="../img/icona-180.png">
+<link rel="apple-touch-icon" href="../img/icona-180.png">
+<link rel="manifest" href="../manifest.webmanifest">
+<meta name="theme-color" content="#C8102E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Formazione CRI">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .segn { background: var(--bg2); border-radius: 20px; box-shadow: var(--shadow); padding: 18px 20px; margin-bottom: 12px; }
+  .segn .testa { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--text2); }
+  .segn .dom { font-weight: 700; margin: 10px 0 6px; line-height: 1.4; }
+  .segn .motivo { font-size: 14px; line-height: 1.5; background: var(--amber-bg); color: var(--text); border-radius: 12px; padding: 10px 12px; }
+  .segn .chiusa { font-size: 13px; color: var(--text2); margin-top: 8px; }
+  .segn .azioni { margin-top: 12px; }
+  .filtri { display: flex; gap: 10px; flex-wrap: wrap; }
+  .filtri .campo { margin: 0; min-width: 180px; }
+  .filtri select { padding: 10px 12px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap largo">
+  <div class="topbar" id="barraPannello"></div>
+
+  <div class="card">
+    <p class="nota" style="margin-bottom:12px">I volontari segnalano qui le domande che ritengono sbagliate o poco chiare, direttamente dal quiz.
+      Apri la domanda, correggila se serve e ripubblica l'argomento; poi chiudi la segnalazione.</p>
+    <div class="filtri">
+      <div class="campo"><label for="fStato">Stato</label><select id="fStato"><option value="aperta" selected>Da gestire</option><option value="chiusa">Chiuse</option><option value="">Tutte</option></select></div>
+      <div class="campo"><label for="fCorso">Corso</label><select id="fCorso"><option value="">Tutti</option></select></div>
+    </div>
+  </div>
+  <div id="elenco"><div class="card"><p class="nota">Caricamento…</p></div></div>
+</div>
+
+<!-- Chiusura -->
+<div class="overlay hidden" id="modChiudi">
+  <div class="modale">
+    <h3>Chiudi la segnalazione</h3>
+    <div class="campo"><label for="chiEsito">Esito</label>
+      <select id="chiEsito"><option value="corretta">Domanda corretta</option><option value="nessun errore">Nessun errore: la domanda va bene</option><option value="archiviata">Domanda tolta dai quiz</option></select></div>
+    <div class="campo"><label for="chiNota">Nota (facoltativa)</label><input type="text" id="chiNota" maxlength="300" placeholder="es. corretta l'opzione C"></div>
+    <div class="azioni"><button class="btn piccolo" id="btnConferma" type="button">Chiudi segnalazione</button>
+      <button class="btn sec piccolo" id="btnAnnulla" type="button">Annulla</button></div>
+    <div id="msgChiudi"></div>
+  </div>
+</div>
+
+<script type="module">
+import { db } from '../js/firebase.js';
+import { richiediUtente, esc, messaggioErrore, corsiGestiti } from '../js/auth.js';
+import { barraPannello, corsiDelPannello, avvisoSenzaCorsi, registra } from '../js/pannello.js';
+import { collection, doc, getDocs, updateDoc, query, where, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const $ = id => document.getElementById(id);
+const { user, profilo } = await richiediUtente({ staff: true });
+barraPannello(profilo, 'segnalazioni', 'Segnalazioni');
+const soloCorsi = corsiGestiti(profilo);
+
+const corsi = await corsiDelPannello(profilo);
+if (!corsi.length) { document.querySelector('.wrap > .card').remove(); $('elenco').innerHTML = avvisoSenzaCorsi(); throw new Error('nessun corso'); }
+const nomeCorso = id => corsi.find(c => c.id === id)?.nome || id;
+const nomeCat = id => corsi.flatMap(c => c.categorie).find(c => c.id === id)?.nome || id;
+$('fCorso').innerHTML += corsi.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+const ms = ts => ts?.toMillis ? ts.toMillis() : 0;
+const dataOra = ts => ts ? ts.toDate().toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+const MOTIVI = { risposta: 'La risposta indicata come giusta è sbagliata', testo: 'Il testo non è chiaro', opzioni: 'Le risposte sono ambigue', altro: 'Altro' };
+
+let segn = [];
+async function carica() {
+  const q = soloCorsi === null ? collection(db, 'segnalazioni') : query(collection(db, 'segnalazioni'), where('corso', 'in', soloCorsi));
+  segn = (await getDocs(q)).docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => ms(b.creataIl) - ms(a.creataIl));
+  disegna();
+}
+
+function disegna() {
+  const fs = $('fStato').value, fc = $('fCorso').value;
+  const L = segn.filter(s => (!fs || s.stato === fs) && (!fc || s.corso === fc));
+  $('elenco').innerHTML = L.length ? L.map(s => `<div class="segn">
+    <div class="testa"><span>${esc(nomeCorso(s.corso))} · ${esc(nomeCat(s.categoria))}</span><span>${esc(s.cognome)} ${esc(s.nome)} · ${dataOra(s.creataIl)}</span></div>
+    <div class="dom">${esc(s.testoDomanda)}</div>
+    <div class="motivo"><strong>${esc(MOTIVI[s.motivo] || s.motivo)}</strong>${s.testo ? ' — ' + esc(s.testo) : ''}</div>
+    ${s.stato === 'chiusa' ? `<div class="chiusa">Chiusa ${dataOra(s.gestitaIl)}${s.nota ? ' · ' + esc(s.nota) : ''}</div>` : ''}
+    <div class="azioni">
+      <a class="btn sec piccolo" href="domande.html?id=${encodeURIComponent(s.idDomanda)}" style="text-decoration:none">Apri la domanda</a>
+      ${s.stato === 'aperta' ? `<button class="btn piccolo" data-chiudi="${esc(s.id)}" type="button">Chiudi</button>` : ''}
+    </div></div>`).join('')
+    : `<div class="card"><p class="nota">${fs === 'aperta' ? 'Nessuna segnalazione da gestire.' : 'Nessuna segnalazione.'}</p></div>`;
+}
+['fStato', 'fCorso'].forEach(id => $(id).addEventListener('input', disegna));
+
+let inChiusura = null;
+$('elenco').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-chiudi]'); if (!b) return;
+  inChiusura = segn.find(s => s.id === b.dataset.chiudi);
+  $('chiNota').value = ''; $('msgChiudi').innerHTML = '';
+  $('modChiudi').classList.remove('hidden');
+});
+$('btnAnnulla').onclick = () => $('modChiudi').classList.add('hidden');
+$('btnConferma').addEventListener('click', async () => {
+  const s = inChiusura;
+  const nota = `${$('chiEsito').value}${$('chiNota').value.trim() ? ': ' + $('chiNota').value.trim() : ''}`;
+  $('btnConferma').disabled = true;
+  try {
+    await updateDoc(doc(db, 'segnalazioni', s.id), { stato: 'chiusa', gestitaDa: user.uid, gestitaIl: serverTimestamp(), nota });
+    registra('segnalazione.gestisci', `${nomeCat(s.categoria)} · ${s.testoDomanda.slice(0, 120)} → ${nota}`, { corso: s.corso, rif: s.idDomanda });
+    Object.assign(s, { stato: 'chiusa', gestitaIl: Timestamp.now(), nota });
+    $('modChiudi').classList.add('hidden');
+    disegna();
+  } catch (e) { $('msgChiudi').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; }
+  $('btnConferma').disabled = false;
+});
+
+try { await carica(); }
+catch (e) { $('elenco').innerHTML = `<div class="card"><div class="msg err">${esc(messaggioErrore(e))}</div></div>`; }
+</script>
+</body>
+</html>

@@ -175,3 +175,24 @@ td code { font-family: 'DM Mono', monospace; font-size: 13px; }
 .riquadro-area .sub { font-size: 14px; color: var(--text2); }
 .titolo-area { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; letter-spacing: 1px;
   text-transform: uppercase; padding: 6px 12px; border-radius: 999px; margin-bottom: 10px; }
+
+/* Menu del pannello formazione */
+.menu-pannello { display: flex; flex-wrap: wrap; gap: 4px; background: var(--bg2); border-radius: 999px; padding: 4px; box-shadow: var(--shadow); }
+.menu-pannello a, .menu-pannello button { border: none; background: none; padding: 8px 13px; border-radius: 999px; cursor: pointer;
+  font: 700 13px 'Figtree', sans-serif; color: var(--text3); text-decoration: none; white-space: nowrap; }
+.menu-pannello a:hover, .menu-pannello button:hover { background: var(--campo); }
+.menu-pannello a.attiva { background: var(--red); color: #fff; }
+.menu-pannello a.riservata { color: var(--blue); }
+.menu-pannello a.riservata.attiva { background: var(--blue); color: #fff; }
+@media (max-width: 720px) {
+  .menu-pannello { width: 100%; border-radius: 18px; }
+  .menu-pannello a, .menu-pannello button { flex: 1 1 auto; text-align: center; }
+}
+.badge.istr { background: var(--blue-tint); color: var(--blue); }
+
+/* Telefoni con notch e app installata a schermo intero */
+body { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right));
+  padding-top: max(22px, env(safe-area-inset-top)); padding-bottom: max(48px, env(safe-area-inset-bottom)); }
+/* Testo ingrandito dal telefono: niente zoom automatico su iOS e righe che vanno a capo */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+.voce .tit, .riquadro-area .nome { overflow-wrap: anywhere; }

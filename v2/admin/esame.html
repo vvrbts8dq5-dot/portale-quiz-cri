@@ -2,11 +2,16 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Esame PDF — Pannello admin CRI Padova</title>
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="icon" href="../img/icona-180.png">
 <link rel="apple-touch-icon" href="../img/icona-180.png">
+<link rel="manifest" href="../manifest.webmanifest">
+<meta name="theme-color" content="#C8102E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Formazione CRI">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="stylesheet" href="../css/style.css">
 <style>
   td.num, th.num { text-align: right; }
@@ -50,15 +55,7 @@
 </head>
 <body>
 <div class="wrap largo">
-  <div class="topbar no-stampa">
-    <img src="../img/emblema-cri-padova.png" alt="CRI">
-    <div><div class="t1">Pannello admin · Esame PDF</div><div class="t2" id="chiSono"></div></div>
-    <div class="spazio"></div>
-    <a class="link" href="index.html" style="margin-right:14px">Utenti e inviti</a>
-    <a class="link" href="domande.html" style="margin-right:14px">Domande</a>
-    <a class="link" href="statistiche.html" style="margin-right:14px">Statistiche</a>
-    <a class="link" href="../home.html">I miei corsi</a>
-  </div>
+  <div class="topbar no-stampa" id="barraPannello"></div>
 
   <div class="card no-stampa">
     <div class="card-title">Impostazioni</div>
@@ -99,21 +96,24 @@
 
 <script type="module">
 import { db } from '../js/firebase.js';
-import { richiediUtente, esc, messaggioErrore } from '../js/auth.js';
-import { leggiTuttiCorsi } from '../js/domande.js';
+import { richiediUtente, esc, messaggioErrore, corsiGestiti } from '../js/auth.js';
+import { barraPannello, corsiDelPannello, avvisoSenzaCorsi, registra } from '../js/pannello.js';
 import { mescola, preparaDomanda } from '../js/quiz-engine.js';
-import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const $ = id => document.getElementById(id);
-const { profilo } = await richiediUtente({ admin: true });
-$('chiSono').textContent = `${profilo.nome} ${profilo.cognome} · admin`;
+const { profilo } = await richiediUtente({ staff: true });
+barraPannello(profilo, 'esame', 'Esame PDF');
+const soloCorsi = corsiGestiti(profilo);
 
 let corsi = [], pacchetti = new Map(), modo = 'auto', scelte = new Set();
 $('dataEsame').value = new Date().toISOString().slice(0, 10);
 const corso = () => corsi.find(c => c.id === $('selCorso').value);
 
 async function carica() {
-  const [cs, sp] = await Promise.all([leggiTuttiCorsi(), getDocs(collection(db, 'pacchetti'))]);
+  const cs = await corsiDelPannello(profilo);
+  if (!cs.length) { document.querySelectorAll('.wrap > .card').forEach(c => c.remove()); $('barraPannello').insertAdjacentHTML('afterend', avvisoSenzaCorsi()); return; }
+  const sp = await getDocs(soloCorsi === null ? collection(db, 'pacchetti') : query(collection(db, 'pacchetti'), where('corso', 'in', soloCorsi)));
   corsi = cs;
   sp.docs.forEach(d => pacchetti.set(d.id, d.data().domande.map(q => ({ ...q, categoria: d.id }))));
   $('selCorso').innerHTML = cs.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('');
@@ -179,6 +179,9 @@ $('btnGenera').addEventListener('click', () => {
   if ($('mescolaArgomenti').checked) domande = mescola(domande);
   domande = domande.map(d => $('mescolaRisposte').checked ? preparaDomanda(d) : { ...d, indici: d.opzioni.map((_, i) => i) });
   disegnaFoglio(c, domande);
+  const args = [...new Set(domande.map(d => c.categorie.find(x => x.id === d.categoria)?.nome).filter(Boolean))];
+  registra('esame.stampa', `${$('titolo').value} · ${domande.length} domande (${modo === 'auto' ? 'estrazione automatica' : 'scelta manuale'}) · ${args.join(', ')}`,
+    { corso: c.id, rif: domande.map(d => d.id).join(',') });
 });
 
 function disegnaFoglio(c, domande) {

@@ -2,35 +2,23 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pannello admin — Portale Formazione CRI Padova</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Codici invito — Portale Formazione CRI Padova</title>
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="icon" href="../img/icona-180.png">
 <link rel="apple-touch-icon" href="../img/icona-180.png">
+<link rel="manifest" href="../manifest.webmanifest">
+<meta name="theme-color" content="#C8102E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Formazione CRI">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="stylesheet" href="../css/style.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 </head>
 <body>
 <div class="wrap largo">
 
-  <div class="topbar no-stampa">
-    <img src="../img/emblema-cri-padova.png" alt="CRI">
-    <div>
-      <div class="t1">Pannello admin</div>
-      <div class="t2" id="chiSono">Comitato di Padova · Formazione</div>
-    </div>
-    <div class="spazio"></div>
-    <a class="link" href="domande.html" style="margin-right:14px">Domande</a>
-    <a class="link" href="statistiche.html" style="margin-right:14px">Statistiche</a>
-    <a class="link" href="esame.html" style="margin-right:14px">Esame PDF</a>
-    <a class="link" href="../home.html" style="margin-right:16px">I miei corsi</a>
-    <button class="link" id="btnEsci" type="button">Esci</button>
-  </div>
-
-  <div class="schede no-stampa" style="max-width:360px">
-    <button id="tabInviti" class="attiva" type="button">Codici invito</button>
-    <button id="tabUtenti" type="button">Utenti</button>
-  </div>
+  <div class="topbar no-stampa" id="barraPannello"></div>
 
   <!-- ================= INVITI ================= -->
   <section id="sezInviti" class="no-stampa">
@@ -62,26 +50,6 @@
     </div>
   </section>
 
-  <!-- ================= UTENTI ================= -->
-  <section id="sezUtenti" class="hidden no-stampa">
-    <div class="card">
-      <div class="riga" style="align-items:flex-end">
-        <div class="campo" style="margin-bottom:0">
-          <label for="cercaUtente">Cerca</label>
-          <input type="text" id="cercaUtente" placeholder="Nome, cognome o email">
-        </div>
-        <div class="campo" style="margin-bottom:0">
-          <label for="filtroCorso">Corso</label>
-          <select id="filtroCorso"><option value="">Tutti</option></select>
-        </div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title" id="titoloUtenti">Utenti</div>
-      <div class="tabella-wrap" id="tabUtentiBody"><p class="nota">Caricamento…</p></div>
-    </div>
-  </section>
-
   <div class="footer no-stampa">Portale riservato ai volontari CRI · v2</div>
 </div>
 
@@ -105,69 +73,56 @@
   </div>
 </div>
 
-<!-- Finestra modifica corsi utente -->
-<div class="overlay hidden" id="modaleCorsi">
-  <div class="modale">
-    <h3 id="corsiTitolo">Corsi</h3>
-    <div id="corsiScelte"></div>
-    <div class="azioni" style="margin-top:18px">
-      <button class="btn piccolo" id="btnSalvaCorsi" type="button">Salva</button>
-      <button class="btn sec piccolo" id="btnAnnullaCorsi" type="button">Annulla</button>
-    </div>
-    <div id="msgCorsi"></div>
-  </div>
-</div>
-
 <script type="module">
 import { db, CORSI } from '../js/firebase.js';
-import { richiediUtente, esci, esc, messaggioErrore, urlPagina } from '../js/auth.js';
+import { richiediUtente, esc, messaggioErrore, urlPagina, eResponsabile } from '../js/auth.js';
+import { barraPannello, corsiDelPannello, avvisoSenzaCorsi, registra } from '../js/pannello.js';
 import {
-  collection, doc, getDoc, getDocs, setDoc, updateDoc, serverTimestamp, Timestamp
+  collection, doc, getDoc, getDocs, setDoc, updateDoc, query, where, serverTimestamp, Timestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const $ = id => document.getElementById(id);
-$('btnEsci').onclick = esci;
+const { user, profilo } = await richiediUtente({ staff: true });
+barraPannello(profilo, 'inviti', 'Codici invito');
+const responsabile = eResponsabile(profilo);
 
-const { user, profilo } = await richiediUtente({ admin: true });
-$('chiSono').textContent = `${profilo.nome} ${profilo.cognome} · admin`;
+const corsiMiei = await corsiDelPannello(profilo);
+if (!corsiMiei.length) { $('sezInviti').innerHTML = avvisoSenzaCorsi(); throw new Error('nessun corso'); }
+const nomeCorso = id => corsiMiei.find(c => c.id === id)?.nome || CORSI[id]?.label || id;
+const ordineCorsi = corsiMiei.map(c => c.id);
 
-let utenti = [];
 let inviti = [];
+let registrati = new Map(); // codice → numero di registrati (null se non disponibile)
 
-const ordineCorsi = Object.keys(CORSI);
-const badgeCorsi = lista => (lista || []).map(c => `<span class="badge neutro">${esc(CORSI[c]?.label || c)}</span>`).join(' ');
+const badgeCorsi = lista => (lista || []).map(c => `<span class="badge neutro">${esc(nomeCorso(c))}</span>`).join(' ');
 const dataIt = ts => ts ? ts.toDate().toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
 const caselleCorsi = (nomeGruppo, scelti = []) => ordineCorsi.map(c => `
-  <label class="check"><input type="checkbox" name="${nomeGruppo}" value="${c}" ${scelti.includes(c) ? 'checked' : ''}> ${esc(CORSI[c].label)}</label>`).join('');
+  <label class="check"><input type="checkbox" name="${nomeGruppo}" value="${c}" ${scelti.includes(c) || ordineCorsi.length === 1 ? 'checked' : ''}> ${esc(nomeCorso(c))}</label>`).join('');
 const corsiSelezionati = nomeGruppo =>
   [...document.querySelectorAll(`input[name="${nomeGruppo}"]:checked`)].map(i => i.value)
     .sort((a, b) => ordineCorsi.indexOf(a) - ordineCorsi.indexOf(b));
 
-// ---------- schede ----------
-function scheda(nome) {
-  const u = nome === 'utenti';
-  $('tabInviti').classList.toggle('attiva', !u);
-  $('tabUtenti').classList.toggle('attiva', u);
-  $('sezInviti').classList.toggle('hidden', u);
-  $('sezUtenti').classList.toggle('hidden', !u);
-}
-$('tabInviti').onclick = () => scheda('inviti');
-$('tabUtenti').onclick = () => scheda('utenti');
-
 // ---------- caricamento ----------
+// Il responsabile vede tutti i codici; l'istruttore quelli che ha creato lui
 async function caricaTutto() {
   try {
-    const [su, si] = await Promise.all([getDocs(collection(db, 'utenti')), getDocs(collection(db, 'inviti'))]);
-    utenti = su.docs.map(d => ({ uid: d.id, ...d.data() }));
+    const q = responsabile ? collection(db, 'inviti') : query(collection(db, 'inviti'), where('creatoDa', '==', user.uid));
+    const si = await getDocs(q);
     inviti = si.docs.map(d => ({ codice: d.id, ...d.data() }));
-    utenti.sort((a, b) => `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`, 'it'));
     inviti.sort((a, b) => (b.creatoIl?.toMillis() || 0) - (a.creatoIl?.toMillis() || 0));
+    registrati = new Map();
+    if (responsabile) {
+      const su = await getDocs(collection(db, 'utenti'));
+      su.docs.forEach(d => { const c = d.data().codiceInvito; if (c) registrati.set(c, (registrati.get(c) || 0) + 1); });
+    } else {
+      await Promise.all(inviti.map(async i => {
+        try { registrati.set(i.codice, (await getDocs(query(collection(db, 'utenti'), where('codiceInvito', '==', i.codice)))).size); }
+        catch { registrati.set(i.codice, null); }
+      }));
+    }
     disegnaInviti();
-    disegnaUtenti();
   } catch (e) {
-    const m = `<div class="msg err">${esc(messaggioErrore(e))}</div>`;
-    $('tabInvitiBody').innerHTML = m;
-    $('tabUtentiBody').innerHTML = m;
+    $('tabInvitiBody').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`;
   }
 }
 
@@ -199,15 +154,19 @@ $('btnCreaInvito').addEventListener('click', async () => {
   try {
     let codice;
     do { codice = generaCodice(corsi); } while ((await getDoc(doc(db, 'inviti', codice))).exists());
+    const note = $('nuovoNote').value.trim();
     await setDoc(doc(db, 'inviti', codice), {
       corsi, attivo: true,
       scadenza: Timestamp.fromDate(scadenza),
-      note: $('nuovoNote').value.trim(),
+      note,
       creatoIl: serverTimestamp(),
-      creatoDa: user.uid
+      creatoDa: user.uid,
+      creatoDaNome: `${profilo.nome} ${profilo.cognome}`
     });
+    registra('invito.crea', `${codice} · ${corsi.map(nomeCorso).join(', ')}${note ? ' · ' + note : ''} · scade ${scadenza.toLocaleDateString('it-IT')}`,
+      { corso: corsi.length === 1 ? corsi[0] : null, rif: codice });
     $('nuovoNote').value = '';
-    document.querySelectorAll('input[name="nuovoCorso"]').forEach(i => i.checked = false);
+    if (ordineCorsi.length > 1) document.querySelectorAll('input[name="nuovoCorso"]').forEach(i => i.checked = false);
     await caricaTutto();
     apriQr(codice);
   } catch (e) {
@@ -222,9 +181,9 @@ function disegnaInviti() {
     return;
   }
   const ora = Date.now();
-  let h = `<table><thead><tr><th>Codice</th><th>Corsi</th><th>Note</th><th>Scadenza</th><th>Registrati</th><th>Stato</th><th></th></tr></thead><tbody>`;
+  let h = `<table><thead><tr><th>Codice</th><th>Corsi</th><th>Note</th>${responsabile ? '<th>Creato da</th>' : ''}<th>Scadenza</th><th>Registrati</th><th>Stato</th><th></th></tr></thead><tbody>`;
   for (const i of inviti) {
-    const usi = utenti.filter(u => u.codiceInvito === i.codice).length;
+    const usi = registrati.get(i.codice);
     const scaduto = i.scadenza && i.scadenza.toMillis() < ora;
     const stato = !i.attivo ? '<span class="badge no">Disattivato</span>'
       : scaduto ? '<span class="badge neutro">Scaduto</span>' : '<span class="badge si">Attivo</span>';
@@ -232,8 +191,9 @@ function disegnaInviti() {
       <td><code>${esc(i.codice)}</code></td>
       <td>${badgeCorsi(i.corsi)}</td>
       <td>${esc(i.note || '')}</td>
+      ${responsabile ? `<td>${esc(i.creatoDaNome || (i.creatoDa === user.uid ? 'tu' : '—'))}</td>` : ''}
       <td>${dataIt(i.scadenza)}</td>
-      <td>${usi}</td>
+      <td>${usi === null || usi === undefined ? (usi === null ? '—' : 0) : usi}</td>
       <td>${stato}</td>
       <td><div class="azioni">
         <button class="btn sec piccolo" data-qr="${esc(i.codice)}" type="button">QR</button>
@@ -253,6 +213,7 @@ $('tabInvitiBody').addEventListener('click', async ev => {
   b.disabled = true;
   try {
     await updateDoc(doc(db, 'inviti', b.dataset.attiva), { attivo: attiva });
+    registra(attiva ? 'invito.attiva' : 'invito.disattiva', b.dataset.attiva, { rif: b.dataset.attiva });
     await caricaTutto();
   } catch (e) { alert(messaggioErrore(e)); b.disabled = false; }
 });
@@ -266,7 +227,7 @@ function apriQr(codice) {
   q.addData(linkQr);
   q.make();
   $('qrImmagine').innerHTML = q.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
-  $('qrTitolo').textContent = (i?.corsi || []).map(c => CORSI[c]?.label || c).join(' · ');
+  $('qrTitolo').textContent = (i?.corsi || []).map(nomeCorso).join(' · ');
   $('qrCodice').textContent = codice;
   $('qrScadenza').textContent = i?.scadenza ? `Valido fino al ${dataIt(i.scadenza)}` : '';
   $('qrLink').textContent = linkQr;
@@ -279,89 +240,6 @@ $('btnCopiaQr').onclick = async () => {
   catch { $('btnCopiaQr').textContent = 'Copia non riuscita'; }
   setTimeout(() => $('btnCopiaQr').textContent = 'Copia link', 2000);
 };
-
-// ================= UTENTI =================
-$('filtroCorso').innerHTML += ordineCorsi.map(c => `<option value="${c}">${esc(CORSI[c].label)}</option>`).join('');
-$('cercaUtente').addEventListener('input', disegnaUtenti);
-$('filtroCorso').addEventListener('change', disegnaUtenti);
-
-function disegnaUtenti() {
-  const q = $('cercaUtente').value.trim().toLowerCase();
-  const fc = $('filtroCorso').value;
-  const lista = utenti.filter(u =>
-    (!q || `${u.nome} ${u.cognome} ${u.email}`.toLowerCase().includes(q)) &&
-    (!fc || (u.corsi || []).includes(fc)));
-  $('titoloUtenti').textContent = `Utenti (${lista.length} di ${utenti.length})`;
-  if (!lista.length) {
-    $('tabUtentiBody').innerHTML = `<p class="nota">${utenti.length ? 'Nessun utente corrisponde ai filtri.' : 'Nessun utente registrato.'}</p>`;
-    return;
-  }
-  let h = `<table><thead><tr><th>Nome</th><th>Email</th><th>Corsi</th><th>Ruolo</th><th>Stato</th><th>Registrato</th><th></th></tr></thead><tbody>`;
-  for (const u of lista) {
-    const io = u.uid === user.uid;
-    h += `<tr>
-      <td><strong>${esc(u.cognome)}</strong> ${esc(u.nome)}${io ? ' <span class="nota">(tu)</span>' : ''}</td>
-      <td>${esc(u.email)}</td>
-      <td>${badgeCorsi(u.corsi)}</td>
-      <td>${u.ruolo === 'admin' ? '<span class="badge admin">Admin</span>' : '<span class="badge neutro">Volontario</span>'}</td>
-      <td>${u.attivo ? '<span class="badge si">Attivo</span>' : '<span class="badge no">Disattivato</span>'}</td>
-      <td>${dataIt(u.creatoIl)}</td>
-      <td><div class="azioni">
-        <button class="btn sec piccolo" data-corsi="${u.uid}" type="button">Corsi</button>
-        ${io ? '' : `<button class="btn sec piccolo" data-stato="${u.uid}" type="button">${u.attivo ? 'Disattiva' : 'Riattiva'}</button>
-        <button class="btn sec piccolo" data-ruolo="${u.uid}" type="button">${u.ruolo === 'admin' ? 'Togli admin' : 'Rendi admin'}</button>`}
-      </div></td></tr>`;
-  }
-  $('tabUtentiBody').innerHTML = h + '</tbody></table>';
-}
-
-$('tabUtentiBody').addEventListener('click', async ev => {
-  const bc = ev.target.closest('[data-corsi]');
-  if (bc) return apriCorsi(bc.dataset.corsi);
-  const bs = ev.target.closest('[data-stato]');
-  const br = ev.target.closest('[data-ruolo]');
-  const b = bs || br;
-  if (!b) return;
-  const u = utenti.find(x => x.uid === (bs ? bs.dataset.stato : br.dataset.ruolo));
-  let modifica, domanda;
-  if (bs) {
-    modifica = { attivo: !u.attivo };
-    domanda = u.attivo ? `Disattivare ${u.nome} ${u.cognome}? Non potrà più accedere finché non lo riattivi.` : null;
-  } else {
-    const admin = u.ruolo !== 'admin';
-    modifica = { ruolo: admin ? 'admin' : 'volontario' };
-    domanda = admin
-      ? `Rendere ${u.nome} ${u.cognome} amministratore? Potrà gestire utenti, codici e domande.`
-      : `Togliere a ${u.nome} ${u.cognome} i permessi di amministratore?`;
-  }
-  if (domanda && !confirm(domanda)) return;
-  b.disabled = true;
-  try {
-    await updateDoc(doc(db, 'utenti', u.uid), modifica);
-    await caricaTutto();
-  } catch (e) { alert(messaggioErrore(e)); b.disabled = false; }
-});
-
-let uidCorsi = null;
-function apriCorsi(uid) {
-  const u = utenti.find(x => x.uid === uid);
-  uidCorsi = uid;
-  $('corsiTitolo').textContent = `Corsi di ${u.nome} ${u.cognome}`;
-  $('corsiScelte').innerHTML = caselleCorsi('corsoUtente', u.corsi || []);
-  $('msgCorsi').innerHTML = '';
-  $('modaleCorsi').classList.remove('hidden');
-}
-$('btnAnnullaCorsi').onclick = () => $('modaleCorsi').classList.add('hidden');
-$('btnSalvaCorsi').addEventListener('click', async () => {
-  const btn = $('btnSalvaCorsi');
-  btn.disabled = true;
-  try {
-    await updateDoc(doc(db, 'utenti', uidCorsi), { corsi: corsiSelezionati('corsoUtente') });
-    $('modaleCorsi').classList.add('hidden');
-    await caricaTutto();
-  } catch (e) { $('msgCorsi').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; }
-  btn.disabled = false;
-});
 
 await caricaTutto();
 </script>

@@ -2,11 +2,16 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>I miei quiz — Portale Formazione CRI Padova</title>
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="icon" href="img/icona-180.png">
 <link rel="apple-touch-icon" href="img/icona-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#C8102E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Formazione CRI">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="stylesheet" href="css/style.css">
 <style>
   .kpi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
@@ -68,7 +73,7 @@ try {
     $('elenco').innerHTML = esiti.slice(0, 50).map(e => {
       const data = e.timestamp ? e.timestamp.toDate().toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
       return `<div class="riga-quiz">
-        <div><div class="tit">${esc(e.categoriaNome)}</div><div class="sub">${esc(nomeCorso[e.corso] || e.corso)} · ${data}${e.tempoScaduto ? ' · tempo scaduto' : ''}</div></div>
+        <div><div class="tit">${esc(e.categoriaNome)}</div><div class="sub">${esc(nomeCorso[e.corso] || e.corso)} · ${data}${e.tempoScaduto ? ' · tempo scaduto' : ''}${e.modalita === 'allenamento' ? ' · allenamento' : e.modalita === 'ripasso' ? ' · ripasso errori' : ''}</div></div>
         <div><div class="pct" style="color:var(${e.superato ? '--green' : '--red'})">${e.percentuale}%</div>
           <div class="det">${e.corrette}/${e.numeroDomande} ${e.superato ? '✓' : '✗'}</div></div>
       </div>`;

@@ -2,16 +2,21 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Statistiche — Pannello admin CRI Padova</title>
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="icon" href="../img/icona-180.png">
 <link rel="apple-touch-icon" href="../img/icona-180.png">
+<link rel="manifest" href="../manifest.webmanifest">
+<meta name="theme-color" content="#C8102E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Formazione CRI">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="stylesheet" href="../css/style.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
   td.num, th.num { text-align: right; font-family: 'DM Mono', monospace; }
-  .filtri { display: grid; grid-template-columns: 1fr 1.6fr 1fr 1.4fr; gap: 10px; }
+  .filtri { display: grid; grid-template-columns: 1fr 1.6fr 1fr; gap: 10px; }
   .filtri .campo { margin-bottom: 0; }
   .filtri input, .filtri select { padding: 10px 12px; font-size: 14px; }
   .kpi { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
@@ -30,15 +35,7 @@
 </head>
 <body>
 <div class="wrap largo">
-  <div class="topbar">
-    <img src="../img/emblema-cri-padova.png" alt="CRI">
-    <div><div class="t1">Pannello admin · Statistiche</div><div class="t2" id="chiSono"></div></div>
-    <div class="spazio"></div>
-    <a class="link" href="index.html" style="margin-right:14px">Utenti e inviti</a>
-    <a class="link" href="domande.html" style="margin-right:14px">Domande</a>
-    <a class="link" href="esame.html" style="margin-right:14px">Esame PDF</a>
-    <a class="link" href="../home.html">I miei corsi</a>
-  </div>
+  <div class="topbar" id="barraPannello"></div>
 
   <div class="card">
     <div class="filtri">
@@ -47,6 +44,8 @@
       <div class="campo"><label for="fPeriodo">Periodo</label>
         <select id="fPeriodo"><option value="7">Ultimi 7 giorni</option><option value="30" selected>Ultimi 30 giorni</option><option value="90">Ultimi 90 giorni</option><option value="365">Ultimo anno</option><option value="">Sempre</option></select></div>
       <div class="campo"><label for="fNome">Volontario</label><input type="search" id="fNome" placeholder="Nome o cognome"></div>
+      <div class="campo"><label for="fEdizione">Edizione (codice invito)</label><select id="fEdizione"><option value="">Tutte</option></select></div>
+      <div class="campo"><label for="fModalita">Tipo</label><select id="fModalita"><option value="quiz" selected>Quiz</option><option value="allenamento">Allenamento</option><option value="ripasso">Ripasso errori</option><option value="">Tutti</option></select></div>
     </div>
   </div>
 
@@ -94,13 +93,16 @@
 
 <script type="module">
 import { db } from '../js/firebase.js';
-import { richiediUtente, esc, messaggioErrore } from '../js/auth.js';
-import { leggiTuttiCorsi } from '../js/domande.js';
-import { collection, getDocs, doc, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { richiediUtente, esc, messaggioErrore, corsiGestiti, eResponsabile } from '../js/auth.js';
+import { barraPannello, corsiDelPannello, avvisoSenzaCorsi, registra } from '../js/pannello.js';
+import { collection, getDocs, getDoc, doc, writeBatch, query, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const $ = id => document.getElementById(id);
-const { profilo } = await richiediUtente({ admin: true });
-$('chiSono').textContent = `${profilo.nome} ${profilo.cognome} · admin`;
+const { user, profilo } = await richiediUtente({ staff: true });
+barraPannello(profilo, 'statistiche', 'Statistiche');
+const soloCorsi = corsiGestiti(profilo);
+const filtroCorsi = col => soloCorsi === null ? collection(db, col) : query(collection(db, col), where('corso', 'in', soloCorsi));
+let inviti = new Map();
 
 let corsi = [], categorie = new Map(), esiti = [], utenti = new Map(), testi = new Map();
 const ms = ts => ts?.toMillis ? ts.toMillis() : 0;
@@ -109,17 +111,35 @@ const colore = p => p >= 70 ? 'var(--green)' : p >= 50 ? '#f59e0b' : 'var(--red)
 const nomeArg = e => e.categoria === 'generale' ? `Quiz generale ${corsi.find(c => c.id === e.corso)?.nome || e.corso}` : (categorie.get(e.categoria)?.nome || e.categoriaNome);
 
 async function carica() {
-  const [cs, se, su, sp] = await Promise.all([leggiTuttiCorsi(), getDocs(collection(db, 'esiti')),
-    getDocs(collection(db, 'utenti')), getDocs(collection(db, 'pacchetti'))]);
+  const cs = await corsiDelPannello(profilo);
+  if (!cs.length) { document.querySelectorAll('.wrap > .card').forEach(c => c.remove()); $('barraPannello').insertAdjacentHTML('afterend', avvisoSenzaCorsi()); return; }
+  const qInviti = eResponsabile(profilo) ? collection(db, 'inviti') : query(collection(db, 'inviti'), where('creatoDa', '==', user.uid));
+  const [se, sp, si] = await Promise.all([getDocs(filtroCorsi('esiti')), getDocs(filtroCorsi('pacchetti')), getDocs(qInviti).catch(() => ({ docs: [] }))]);
+  si.docs.forEach(d => inviti.set(d.id, d.data()));
   corsi = cs;
   cs.forEach(c => c.categorie.forEach(cat => categorie.set(cat.id, { ...cat, corso: c.id })));
   esiti = se.docs.map(d => ({ id: d.id, ...d.data() }));
-  su.docs.forEach(d => utenti.set(d.id, d.data()));
+  // Profili (email ed edizione): il responsabile li legge tutti, l'istruttore uno per uno quelli dei suoi corsi
+  if (eResponsabile(profilo)) (await getDocs(collection(db, 'utenti'))).docs.forEach(d => utenti.set(d.id, d.data()));
+  else await Promise.all([...new Set(esiti.map(e => e.uid))].map(async uid => {
+    try { const d = await getDoc(doc(db, 'utenti', uid)); if (d.exists()) utenti.set(uid, d.data()); } catch { /* non più nei miei corsi */ }
+  }));
+  opzioniEdizioni();
+  registra('statistiche.apri', `${esiti.length} risultati disponibili`);
   // testi delle domande dai pacchetti pubblicati (15 letture invece di oltre mille)
   sp.docs.forEach(p => p.data().domande.forEach(q => testi.set(q.id, { ...q, categoria: p.id })));
   $('fCorso').innerHTML += cs.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('');
   opzioniCategorie();
   disegna();
+}
+
+// Edizione = codice invito con cui il volontario si è registrato (es. "Corso TSSA autunno 2026")
+const edizione = e => e.edizione || utenti.get(e.uid)?.codiceInvito || '';
+function opzioniEdizioni() {
+  const codici = [...new Set(esiti.map(edizione).filter(Boolean))]
+    .sort((a, b) => (inviti.get(b)?.creatoIl?.toMillis?.() || 0) - (inviti.get(a)?.creatoIl?.toMillis?.() || 0));
+  $('fEdizione').innerHTML = '<option value="">Tutte</option>' + codici.map(c =>
+    `<option value="${esc(c)}">${esc(inviti.get(c)?.note ? `${inviti.get(c).note} (${c})` : c)}</option>`).join('');
 }
 
 function opzioniCategorie() {
@@ -132,6 +152,7 @@ function opzioniCategorie() {
 
 function filtrati() {
   const fc = $('fCorso').value, fcat = $('fCat').value, giorni = +$('fPeriodo').value, q = $('fNome').value.trim().toLowerCase();
+  const fed = $('fEdizione').value, fmod = $('fModalita').value;
   const da = giorni ? Date.now() - giorni * 86400e3 : 0;
   return esiti.filter(e => {
     if (fc && e.corso !== fc) return false;
@@ -141,6 +162,8 @@ function filtrati() {
     }
     if (da && ms(e.timestamp) < da) return false;
     if (q && !`${e.nome} ${e.cognome}`.toLowerCase().includes(q)) return false;
+    if (fed && edizione(e) !== fed) return false;
+    if (fmod && (e.modalita || 'quiz') !== fmod) return false;
     return true;
   });
 }
@@ -188,7 +211,7 @@ function disegna() {
     : '<p class="nota">Servono più quiz svolti per individuare le domande critiche.</p>';
 }
 
-['fCorso', 'fCat', 'fPeriodo', 'fNome'].forEach(id => $(id).addEventListener('input', () => { if (id === 'fCorso') opzioniCategorie(); disegna(); }));
+['fCorso', 'fCat', 'fPeriodo', 'fNome', 'fEdizione', 'fModalita'].forEach(id => $(id).addEventListener('input', () => { if (id === 'fCorso') opzioniCategorie(); disegna(); }));
 
 // ---------- scheda volontario ----------
 let schedaUid = null;
@@ -205,6 +228,7 @@ function apriScheda(uid) {
       <td><button class="link" data-elimina="${esc(e.id)}" type="button">elimina</button></td></tr>`).join('')}</tbody></table>`;
   $('schMsg').innerHTML = '';
   $('modScheda').classList.remove('hidden');
+  if (registra.ultimaScheda !== uid) { registra.ultimaScheda = uid; registra('scheda.apri', `${u.cognome} ${u.nome}`, { rif: uid }); }
 }
 $('tabVolontari').addEventListener('click', ev => { const r = ev.target.closest('[data-uid]'); if (r) apriScheda(r.dataset.uid); });
 $('schChiudi').addEventListener('click', () => $('modScheda').classList.add('hidden'));
@@ -214,7 +238,10 @@ async function elimina(ids) {
     for (let i = 0; i < ids.length; i += 400) {
       const b = writeBatch(db); ids.slice(i, i + 400).forEach(id => b.delete(doc(db, 'esiti', id))); await b.commit();
     }
-    const via = new Set(ids); esiti = esiti.filter(e => !via.has(e.id));
+    const via = new Set(ids);
+    const chi = esiti.find(e => via.has(e.id));
+    registra('esiti.elimina', `${ids.length} risultati di ${chi ? chi.cognome + ' ' + chi.nome : '?'}`, { corso: chi?.corso || null, rif: chi?.uid || null });
+    esiti = esiti.filter(e => !via.has(e.id));
     disegna();
     if (filtrati().some(e => e.uid === schedaUid)) apriScheda(schedaUid); else $('modScheda').classList.add('hidden');
   } catch (e) { $('schMsg').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; }
@@ -233,11 +260,13 @@ $('btnCsv').addEventListener('click', () => {
   const righe = filtrati().sort((a, b) => ms(a.timestamp) - ms(b.timestamp)).map(e => [
     e.timestamp ? e.timestamp.toDate().toLocaleString('it-IT') : '', e.cognome, e.nome, utenti.get(e.uid)?.email || '',
     corsi.find(c => c.id === e.corso)?.nome || e.corso, nomeArg(e), e.numeroDomande, e.corrette, e.percentuale,
-    e.superato ? 'sì' : 'no', e.durataSec, e.tempoScaduto ? 'sì' : 'no']);
-  const csv = '﻿' + Papa.unparse({ fields: ['data', 'cognome', 'nome', 'email', 'corso', 'argomento', 'domande', 'corrette', 'percentuale', 'superato', 'durata_sec', 'tempo_scaduto'], data: righe }, { delimiter: ';' });
+    e.superato ? 'sì' : 'no', e.durataSec, e.tempoScaduto ? 'sì' : 'no', edizione(e), e.modalita || 'quiz']);
+  const csv = '﻿' + Papa.unparse({ fields: ['data', 'cognome', 'nome', 'email', 'corso', 'argomento', 'domande', 'corrette', 'percentuale', 'superato', 'durata_sec', 'tempo_scaduto', 'edizione', 'tipo'], data: righe }, { delimiter: ';' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
   a.download = `risultati_${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(a); a.click(); a.remove();
+  const f = ['fCorso', 'fCat', 'fPeriodo', 'fEdizione'].map(id => $(id).selectedOptions[0]?.textContent).filter(Boolean).join(' · ');
+  registra('esiti.esporta', `${righe.length} risultati · ${f}`);
 });
 
 try { await carica(); }

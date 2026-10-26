@@ -148,7 +148,7 @@ export const idLegacy = (collezione, id) => `${collezione}__${id}`;
 // Rigenera il pacchetto di una categoria con le sole domande attive.
 export async function pubblicaCategoria(corso, categoria, uid) {
   const snap = await getDocs(query(collection(db, 'domande'),
-    where('categoria', '==', categoria), where('stato', '==', 'attiva')));
+    where('corso', '==', corso), where('categoria', '==', categoria), where('stato', '==', 'attiva')));
   const domande = snap.docs.map(d => {
     const x = d.data();
     return { id: d.id, tipo: x.tipo, testo: x.testo, opzioni: x.opzioni, corretta: x.corretta,

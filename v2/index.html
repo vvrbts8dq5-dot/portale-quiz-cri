@@ -2,11 +2,16 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Accesso — Portale Formazione CRI Padova</title>
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="icon" href="img/icona-180.png">
 <link rel="apple-touch-icon" href="img/icona-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#C8102E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Formazione CRI">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -71,13 +76,15 @@
         <label for="regPwd2">Ripeti la password</label>
         <input type="password" id="regPwd2" autocomplete="new-password" required>
       </div>
+      <label class="check" style="margin:4px 0 16px;align-items:flex-start;font-size:14px;line-height:1.45">
+        <input type="checkbox" id="regPrivacy" style="margin-top:2px"> <span>Ho letto l'<a href="privacy.html" target="_blank" rel="noopener">informativa sul trattamento dei dati</a></span></label>
       <button class="btn" type="submit" id="btnRegistrati">Crea il mio account</button>
     </form>
 
     <div id="messaggio"></div>
   </div>
 
-  <div class="footer">Portale riservato ai volontari CRI · v2</div>
+  <div class="footer">Portale riservato ai volontari CRI · <a href="privacy.html" style="color:inherit">Privacy</a></div>
 </div>
 
 <script type="module">
@@ -128,6 +135,7 @@ $('cardForm').classList.remove('hidden');
 const codiceUrl = (params.get('codice') || '').trim().toUpperCase();
 if (codiceUrl) { $('regCodice').value = codiceUrl; scheda('registrati'); $('regNome').focus(); }
 if (params.get('msg') === 'disattivato') mostra('err', 'Il tuo account è stato disattivato. Rivolgiti all\'istruttore del corso.');
+if (params.get('msg') === 'eliminato') mostra('ok', 'Il tuo account e i tuoi risultati sono stati eliminati.');
 if (params.get('msg') === 'profilo') mostra('err', 'Il tuo account non ha un profilo valido. Prova a registrarti di nuovo con il codice invito, o rivolgiti all\'istruttore.');
 
 // ---------- ACCEDI ----------
@@ -187,6 +195,7 @@ $('formRegistrati').addEventListener('submit', async ev => {
   if (!/^[A-Z0-9-]{4,40}$/.test(codice)) return mostra('err', 'Il codice invito contiene caratteri non validi.');
   if (pwd.length < 8) return mostra('err', 'La password deve avere almeno 8 caratteri.');
   if (pwd !== $('regPwd2').value) return mostra('err', 'Le due password non coincidono.');
+  if (!$('regPrivacy').checked) return mostra('err', 'Per registrarti devi prendere visione dell\'informativa sui dati.');
 
   const btn = $('btnRegistrati');
   occupato(btn, true, 'Creazione account…');
@@ -216,7 +225,8 @@ $('formRegistrati').addEventListener('submit', async ev => {
       attivo: true,
       corsi: inv.corsi,
       codiceInvito: codice,
-      creatoIl: serverTimestamp()
+      creatoIl: serverTimestamp(),
+      privacyIl: serverTimestamp()
     });
     await updateProfile(cred.user, { displayName: `${nome} ${cognome}` }).catch(() => {});
     location.replace(urlPagina('home.html'));

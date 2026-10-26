@@ -2,11 +2,16 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Quiz — Portale Formazione CRI Padova</title>
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="icon" href="img/icona-180.png">
 <link rel="apple-touch-icon" href="img/icona-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#C8102E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Formazione CRI">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="stylesheet" href="css/style.css">
 <style>
   .wrap { max-width: 600px; }
@@ -71,6 +76,22 @@
   .rev .giusta { background: var(--green-bg); color: var(--green); padding: 8px 12px; border-radius: 12px; }
   .rev .spieg { color: var(--text3); padding: 4px 6px 0; line-height: 1.5; }
   .azioni-col { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+
+  /* allenamento: correzione subito */
+  .opz.giusta { border-color: var(--green); background: var(--green-bg); color: var(--green); font-weight: 700; }
+  .opz.giusta .lettera { background: var(--green); color: #fff; }
+  .opz.sbagliata { border-color: var(--red); background: var(--err-bg); color: var(--red-dark); }
+  .opz.sbagliata .lettera { background: var(--red); color: #fff; }
+  .feedback { margin-top: 14px; border-radius: 14px; padding: 12px 14px; font-size: 15px; line-height: 1.5; }
+  .feedback.ok { background: var(--green-bg); color: var(--green); }
+  .feedback.ko { background: var(--err-bg); color: var(--red-dark); }
+  .feedback .spieg { color: var(--text3); margin-top: 6px; }
+  .ripasso { display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 16px; padding: 14px 16px; border: none; border-radius: 18px;
+    background: var(--amber-bg); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  .ripasso strong { display: block; font-size: 16px; }
+  .ripasso span.nota { font-size: 13px; }
+  .segnala { background: none; border: none; color: var(--text2); font: 600 13px 'Figtree', sans-serif; cursor: pointer; padding: 6px 2px 0; text-decoration: underline; }
+  .rev .segnala { padding: 2px 6px 0; align-self: flex-start; }
 </style>
 </head>
 <body>
@@ -88,13 +109,18 @@
   <!-- scelta numero domande -->
   <div class="card schermata" id="sScelta">
     <div class="card-title" id="titoloScelta">Configura il test</div>
+    <div class="schede" role="tablist" aria-label="Modalità">
+      <button type="button" class="attiva" id="modoQuiz">Quiz a tempo</button>
+      <button type="button" id="modoAllena">Allenamento</button>
+    </div>
     <p style="font-size:15px;font-weight:500;margin-bottom:6px">Quante domande vuoi fare?</p>
-    <p class="nota" style="margin-bottom:16px">Hai un minuto per domanda. Le risposte corrette le vedi alla fine.</p>
+    <p class="nota" id="notaModo" style="margin-bottom:16px">Hai un minuto per domanda. Le risposte corrette le vedi alla fine.</p>
     <div class="scelta-grid">
       <button class="scelta" type="button" data-n="15"><div class="num">15</div><div class="lab">domande · 15 min</div></button>
       <button class="scelta" type="button" data-n="30"><div class="num">30</div><div class="lab">domande · 30 min</div></button>
     </div>
     <p class="nota" id="notaPool" style="margin-top:14px"></p>
+    <button class="ripasso hidden" id="btnRipasso" type="button"></button>
   </div>
 
   <!-- quiz -->
@@ -105,6 +131,7 @@
       <div id="tipo"></div>
       <div class="testo" id="testo"></div>
       <div class="opzioni" id="opzioni"></div>
+      <div id="feedback"></div>
     </div>
     <button class="btn hidden" id="btnAvanti" type="button">Prossima domanda</button>
   </div>
@@ -137,13 +164,33 @@
   <div class="footer">Portale riservato ai volontari CRI · v2</div>
 </div>
 
+<!-- Segnalazione di un errore -->
+<div class="overlay hidden" id="modSegnala">
+  <div class="modale">
+    <h3>Segnala un problema</h3>
+    <p class="nota" id="segDomanda" style="margin-bottom:12px"></p>
+    <div class="campo"><label for="segMotivo">Cosa non va?</label>
+      <select id="segMotivo">
+        <option value="risposta">La risposta indicata come giusta è sbagliata</option>
+        <option value="testo">Il testo non è chiaro</option>
+        <option value="opzioni">Le risposte sono ambigue</option>
+        <option value="altro">Altro</option>
+      </select></div>
+    <div class="campo"><label for="segTesto">Spiega in breve (facoltativo)</label>
+      <input type="text" id="segTesto" maxlength="500" placeholder="es. secondo il manuale 2025 la frequenza è 100-120"></div>
+    <div class="azioni"><button class="btn piccolo" id="segInvia" type="button">Invia all'istruttore</button>
+      <button class="btn sec piccolo" id="segAnnulla" type="button">Annulla</button></div>
+    <div id="segMsg"></div>
+  </div>
+</div>
+
 <script type="module">
 import { db } from './js/firebase.js';
 import { richiediUtente, esc, messaggioErrore } from './js/auth.js';
 import { leggiCorsi } from './js/domande.js';
 import { selezionaDomande, preparaDomanda, calcolaEsito, formattaTempo, SECONDI_PER_DOMANDA } from './js/quiz-engine.js';
 import { ICONA, iconaArgomento } from './js/icone.js';
-import { doc, getDoc, addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { doc, getDoc, getDocs, addDoc, collection, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const $ = id => document.getElementById(id);
 $('linkIndietro').innerHTML = ICONA.indietro;
@@ -156,7 +203,9 @@ const idCorso = params.get('c');
 const idCat = params.get('cat');
 const { user, profilo } = await richiediUtente();
 
-const stato = { corso: null, nomeCategoria: '', gruppi: [], domande: [], i: 0, risposte: [], fine: 0, inizio: 0, timer: null, inCorso: false };
+const stato = { corso: null, nomeCategoria: '', gruppi: [], domande: [], i: 0, risposte: [], fine: 0, inizio: 0, timer: null, inCorso: false,
+  modo: 'quiz', daRipassare: [] };
+const aTempo = () => stato.modo === 'quiz';
 
 // ---------- caricamento ----------
 try {
@@ -187,25 +236,57 @@ try {
   });
   if (tot < 30) $('notaPool').textContent = `Per questo argomento ci sono ${tot} domande in tutto.`;
   mostra('sScelta');
+  cercaErrori(categorie.map(c => c.id)).catch(() => {});
 } catch (e) {
   errore(esc(e.nostro || messaggioErrore(e)) + ' <a href="home.html">Torna ai tuoi corsi</a>.');
 }
 
 // ---------- avvio ----------
 document.querySelectorAll('.scelta').forEach(b => b.addEventListener('click', () => avvia(+b.dataset.n)));
-$('btnRifai').addEventListener('click', () => mostra('sScelta'));
+$('btnRifai').addEventListener('click', () => { scegliModo(stato.modo === 'ripasso' ? 'allenamento' : stato.modo); mostra('sScelta'); });
 
-function avvia(n) {
-  stato.domande = selezionaDomande(stato.gruppi, n).map(d => preparaDomanda(d));
+// Quiz a tempo (conta per le statistiche) oppure allenamento (senza tempo, correzione subito)
+function scegliModo(m) {
+  stato.modo = m;
+  $('modoQuiz').classList.toggle('attiva', m === 'quiz');
+  $('modoAllena').classList.toggle('attiva', m === 'allenamento');
+  $('notaModo').textContent = m === 'quiz'
+    ? 'Hai un minuto per domanda. Le risposte corrette le vedi alla fine.'
+    : 'Senza tempo: dopo ogni risposta vedi subito se è giusta e perché.';
+  document.querySelectorAll('.scelta').forEach(b => b.querySelector('.lab').textContent = `domande${m === 'quiz' ? ' · ' + b.dataset.n + ' min' : ''}`);
+}
+$('modoQuiz').onclick = () => scegliModo('quiz');
+$('modoAllena').onclick = () => scegliModo('allenamento');
+
+// Ripasso: le domande la cui ultima risposta del volontario è stata sbagliata
+async function cercaErrori(idCategorie) {
+  const snap = await getDocs(query(collection(db, 'esiti'), where('uid', '==', user.uid)));
+  const ultima = new Map();
+  snap.docs.map(d => d.data()).filter(e => e.corso === idCorso)
+    .sort((a, b) => (a.timestamp?.toMillis?.() || 0) - (b.timestamp?.toMillis?.() || 0))
+    .forEach(e => (e.risposte || []).forEach(r => ultima.set(r.id, r.esatta)));
+  const disponibili = new Map(stato.gruppi.flat().map(d => [d.id, d]));
+  stato.daRipassare = [...ultima].filter(([id, ok]) => !ok && disponibili.has(id)).map(([id]) => disponibili.get(id));
+  const n = stato.daRipassare.length;
+  $('btnRipasso').classList.toggle('hidden', !n);
+  $('btnRipasso').innerHTML = `<span><strong>Ripassa i tuoi errori (${n})</strong><span class="nota">Le domande che hai sbagliato l'ultima volta che le hai viste</span></span>`;
+}
+$('btnRipasso').addEventListener('click', () => {
+  stato.modo = 'ripasso';
+  avvia(Math.min(30, stato.daRipassare.length), stato.daRipassare);
+});
+
+function avvia(n, scelte = null) {
+  stato.domande = (scelte ? selezionaDomande([scelte], n) : selezionaDomande(stato.gruppi, n)).map(d => preparaDomanda(d));
   stato.i = 0;
   stato.risposte = [];
   stato.inizio = Date.now();
   stato.fine = stato.inizio + stato.domande.length * SECONDI_PER_DOMANDA * 1000;
   stato.inCorso = true;
   clearInterval(stato.timer);
-  stato.timer = setInterval(aggiornaTimer, 500);
-  aggiornaTimer();
+  if (aTempo()) { stato.timer = setInterval(aggiornaTimer, 500); aggiornaTimer(); }
   mostra('sQuiz');
+  $('timer').classList.toggle('hidden', !aTempo());
   disegnaDomanda();
 }
 
@@ -233,6 +314,7 @@ function disegnaDomanda() {
     <button class="opz" type="button" data-orig="${orig}">
       <span class="lettera">${d.tipo === 'vf' ? d.opzioni[orig][0] : 'ABCDEF'[pos]}</span><span>${esc(d.opzioni[orig])}</span>
     </button>`).join('');
+  $('feedback').innerHTML = '';
   $('btnAvanti').classList.add('hidden');
   $('btnAvanti').textContent = stato.i < tot - 1 ? 'Prossima domanda' : 'Vedi i risultati';
 }
@@ -244,7 +326,16 @@ $('opzioni').addEventListener('click', ev => {
   const scelta = +b.dataset.orig;
   stato.risposte.push({ id: d.id, scelta, esatta: scelta === d.corretta });
   document.querySelectorAll('.opz').forEach(x => x.disabled = true);
-  b.classList.add('scelta-fatta');
+  if (aTempo()) b.classList.add('scelta-fatta');
+  else {
+    // allenamento e ripasso: correzione immediata
+    document.querySelectorAll('.opz').forEach(x => { if (+x.dataset.orig === d.corretta) x.classList.add('giusta'); });
+    if (scelta !== d.corretta) b.classList.add('sbagliata');
+    $('feedback').innerHTML = `<div class="feedback ${scelta === d.corretta ? 'ok' : 'ko'}"><strong>${scelta === d.corretta ? 'Giusto!' : 'Sbagliato.'}</strong>
+      ${scelta === d.corretta ? '' : 'La risposta corretta è: ' + esc(d.opzioni[d.corretta])}
+      ${d.spiegazione ? `<div class="spieg">${esc(d.spiegazione)}</div>` : ''}</div>
+      <button class="segnala" type="button" data-segnala="${esc(d.id)}">Segnala un errore in questa domanda</button>`;
+  }
   $('btnAvanti').classList.remove('hidden');
 });
 
@@ -254,7 +345,7 @@ $('btnAvanti').addEventListener('click', () => {
   else { disegnaDomanda(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 });
 
-window.addEventListener('beforeunload', ev => { if (stato.inCorso) { ev.preventDefault(); ev.returnValue = ''; } });
+window.addEventListener('beforeunload', ev => { if (stato.inCorso && aTempo()) { ev.preventDefault(); ev.returnValue = ''; } });
 
 // ---------- fine ----------
 async function termina(tempoScaduto) {
@@ -274,7 +365,8 @@ async function termina(tempoScaduto) {
     ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>'
     : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h6a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4zM20 5h-6a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h6z"/></svg>';
   $('resTitolo').textContent = tempoScaduto ? 'Tempo scaduto' : (es.superato ? 'Ottimo lavoro!' : 'Continua a studiare!');
-  $('resSub').textContent = `${profilo.nome} ${profilo.cognome} · ${stato.corso.nome} · ${stato.nomeCategoria}`;
+  const etichettaModo = { quiz: '', allenamento: ' · Allenamento', ripasso: ' · Ripasso errori' }[stato.modo];
+  $('resSub').textContent = `${profilo.nome} ${profilo.cognome} · ${stato.corso.nome} · ${stato.nomeCategoria}${etichettaModo}`;
   $('resBadge').innerHTML = `<span class="badge ${es.superato ? 'si' : 'no'}" style="font-size:13px;padding:6px 14px">${es.superato ? '✓ Superato' : '✗ Non superato'} (${es.percentuale}%)</span>`;
   $('resCorrette').textContent = es.corrette;
   $('resTotale').textContent = `${es.corrette}/${es.totale}`;
@@ -289,6 +381,7 @@ async function termina(tempoScaduto) {
       <div class="tua">${r.scelta === null ? 'Nessuna risposta' : 'La tua risposta: ' + esc(d.opzioni[r.scelta])}</div>
       <div class="giusta">Risposta corretta: ${esc(d.opzioni[d.corretta])}</div>
       ${d.spiegazione ? `<div class="spieg">${esc(d.spiegazione)}</div>` : ''}
+      <button class="segnala" type="button" data-segnala="${esc(d.id)}">Segnala un errore</button>
     </div></div>`;
   }).join('');
   mostra('sRisultati');
@@ -302,13 +395,48 @@ async function termina(tempoScaduto) {
       numeroDomande: es.totale, corrette: es.corrette, percentuale: es.percentuale, superato: es.superato,
       durataSec, tempoScaduto,
       risposte: stato.risposte,
+      modalita: stato.modo,
+      ...(profilo.codiceInvito ? { edizione: profilo.codiceInvito } : {}),
       timestamp: serverTimestamp()
     });
+    // le domande corrette escono dal ripasso
+    const giuste = new Set(stato.risposte.filter(r => r.esatta).map(r => r.id));
+    const sbagliateOra = new Map(stato.domande.filter(d => !giuste.has(d.id)).map(d => [d.id, d]));
+    const resto = stato.daRipassare.filter(d => !giuste.has(d.id) && !sbagliateOra.has(d.id));
+    stato.daRipassare = [...resto, ...sbagliateOra.values()];
+    const n = stato.daRipassare.length;
+    $('btnRipasso').classList.toggle('hidden', !n);
+    $('btnRipasso').innerHTML = `<span><strong>Ripassa i tuoi errori (${n})</strong><span class="nota">Le domande che hai sbagliato l'ultima volta che le hai viste</span></span>`;
     $('resSalvataggio').textContent = '✓ Risultato salvato';
   } catch (e) {
     $('resSalvataggio').textContent = 'Risultato non salvato: ' + messaggioErrore(e);
   }
 }
+
+// ---------- segnalazione di un errore ----------
+let segnalata = null;
+document.addEventListener('click', ev => {
+  const b = ev.target.closest('[data-segnala]'); if (!b) return;
+  segnalata = stato.domande.find(d => d.id === b.dataset.segnala);
+  $('segDomanda').textContent = segnalata.testo;
+  $('segTesto').value = ''; $('segMsg').innerHTML = ''; $('segInvia').disabled = false;
+  $('modSegnala').classList.remove('hidden');
+});
+$('segAnnulla').onclick = () => $('modSegnala').classList.add('hidden');
+$('segInvia').addEventListener('click', async () => {
+  $('segInvia').disabled = true;
+  try {
+    await addDoc(collection(db, 'segnalazioni'), {
+      uid: user.uid, nome: profilo.nome, cognome: profilo.cognome,
+      corso: stato.corso.id, categoria: segnalata.categoria, idDomanda: segnalata.id, testoDomanda: segnalata.testo.slice(0, 500),
+      motivo: $('segMotivo').value, testo: $('segTesto').value.trim().slice(0, 500),
+      stato: 'aperta', creataIl: serverTimestamp()
+    });
+    $('segMsg').innerHTML = '<div class="msg ok">Grazie! L\'istruttore la controllerà.</div>';
+    document.querySelectorAll(`[data-segnala="${CSS.escape(segnalata.id)}"]`).forEach(x => { x.textContent = 'Segnalata ✓'; x.disabled = true; });
+    setTimeout(() => $('modSegnala').classList.add('hidden'), 1200);
+  } catch (e) { $('segMsg').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; $('segInvia').disabled = false; }
+});
 </script>
 </body>
 </html>

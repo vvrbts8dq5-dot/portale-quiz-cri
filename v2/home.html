@@ -2,11 +2,16 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>I miei corsi — Portale Formazione CRI Padova</title>
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="icon" href="img/icona-180.png">
 <link rel="apple-touch-icon" href="img/icona-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#C8102E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Formazione CRI">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -24,6 +29,11 @@
     <p id="sottoSaluto">Su cosa ti alleni oggi?</p>
   </div>
 
+  <div class="card hidden" id="avvisoPrivacy" style="padding:18px 20px">
+    <p class="nota" style="margin-bottom:12px">Abbiamo pubblicato l'<a href="privacy.html">informativa sul trattamento dei dati</a> del portale: leggila quando puoi.</p>
+    <button class="btn piccolo" id="btnPrivacyOk" type="button">Ho letto</button>
+  </div>
+
   <div id="elencoCorsi"><div class="card"><p class="nota">Caricamento…</p></div></div>
 
   <nav class="navbar" id="navbar" aria-label="Navigazione"></nav>
@@ -32,11 +42,13 @@
 </div>
 
 <script type="module">
-import { richiediUtente, esc, messaggioErrore } from './js/auth.js';
+import { richiediUtente, esc, messaggioErrore, eStaff } from './js/auth.js';
 import { leggiCorsi } from './js/domande.js';
 import { ICONA, iniziali } from './js/icone.js';
 import { perArea, vociCorsi, riquadriAree } from './js/aree.js';
 import { sfondoAttrezzature } from './js/sfondi.js';
+import { db } from './js/firebase.js';
+import { doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 sfondoAttrezzature();
 const $ = id => document.getElementById(id);
@@ -48,7 +60,15 @@ $('avatar').textContent = iniziali(profilo);
 $('navbar').innerHTML = `
   <a class="attiva" href="home.html">${ICONA.casa}Corsi</a>
   <a href="storico.html">${ICONA.grafico}I miei quiz</a>
-  ${profilo.ruolo === 'admin' ? `<a href="admin/index.html">${ICONA.ingranaggio}Admin</a>` : `<a href="profilo.html">${ICONA.utente}Profilo</a>`}`;
+  ${eStaff(profilo) ? `<a href="admin/index.html">${ICONA.ingranaggio}Pannello</a>` : `<a href="profilo.html">${ICONA.utente}Profilo</a>`}`;
+
+if (!profilo.privacyIl) {
+  $('avvisoPrivacy').classList.remove('hidden');
+  $('btnPrivacyOk').onclick = async () => {
+    try { await updateDoc(doc(db, 'utenti', profilo.uid), { privacyIl: serverTimestamp() }); $('avvisoPrivacy').classList.add('hidden'); }
+    catch (e) { alert(messaggioErrore(e)); }
+  };
+}
 
 try {
   const corsi = await leggiCorsi(profilo.corsi);

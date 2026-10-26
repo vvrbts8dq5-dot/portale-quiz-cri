@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Area riservata — Pannello formazione CRI Padova</title>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="../img/icona-180.png">
+<link rel="apple-touch-icon" href="../img/icona-180.png">
+<link rel="manifest" href="../manifest.webmanifest">
+<meta name="theme-color" content="#C8102E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Formazione CRI">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  .filtri { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .filtri .campo { margin-bottom: 0; }
+  .filtri input, .filtri select { padding: 10px 12px; font-size: 14px; }
+  .istruttori { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+  .istr-card { background: var(--bg2); border-radius: 20px; box-shadow: var(--shadow); padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+  .istr-card .testa { display: flex; align-items: center; gap: 12px; }
+  .istr-card .nome { font-weight: 800; font-size: 16px; }
+  .istr-card .sub { font-size: 13px; color: var(--text2); }
+  .istr-card .conti { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .istr-card .conti div { background: var(--campo); border-radius: 12px; padding: 8px; text-align: center; }
+  .istr-card .conti .n { font: 600 18px 'DM Mono', monospace; }
+  .istr-card .conti .l { font-size: 11px; color: var(--text2); }
+  .avviso-reg { font-size: 13px; color: var(--text2); line-height: 1.5; margin-top: 10px; }
+  td.quando { white-space: nowrap; font-family: 'DM Mono', monospace; font-size: 12px; }
+  td.dett { font-size: 13px; line-height: 1.4; max-width: 420px; }
+  .scelta-ruolo { display: grid; gap: 8px; margin: 8px 0 14px; }
+  .scelta-ruolo label { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border-radius: 14px; background: var(--campo); cursor: pointer; }
+  .scelta-ruolo label:has(input:checked) { background: var(--red-tint); }
+  .scelta-ruolo input { margin-top: 3px; accent-color: var(--red); }
+  .scelta-ruolo strong { display: block; }
+  .scelta-ruolo span.nota { font-size: 13px; }
+  @media (max-width: 760px) { .filtri { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap largo">
+  <div class="topbar" id="barraPannello"></div>
+
+  <div class="schede" style="max-width:520px">
+    <button id="tabIstr" class="attiva" type="button">Istruttori</button>
+    <button id="tabPersone" type="button">Utenti e ruoli</button>
+    <button id="tabRegistro" type="button">Registro</button>
+  </div>
+
+  <!-- ============ ISTRUTTORI ============ -->
+  <section id="sezIstr">
+    <div class="card" style="padding:18px 22px">
+      <p class="nota">Chi ha accesso al pannello e cosa ha fatto negli ultimi 30 giorni. Per nominare un istruttore apri
+        <strong>Utenti e ruoli</strong>, cerca la persona (deve prima registrarsi con un codice invito) e premi <strong>Ruolo</strong>.</p>
+    </div>
+    <div class="istruttori" id="elencoIstr"><div class="card"><p class="nota">Caricamento…</p></div></div>
+  </section>
+
+  <!-- ============ UTENTI E RUOLI ============ -->
+  <section id="sezPersone" class="hidden">
+    <div class="card">
+      <div class="filtri">
+        <div class="campo" style="grid-column: span 2"><label for="cercaUtente">Cerca</label><input type="search" id="cercaUtente" placeholder="Nome, cognome o email"></div>
+        <div class="campo"><label for="filtroRuolo">Ruolo</label>
+          <select id="filtroRuolo"><option value="">Tutti</option><option value="volontario">Volontari</option><option value="istruttore">Istruttori</option><option value="admin">Responsabili</option></select></div>
+        <div class="campo"><label for="filtroCorso">Corso</label><select id="filtroCorso"><option value="">Tutti</option></select></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" id="titoloUtenti">Utenti</div>
+      <div class="tabella-wrap" id="tabUtenti"><p class="nota">Caricamento…</p></div>
+    </div>
+  </section>
+
+  <!-- ============ REGISTRO ============ -->
+  <section id="sezRegistro" class="hidden">
+    <div class="card">
+      <div class="filtri">
+        <div class="campo"><label for="rChi">Chi</label><select id="rChi"><option value="">Tutti</option></select></div>
+        <div class="campo"><label for="rAzione">Operazione</label><select id="rAzione"><option value="">Tutte</option></select></div>
+        <div class="campo"><label for="rCorso">Corso</label><select id="rCorso"><option value="">Tutti</option></select></div>
+        <div class="campo"><label for="rTesto">Cerca nel dettaglio</label><input type="search" id="rTesto" placeholder="es. un cognome o un codice"></div>
+      </div>
+      <p class="avviso-reg">Il registro si può solo aggiungere: nessuno, nemmeno tu, può modificarlo o cancellarlo, e chi scrive è
+        sempre l'account che ha fatto l'operazione. Le operazioni di scrittura (codici, domande, pubblicazioni, eliminazioni) sono anche
+        firmate nei dati stessi. Le consultazioni (schede aperte, esportazioni, esami preparati) le annota l'app: un utente esperto che
+        aggirasse l'app potrebbe non lasciarne traccia.</p>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        <div class="card-title" style="margin:0" id="titoloRegistro">Registro</div>
+        <button class="btn sec piccolo" id="btnCsvRegistro" type="button">Esporta CSV</button>
+      </div>
+      <div class="tabella-wrap" id="tabRegistro2"><p class="nota">Caricamento…</p></div>
+      <div style="text-align:center;margin-top:14px"><button class="btn sec piccolo hidden" id="btnAltriRegistro" type="button">Carica operazioni più vecchie</button></div>
+    </div>
+  </section>
+
+  <div class="footer">Area riservata al responsabile della formazione</div>
+</div>
+
+<!-- Finestra ruolo -->
+<div class="overlay hidden" id="modRuolo">
+  <div class="modale">
+    <h3 id="ruoloTitolo">Ruolo</h3>
+    <div class="scelta-ruolo">
+      <label><input type="radio" name="ruolo" value="volontario"><span><strong>Volontario</strong><span class="nota">Fa i quiz dei suoi corsi.</span></span></label>
+      <label><input type="radio" name="ruolo" value="istruttore"><span><strong>Istruttore</strong><span class="nota">In più gestisce codici, domande, statistiche ed esami dei corsi che scegli qui sotto.</span></span></label>
+      <label><input type="radio" name="ruolo" value="admin"><span><strong>Responsabile</strong><span class="nota">Tutti i corsi, gli utenti, i ruoli e il registro. Da dare solo a chi coordina la formazione.</span></span></label>
+    </div>
+    <div id="boxGestiti">
+      <div class="card-title" style="margin-bottom:6px">Corsi che gestisce</div>
+      <div id="sceltaGestiti"></div>
+    </div>
+    <div class="azioni" style="margin-top:18px">
+      <button class="btn piccolo" id="btnSalvaRuolo" type="button">Salva</button>
+      <button class="btn sec piccolo" id="btnAnnullaRuolo" type="button">Annulla</button>
+    </div>
+    <div id="msgRuolo"></div>
+  </div>
+</div>
+
+<!-- Finestra corsi (quelli in cui fa i quiz) -->
+<div class="overlay hidden" id="modCorsi">
+  <div class="modale">
+    <h3 id="corsiTitolo">Corsi</h3>
+    <p class="nota" style="margin-bottom:10px">I corsi di cui vede i quiz nel portale.</p>
+    <div id="corsiScelte"></div>
+    <div class="azioni" style="margin-top:18px">
+      <button class="btn piccolo" id="btnSalvaCorsi" type="button">Salva</button>
+      <button class="btn sec piccolo" id="btnAnnullaCorsi" type="button">Annulla</button>
+    </div>
+    <div id="msgCorsi"></div>
+  </div>
+</div>
+
+<script type="module">
+import { db } from '../js/firebase.js';
+import { richiediUtente, esc, messaggioErrore, NOMI_RUOLO } from '../js/auth.js';
+import { barraPannello, registra, AZIONI } from '../js/pannello.js';
+import { leggiTuttiCorsi } from '../js/domande.js';
+import { iniziali } from '../js/icone.js';
+import { collection, doc, getDocs, updateDoc, query, orderBy, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const $ = id => document.getElementById(id);
+const { user, profilo } = await richiediUtente({ admin: true });
+barraPannello(profilo, 'riservata', 'Area riservata');
+
+const corsi = await leggiTuttiCorsi();
+const nomeCorso = id => corsi.find(c => c.id === id)?.nome || id;
+const ordineCorsi = corsi.map(c => c.id);
+const badgeCorsi = lista => (lista || []).map(c => `<span class="badge neutro">${esc(nomeCorso(c))}</span>`).join(' ') || '<span class="nota">—</span>';
+const BADGE_RUOLO = { admin: '<span class="badge admin">Responsabile</span>', istruttore: '<span class="badge istr">Istruttore</span>', volontario: '<span class="badge neutro">Volontario</span>' };
+const dataIt = ts => ts ? ts.toDate().toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+const dataOra = ts => ts ? ts.toDate().toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+const caselle = (nome, scelti = []) => corsi.map(c => `<label class="check"><input type="checkbox" name="${nome}" value="${c.id}" ${scelti.includes(c.id) ? 'checked' : ''}> ${esc(c.nome)}</label>`).join('');
+const scelti = nome => [...document.querySelectorAll(`input[name="${nome}"]:checked`)].map(i => i.value).sort((a, b) => ordineCorsi.indexOf(a) - ordineCorsi.indexOf(b));
+
+let utenti = [];
+let registro = [], ultimoDoc = null, finito = false;
+const PAGINA = 300;
+
+// ---------- schede ----------
+function scheda(n) {
+  [['tabIstr', 'sezIstr'], ['tabPersone', 'sezPersone'], ['tabRegistro', 'sezRegistro']].forEach(([t, s]) => {
+    $(t).classList.toggle('attiva', t === n); $(s).classList.toggle('hidden', t !== n);
+  });
+}
+$('tabIstr').onclick = () => scheda('tabIstr');
+$('tabPersone').onclick = () => scheda('tabPersone');
+$('tabRegistro').onclick = () => scheda('tabRegistro');
+
+// ---------- caricamento ----------
+async function caricaUtenti() {
+  const su = await getDocs(collection(db, 'utenti'));
+  utenti = su.docs.map(d => ({ uid: d.id, ...d.data() }))
+    .sort((a, b) => `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`, 'it'));
+}
+async function caricaRegistro() {
+  const vincoli = [orderBy('quando', 'desc'), limit(PAGINA)];
+  if (ultimoDoc) vincoli.splice(1, 0, startAfter(ultimoDoc));
+  const sr = await getDocs(query(collection(db, 'registro'), ...vincoli));
+  registro.push(...sr.docs.map(d => ({ id: d.id, ...d.data() })));
+  ultimoDoc = sr.docs[sr.docs.length - 1] || ultimoDoc;
+  finito = sr.docs.length < PAGINA;
+  $('btnAltriRegistro').classList.toggle('hidden', finito);
+}
+
+// ================= ISTRUTTORI =================
+function disegnaIstruttori() {
+  const staff = utenti.filter(u => u.ruolo === 'istruttore' || u.ruolo === 'admin');
+  const da = Date.now() - 30 * 86400e3;
+  const ms = ts => ts?.toMillis ? ts.toMillis() : 0;
+  if (!staff.length) { $('elencoIstr').innerHTML = '<div class="card"><p class="nota">Nessun istruttore ancora.</p></div>'; return; }
+  $('elencoIstr').innerHTML = staff.map(u => {
+    const op = registro.filter(r => r.uid === u.uid);
+    const recenti = op.filter(r => ms(r.quando) >= da);
+    const conta = pref => recenti.filter(r => pref.some(p => r.azione.startsWith(p))).length;
+    const ultima = op[0];
+    return `<div class="istr-card">
+      <div class="testa"><span class="avatar">${esc(iniziali(u))}</span>
+        <div><div class="nome">${esc(u.cognome)} ${esc(u.nome)}</div><div class="sub">${esc(u.email)}</div></div></div>
+      <div>${BADGE_RUOLO[u.ruolo]} ${u.attivo ? '' : '<span class="badge no">Disattivato</span>'}</div>
+      <div class="sub">${u.ruolo === 'admin' ? 'Tutti i corsi' : 'Gestisce: ' + ((u.corsiGestiti || []).map(nomeCorso).join(', ') || '<strong>nessun corso</strong>')}</div>
+      <div class="conti">
+        <div><div class="n">${conta(['invito.'])}</div><div class="l">Codici</div></div>
+        <div><div class="n">${conta(['domanda', 'domande.', 'pubblica'])}</div><div class="l">Domande</div></div>
+        <div><div class="n">${conta(['scheda.', 'esiti.', 'esame.', 'statistiche.'])}</div><div class="l">Consultazioni</div></div>
+      </div>
+      <div class="sub">${ultima ? `Ultima operazione: ${dataOra(ultima.quando)} · ${esc(AZIONI[ultima.azione] || ultima.azione)}` : 'Nessuna operazione registrata'}</div>
+      <div class="azioni">
+        <button class="btn sec piccolo" data-registro="${u.uid}" type="button">Vedi registro</button>
+        <button class="btn sec piccolo" data-ruolo="${u.uid}" type="button">Ruolo e corsi</button>
+      </div></div>`;
+  }).join('');
+}
+$('elencoIstr').addEventListener('click', ev => {
+  const r = ev.target.closest('[data-registro]');
+  if (r) { $('rChi').value = r.dataset.registro; disegnaRegistro(); scheda('tabRegistro'); return; }
+  const b = ev.target.closest('[data-ruolo]');
+  if (b) apriRuolo(b.dataset.ruolo);
+});
+
+// ================= UTENTI E RUOLI =================
+$('filtroCorso').innerHTML += corsi.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+['cercaUtente', 'filtroRuolo', 'filtroCorso'].forEach(id => $(id).addEventListener('input', disegnaUtenti));
+
+function disegnaUtenti() {
+  const q = $('cercaUtente').value.trim().toLowerCase(), fr = $('filtroRuolo').value, fc = $('filtroCorso').value;
+  const lista = utenti.filter(u =>
+    (!q || `${u.nome} ${u.cognome} ${u.email}`.toLowerCase().includes(q)) &&
+    (!fr || (u.ruolo || 'volontario') === fr) &&
+    (!fc || (u.corsi || []).includes(fc) || (u.corsiGestiti || []).includes(fc)));
+  $('titoloUtenti').textContent = `Utenti (${lista.length} di ${utenti.length})`;
+  if (!lista.length) { $('tabUtenti').innerHTML = '<p class="nota">Nessun utente corrisponde ai filtri.</p>'; return; }
+  $('tabUtenti').innerHTML = `<table><thead><tr><th>Nome</th><th>Email</th><th>Corsi (quiz)</th><th>Ruolo</th><th>Stato</th><th>Registrato</th><th></th></tr></thead><tbody>${
+    lista.map(u => { const io = u.uid === user.uid; return `<tr>
+      <td><strong>${esc(u.cognome)}</strong> ${esc(u.nome)}${io ? ' <span class="nota">(tu)</span>' : ''}</td>
+      <td>${esc(u.email)}</td>
+      <td>${badgeCorsi(u.corsi)}</td>
+      <td>${BADGE_RUOLO[u.ruolo] || BADGE_RUOLO.volontario}${u.ruolo === 'istruttore' ? `<div class="nota" style="font-size:12px;margin-top:3px">${esc((u.corsiGestiti || []).map(nomeCorso).join(', ') || 'nessun corso')}</div>` : ''}</td>
+      <td>${u.attivo ? '<span class="badge si">Attivo</span>' : '<span class="badge no">Disattivato</span>'}</td>
+      <td>${dataIt(u.creatoIl)}</td>
+      <td><div class="azioni">
+        <button class="btn sec piccolo" data-corsi="${u.uid}" type="button">Corsi</button>
+        ${io ? '' : `<button class="btn sec piccolo" data-ruolo="${u.uid}" type="button">Ruolo</button>
+        <button class="btn sec piccolo" data-stato="${u.uid}" type="button">${u.attivo ? 'Disattiva' : 'Riattiva'}</button>`}
+      </div></td></tr>`; }).join('')}</tbody></table>`;
+}
+
+$('tabUtenti').addEventListener('click', async ev => {
+  const bc = ev.target.closest('[data-corsi]'); if (bc) return apriCorsi(bc.dataset.corsi);
+  const br = ev.target.closest('[data-ruolo]'); if (br) return apriRuolo(br.dataset.ruolo);
+  const bs = ev.target.closest('[data-stato]'); if (!bs) return;
+  const u = utenti.find(x => x.uid === bs.dataset.stato);
+  if (u.attivo && !confirm(`Disattivare ${u.nome} ${u.cognome}? Non potrà più accedere finché non lo riattivi.`)) return;
+  bs.disabled = true;
+  try {
+    await updateDoc(doc(db, 'utenti', u.uid), { attivo: !u.attivo });
+    registra(u.attivo ? 'utente.disattiva' : 'utente.attiva', `${u.cognome} ${u.nome}`, { rif: u.uid });
+    u.attivo = !u.attivo; disegnaTutto();
+  } catch (e) { alert(messaggioErrore(e)); bs.disabled = false; }
+});
+
+// ---------- ruolo ----------
+let uidRuolo = null;
+function apriRuolo(uid) {
+  const u = utenti.find(x => x.uid === uid);
+  if (uid === user.uid) return alert('Non puoi cambiare il tuo ruolo: chiedi a un altro responsabile.');
+  uidRuolo = uid;
+  $('ruoloTitolo').textContent = `${u.nome} ${u.cognome}`;
+  document.querySelectorAll('input[name="ruolo"]').forEach(i => i.checked = i.value === (u.ruolo || 'volontario'));
+  $('sceltaGestiti').innerHTML = caselle('gestito', u.corsiGestiti || u.corsi || []);
+  $('boxGestiti').classList.toggle('hidden', u.ruolo !== 'istruttore');
+  $('msgRuolo').innerHTML = '';
+  $('modRuolo').classList.remove('hidden');
+}
+document.querySelectorAll('input[name="ruolo"]').forEach(i => i.addEventListener('change', () =>
+  $('boxGestiti').classList.toggle('hidden', document.querySelector('input[name="ruolo"]:checked').value !== 'istruttore')));
+$('btnAnnullaRuolo').onclick = () => $('modRuolo').classList.add('hidden');
+$('btnSalvaRuolo').addEventListener('click', async () => {
+  const u = utenti.find(x => x.uid === uidRuolo);
+  const ruolo = document.querySelector('input[name="ruolo"]:checked').value;
+  const gestiti = ruolo === 'istruttore' ? scelti('gestito') : [];
+  if (ruolo === 'istruttore' && !gestiti.length) return $('msgRuolo').innerHTML = '<div class="msg err">Scegli almeno un corso da gestire.</div>';
+  if (ruolo === 'admin' && u.ruolo !== 'admin' && !confirm(`${u.nome} ${u.cognome} diventerà responsabile: vedrà tutti gli utenti e il registro e potrà cambiare i ruoli. Confermi?`)) return;
+  $('btnSalvaRuolo').disabled = true;
+  try {
+    await updateDoc(doc(db, 'utenti', u.uid), { ruolo, corsiGestiti: gestiti });
+    registra('utente.ruolo', `${u.cognome} ${u.nome}: ${NOMI_RUOLO[u.ruolo || 'volontario']} → ${NOMI_RUOLO[ruolo]}${gestiti.length ? ' (' + gestiti.map(nomeCorso).join(', ') + ')' : ''}`, { rif: u.uid });
+    Object.assign(u, { ruolo, corsiGestiti: gestiti });
+    $('modRuolo').classList.add('hidden');
+    disegnaTutto();
+  } catch (e) { $('msgRuolo').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; }
+  $('btnSalvaRuolo').disabled = false;
+});
+
+// ---------- corsi dei quiz ----------
+let uidCorsi = null;
+function apriCorsi(uid) {
+  const u = utenti.find(x => x.uid === uid);
+  uidCorsi = uid;
+  $('corsiTitolo').textContent = `Corsi di ${u.nome} ${u.cognome}`;
+  $('corsiScelte').innerHTML = caselle('corsoUtente', u.corsi || []);
+  $('msgCorsi').innerHTML = '';
+  $('modCorsi').classList.remove('hidden');
+}
+$('btnAnnullaCorsi').onclick = () => $('modCorsi').classList.add('hidden');
+$('btnSalvaCorsi').addEventListener('click', async () => {
+  const u = utenti.find(x => x.uid === uidCorsi);
+  const nuovi = scelti('corsoUtente');
+  $('btnSalvaCorsi').disabled = true;
+  try {
+    await updateDoc(doc(db, 'utenti', u.uid), { corsi: nuovi });
+    registra('utente.corsi', `${u.cognome} ${u.nome}: ${nuovi.map(nomeCorso).join(', ') || 'nessun corso'}`, { rif: u.uid });
+    u.corsi = nuovi;
+    $('modCorsi').classList.add('hidden');
+    disegnaTutto();
+  } catch (e) { $('msgCorsi').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; }
+  $('btnSalvaCorsi').disabled = false;
+});
+
+// ================= REGISTRO =================
+$('rCorso').innerHTML += corsi.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+['rChi', 'rAzione', 'rCorso', 'rTesto'].forEach(id => $(id).addEventListener('input', disegnaRegistro));
+
+function opzioniRegistro() {
+  const chi = new Map(registro.map(r => [r.uid, r.nome]));
+  utenti.filter(u => u.ruolo !== 'volontario' && u.ruolo).forEach(u => chi.set(u.uid, `${u.nome} ${u.cognome}`));
+  const v = $('rChi').value;
+  $('rChi').innerHTML = '<option value="">Tutti</option>' + [...chi].sort((a, b) => a[1].localeCompare(b[1], 'it'))
+    .map(([uid, n]) => `<option value="${esc(uid)}">${esc(n)}</option>`).join('');
+  $('rChi').value = v;
+  const va = $('rAzione').value;
+  const azioni = [...new Set([...Object.keys(AZIONI), ...registro.map(r => r.azione)])];
+  $('rAzione').innerHTML = '<option value="">Tutte</option>' + azioni.map(a => `<option value="${esc(a)}">${esc(AZIONI[a] || a)}</option>`).join('');
+  $('rAzione').value = va;
+}
+function registroFiltrato() {
+  const chi = $('rChi').value, az = $('rAzione').value, co = $('rCorso').value, t = $('rTesto').value.trim().toLowerCase();
+  return registro.filter(r => (!chi || r.uid === chi) && (!az || r.azione === az) && (!co || r.corso === co)
+    && (!t || `${r.dettaglio} ${r.rif || ''} ${r.nome}`.toLowerCase().includes(t)));
+}
+function disegnaRegistro() {
+  const L = registroFiltrato();
+  $('titoloRegistro').textContent = `Registro (${L.length} operazioni${finito ? '' : ', le più recenti'})`;
+  $('tabRegistro2').innerHTML = L.length ? `<table><thead><tr><th>Quando</th><th>Chi</th><th>Operazione</th><th>Dettaglio</th><th>Corso</th></tr></thead><tbody>${
+    L.map(r => `<tr><td class="quando">${dataOra(r.quando)}</td><td>${esc(r.nome)}<div class="nota" style="font-size:12px">${esc(NOMI_RUOLO[r.ruolo] || r.ruolo)}</div></td>
+      <td>${esc(AZIONI[r.azione] || r.azione)}</td><td class="dett">${esc(r.dettaglio)}</td><td>${r.corso ? esc(nomeCorso(r.corso)) : ''}</td></tr>`).join('')}</tbody></table>`
+    : '<p class="nota">Nessuna operazione con questi filtri.</p>';
+}
+$('btnAltriRegistro').addEventListener('click', async () => {
+  $('btnAltriRegistro').disabled = true;
+  try { await caricaRegistro(); opzioniRegistro(); disegnaRegistro(); disegnaIstruttori(); }
+  catch (e) { alert(messaggioErrore(e)); }
+  $('btnAltriRegistro').disabled = false;
+});
+$('btnCsvRegistro').addEventListener('click', () => {
+  const L = registroFiltrato();
+  const csv = '﻿' + Papa.unparse({ fields: ['quando', 'chi', 'ruolo', 'operazione', 'dettaglio', 'corso', 'riferimento'],
+    data: L.map(r => [r.quando ? r.quando.toDate().toLocaleString('it-IT') : '', r.nome, NOMI_RUOLO[r.ruolo] || r.ruolo,
+      AZIONI[r.azione] || r.azione, r.dettaglio, r.corso ? nomeCorso(r.corso) : '', r.rif || '']) }, { delimiter: ';' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = `registro_operazioni_${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(a); a.click(); a.remove();
+  registra('registro.esporta', `${L.length} operazioni`);
+});
+
+function disegnaTutto() { disegnaIstruttori(); disegnaUtenti(); opzioniRegistro(); disegnaRegistro(); }
+
+try {
+  await Promise.all([caricaUtenti(), caricaRegistro()]);
+  disegnaTutto();
+} catch (e) {
+  const m = `<div class="msg err">${esc(messaggioErrore(e))}</div>`;
+  ['elencoIstr', 'tabUtenti', 'tabRegistro2'].forEach(id => $(id).innerHTML = m);
+}
+</script>
+</body>
+</html>
