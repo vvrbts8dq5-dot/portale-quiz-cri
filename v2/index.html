@@ -172,8 +172,11 @@ $('btnDimenticata').addEventListener('click', async () => {
 $('formRegistrati').addEventListener('submit', async ev => {
   ev.preventDefault();
   const codice = $('regCodice').value.trim().toUpperCase();
-  const nome = $('regNome').value.trim().replace(/\s+/g, ' ');
-  const cognome = $('regCognome').value.trim().replace(/\s+/g, ' ');
+  // "mario DE ROSSI" -> "Mario De Rossi" (anche dopo apostrofi e trattini: D'Angelo, Rossi-Bianchi)
+  const titolo = s => s.trim().replace(/\s+/g, ' ').toLocaleLowerCase('it')
+    .replace(/(^|[\s'’-])(\p{L})/gu, (m, a, b) => a + b.toLocaleUpperCase('it'));
+  const nome = titolo($('regNome').value);
+  const cognome = titolo($('regCognome').value);
   const email = $('regEmail').value.trim();
   const pwd = $('regPwd').value;
 
