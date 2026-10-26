@@ -11,7 +11,11 @@ export const AREE = [
   { id: 'principi', nome: 'Principi e Valori Umanitari', colore: '#6A3594', tinta: '#F1E8F8',
     icona: svg('<path d="M12 4v16M6 20h12M4 8h16M6 8l-3 6h6zM18 8l-3 6h6z"/>') },
   { id: 'giovani', nome: 'Giovani', colore: '#17664D', tinta: '#E1F2EC',
-    icona: svg('<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/>') }
+    icona: svg('<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/>') },
+  { id: 'motorizzazione', nome: 'Motorizzazione', colore: '#3E4C59', tinta: '#E6EBF0',
+    icona: svg('<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2"/><path d="M12 14v6.5M10.2 11.2L4 9.5M13.8 11.2L20 9.5"/>') },
+  { id: 'militare', nome: 'Corpo Militare', colore: '#4B5D23', tinta: '#EDF1E0',
+    icona: svg('<path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6z"/><path d="M12 8v7M8.5 11.5h7"/>') }
 ];
 
 const ALTRO = { id: 'altro', nome: 'Altri corsi', colore: '#4A4242', tinta: '#F3EFEE', icona: svg('<path d="M4 6h16M4 12h16M4 18h10"/>') };
