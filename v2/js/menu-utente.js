@@ -9,6 +9,7 @@ const IC = {
   stella: svg('<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/>'),
   aiuto: svg('<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17h.01"/>'),
   ticket: svg('<path d="M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4z"/><path d="M14 7v10" stroke-dasharray="2 2"/>'),
+  libro: svg('<path d="M4 5h6a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4zM20 5h-6a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h6z"/>'),
   scudo: svg('<path d="M12 3l7 3v5c0 4.5-3 8.2-7 10-4-1.8-7-5.5-7-10V6z"/>')
 };
 export const CATEGORIE_TICKET = {
@@ -60,6 +61,8 @@ function apriMenu() {
     <button class="voce-menu" type="button" data-azione="feedback">${IC.stella}Valuta l'app</button>
     <button class="voce-menu" type="button" data-azione="ticket">${IC.ticket}Segnala un problema</button>
     <button class="voce-menu" type="button" data-azione="miei">${IC.aiuto}Le mie richieste</button>
+    <a class="voce-menu" href="${urlPagina('guida.html')}">${IC.libro}Come si usa</a>
+    ${eStaff(P) ? `<a class="voce-menu" href="${urlPagina('admin/guida.html')}">${IC.libro}Guida per gli istruttori</a>` : ''}
     <a class="voce-menu" href="${urlPagina('privacy.html')}">${IC.scudo}Informativa privacy</a>
     <button class="voce-menu" type="button" data-azione="esci">${ICONA.esci}Esci</button>
     <button class="btn sec" type="button" data-chiudi style="margin-top:10px">Chiudi</button>`, 'menu-utente');

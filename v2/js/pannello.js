@@ -9,7 +9,8 @@ const VOCI = [
   { id: 'domande', href: 'domande.html', nome: 'Domande' },
   { id: 'segnalazioni', href: 'segnalazioni.html', nome: 'Segnalazioni' },
   { id: 'statistiche', href: 'statistiche.html', nome: 'Statistiche' },
-  { id: 'esame', href: 'esame.html', nome: 'Esame PDF' }
+  { id: 'esame', href: 'esame.html', nome: 'Esame PDF' },
+  { id: 'guida', href: 'guida.html', nome: 'Guida' }
 ];
 
 let PROFILO = null;

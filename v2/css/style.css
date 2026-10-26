@@ -200,3 +200,23 @@ body { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16
 /* Testo ingrandito dal telefono: niente zoom automatico su iOS e righe che vanno a capo */
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .voce .tit, .riquadro-area .nome { overflow-wrap: anywhere; }
+
+/* Guide d'uso */
+.guida .indice { display: flex; flex-wrap: wrap; gap: 6px; }
+.guida .indice a { background: var(--campo); color: var(--text); text-decoration: none; font-size: 13px; font-weight: 600; padding: 7px 12px; border-radius: 999px; }
+.guida details { background: var(--bg2); border-radius: 20px; box-shadow: var(--shadow); margin-bottom: 12px; scroll-margin-top: 16px; }
+.guida summary { list-style: none; cursor: pointer; padding: 18px 20px; display: flex; align-items: center; gap: 12px; font-size: 17px; font-weight: 800; }
+.guida summary::-webkit-details-marker { display: none; }
+.guida summary .num { width: 32px; height: 32px; border-radius: 50%; background: var(--red-tint); color: var(--red); display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+.guida summary::after { content: '+'; margin-left: auto; font-size: 22px; color: var(--text2); font-weight: 600; }
+.guida details[open] summary::after { content: '–'; }
+.guida .corpo { padding: 0 20px 20px; font-size: 15px; line-height: 1.6; color: var(--text3); }
+.guida .corpo p { margin-bottom: 10px; }
+.guida .corpo ol, .guida .corpo ul { padding-left: 22px; margin: 6px 0 12px; }
+.guida .corpo li { margin-bottom: 6px; }
+.guida .corpo h4 { font-size: 15px; color: var(--text); margin: 16px 0 6px; }
+.guida .consiglio { background: var(--amber-bg); color: var(--text); border-radius: 14px; padding: 10px 14px; margin: 10px 0; font-size: 14px; }
+.guida .attenzione { background: var(--err-bg); color: var(--red-dark); border-radius: 14px; padding: 10px 14px; margin: 10px 0; font-size: 14px; }
+.guida kbd, .guida .tasto { display: inline-block; background: var(--campo); border-radius: 8px; padding: 1px 8px; font: 700 13px 'Figtree', sans-serif; color: var(--text); white-space: nowrap; }
+.guida table { margin: 8px 0 12px; }
+.guida td, .guida th { font-size: 14px; vertical-align: top; }
