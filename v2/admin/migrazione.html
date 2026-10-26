@@ -126,7 +126,7 @@ $('btnEsegui').addEventListener('click', async () => {
     const bc = writeBatch(db);
     for (const c of CATALOGO) {
       bc.set(doc(db, 'corsi', c.id), {
-        nome: c.nome, icona: c.icona, ordine: c.ordine, attivo: true, quizGenerale: c.quizGenerale,
+        nome: c.nome, icona: c.icona, area: c.area, ordine: c.ordine, attivo: true, quizGenerale: c.quizGenerale,
         categorie: c.categorie.map((cat, i) => ({ id: cat.id, nome: cat.nome, icona: cat.icona, ordine: i + 1 })),
         aggiornatoIl: serverTimestamp()
       });

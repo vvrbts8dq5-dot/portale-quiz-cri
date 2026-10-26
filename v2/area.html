@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Area — Portale Formazione CRI Padova</title>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="img/icona-180.png">
+<link rel="apple-touch-icon" href="img/icona-180.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a class="tondo" href="home.html" aria-label="Torna alle aree" id="indietro"></a>
+    <div><div class="t1">Area</div><div class="t2">Scegli il corso</div></div>
+    <div class="spazio"></div>
+    <img src="img/emblema-cri-padova.png" alt="Croce Rossa Italiana, Comitato di Padova">
+  </div>
+
+  <div class="saluto" style="display:flex;align-items:center;gap:14px">
+    <span id="icArea" style="width:56px;height:56px;border-radius:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0"></span>
+    <h1 id="titolo">Area</h1>
+  </div>
+  <div id="elenco"><div class="card"><p class="nota">Caricamento…</p></div></div>
+</div>
+
+<script type="module">
+import { richiediUtente, esc, messaggioErrore } from './js/auth.js';
+import { leggiCorsi } from './js/domande.js';
+import { ICONA } from './js/icone.js';
+import { area, vociCorsi } from './js/aree.js';
+import { sfondoAttrezzature } from './js/sfondi.js';
+
+sfondoAttrezzature();
+const $ = id => document.getElementById(id);
+$('indietro').innerHTML = ICONA.indietro;
+const idArea = new URLSearchParams(location.search).get('a');
+const a = area(idArea);
+$('titolo').textContent = a.nome;
+document.title = `${a.nome} — Portale Formazione CRI Padova`;
+$('icArea').style.background = a.tinta; $('icArea').style.color = a.colore; $('icArea').innerHTML = a.icona;
+$('icArea').querySelector('svg').setAttribute('width', '30'); $('icArea').querySelector('svg').setAttribute('height', '30');
+
+const { profilo } = await richiediUtente();
+try {
+  const corsi = (await leggiCorsi(profilo.corsi)).filter(c => area(c.area).id === a.id);
+  $('elenco').innerHTML = corsi.length ? vociCorsi(corsi)
+    : '<div class="card"><p class="nota">Non hai corsi in quest\'area. <a href="home.html">Torna alla home</a>.</p></div>';
+} catch (e) {
+  $('elenco').innerHTML = `<div class="card"><div class="msg err">${esc(messaggioErrore(e))}</div></div>`;
+}
+</script>
+</body>
+</html>

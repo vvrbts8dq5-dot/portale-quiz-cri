@@ -168,7 +168,7 @@ try {
   if (!categorie.length) throw { nostro: 'Argomento non trovato.' };
   stato.nomeCategoria = idCat === 'generale' ? `Quiz generale` : categorie[0].nome;
 
-  const indietro = corso.categorie.length > 1 ? `corso.html?c=${encodeURIComponent(corso.id)}` : 'home.html';
+  const indietro = corso.categorie.length > 1 ? `corso.html?c=${encodeURIComponent(corso.id)}` : `area.html?a=${encodeURIComponent(corso.area || 'altro')}`;
   $('linkIndietro').href = indietro; $('btnTorna').href = indietro;
   $('titoloArg').textContent = stato.nomeCategoria;
   $('sottotitolo').textContent = corso.nome;

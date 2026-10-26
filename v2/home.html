@@ -21,7 +21,7 @@
 
   <div class="saluto">
     <h1 id="saluto">Ciao</h1>
-    <p>Su cosa ti alleni oggi?</p>
+    <p id="sottoSaluto">Su cosa ti alleni oggi?</p>
   </div>
 
   <div id="elencoCorsi"><div class="card"><p class="nota">Caricamento…</p></div></div>
@@ -34,7 +34,8 @@
 <script type="module">
 import { richiediUtente, esc, messaggioErrore } from './js/auth.js';
 import { leggiCorsi } from './js/domande.js';
-import { ICONA, iconaCorso, iniziali } from './js/icone.js';
+import { ICONA, iniziali } from './js/icone.js';
+import { perArea, vociCorsi, riquadriAree } from './js/aree.js';
 import { sfondoAttrezzature } from './js/sfondi.js';
 
 sfondoAttrezzature();
@@ -51,21 +52,16 @@ $('navbar').innerHTML = `
 
 try {
   const corsi = await leggiCorsi(profilo.corsi);
+  const gruppi = perArea(corsi);
   if (!corsi.length) {
     $('elencoCorsi').innerHTML = '<div class="card"><p class="nota">Non hai ancora corsi assegnati. Rivolgiti all\'istruttore.</p></div>';
+  } else if (gruppi.length === 1) {
+    // una sola area: mostra subito i corsi, con il nome dell'area sopra
+    const g = gruppi[0];
+    $('elencoCorsi').innerHTML = `<div class="titolo-area" style="background:${g.tinta};color:${g.colore}">${g.nome}</div>` + vociCorsi(g.corsi);
   } else {
-    $('elencoCorsi').innerHTML = corsi.map(c => {
-      // un corso con una sola categoria porta direttamente al quiz
-      const una = c.categorie.length === 1;
-      const href = una
-        ? `quiz.html?c=${encodeURIComponent(c.id)}&cat=${encodeURIComponent(c.categorie[0].id)}`
-        : `corso.html?c=${encodeURIComponent(c.id)}`;
-      const ic = iconaCorso(c.id);
-      return `<a class="voce" href="${href}">
-        <span class="icona ${ic.tinta}">${ic.icona}</span>
-        <span><span class="tit" style="display:block">${esc(c.nome)}</span><span class="sub">${una ? 'Quiz diretto' : c.categorie.length + ' argomenti'}</span></span>
-        <span class="freccia">${ICONA.avanti}</span></a>`;
-    }).join('');
+    $('sottoSaluto').textContent = 'Scegli un\'area per iniziare';
+    $('elencoCorsi').innerHTML = riquadriAree(gruppi);
   }
 } catch (e) {
   $('elencoCorsi').innerHTML = `<div class="card"><div class="msg err">${esc(messaggioErrore(e))}</div></div>`;

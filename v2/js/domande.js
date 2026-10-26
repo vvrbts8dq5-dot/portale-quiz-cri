@@ -7,14 +7,14 @@ import {
 // Catalogo iniziale: dalla fase 3 vive nella collezione `corsi`.
 // `legacy` = collezione del portale attuale da cui arrivano le domande.
 export const CATALOGO = [
-  { id: 'base', nome: 'Corso Base', icona: '🏥', ordine: 1, quizGenerale: true, categorie: [
+  { id: 'base', nome: 'Corso Base', icona: '🏥', area: 'principi', ordine: 1, quizGenerale: true, categorie: [
     { id: 'base_diu',       nome: 'Diritto Internazionale Umanitario', icona: '⚖️', legacy: 'domande_base_diu' },
     { id: 'base_movimento', nome: 'Movimento CRI e Mezzaluna Rossa',   icona: '🌍', legacy: 'domande_base_movimento' },
     { id: 'base_principi',  nome: 'Principi ed Emblema',               icona: '🔴', legacy: 'domande_base_principi' },
     { id: 'base_strategia', nome: 'Strategia CRI 2030',                icona: '📋', legacy: 'domande_base_strategia' },
     { id: 'base_salvavita', nome: 'Manovre Salvavita',                 icona: '🫀', legacy: 'domande_base_salvavita' }
   ]},
-  { id: 'tssa', nome: 'Corso TSSA', icona: '🚑', ordine: 2, quizGenerale: true, categorie: [
+  { id: 'tssa', nome: 'Corso TSSA', icona: '🚑', area: 'salute', ordine: 2, quizGenerale: true, categorie: [
     { id: 'tssa_adulto',     nome: 'Protocolli operativi sanitari adulto',               icona: '🫀', legacy: 'domande_tssa_adulto' },
     { id: 'tssa_pediatrico', nome: 'Protocolli operativi sanitari pediatrico',           icona: '👶', legacy: 'domande_tssa_pediatrico' },
     { id: 'tssa_resp',       nome: 'Approccio al paziente con problematica respiratoria', icona: '🫁', legacy: 'domande_tssa_resp' },
@@ -25,7 +25,7 @@ export const CATALOGO = [
     { id: 'tssa_trauma',     nome: 'Trauma',                                              icona: '🦴', legacy: 'trauma' },
     { id: 'tssa_anatomia',   nome: 'Anatomia e Fisiologia',                               icona: '📖', legacy: 'domande_tssa_anatomia' }
   ]},
-  { id: 'squadra', nome: 'Formazione Squadra', icona: '👥', ordine: 3, quizGenerale: false, categorie: [
+  { id: 'squadra', nome: 'Formazione Squadra', icona: '👥', area: 'emergenze', ordine: 3, quizGenerale: false, categorie: [
     { id: 'squadra', nome: 'Formazione Squadra', icona: '👥', legacy: 'domande_squadra' }
   ]}
 ];

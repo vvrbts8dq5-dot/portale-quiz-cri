@@ -159,3 +159,15 @@ td code { font-family: 'DM Mono', monospace; font-size: 13px; }
 }
 
 .voce .freccia svg, .tondo svg { width: 18px; height: 18px; }
+
+/* Aree CRI */
+.griglia-aree { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px; }
+.riquadro-area { display: flex; flex-direction: column; gap: 6px; padding: 18px 16px; min-height: 150px; background: var(--bg2);
+  border-radius: 22px; box-shadow: var(--shadow); text-decoration: none; color: var(--text); transition: transform 0.12s; }
+.riquadro-area:hover { transform: translateY(-1px); }
+.riquadro-area .ic { width: 52px; height: 52px; border-radius: 16px; display: flex; align-items: center; justify-content: center; margin-bottom: auto; }
+.riquadro-area .ic svg { width: 28px; height: 28px; }
+.riquadro-area .nome { font-size: 17px; font-weight: 800; line-height: 1.2; margin-top: 14px; }
+.riquadro-area .sub { font-size: 14px; color: var(--text2); }
+.titolo-area { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; padding: 6px 12px; border-radius: 999px; margin-bottom: 10px; }

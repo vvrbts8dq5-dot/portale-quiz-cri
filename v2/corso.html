@@ -39,6 +39,7 @@ try {
   document.title = `${corso.nome} — Portale Formazione CRI Padova`;
   $('titolo').textContent = corso.nome;
   $('titoloBreve').textContent = corso.nome;
+  $('indietro').href = `area.html?a=${encodeURIComponent(corso.area || 'altro')}`;
   const tinta = iconaCorso(corso.id).tinta;
   const link = cat => `quiz.html?c=${encodeURIComponent(corso.id)}&cat=${encodeURIComponent(cat)}`;
   let h = corso.categorie.map(cat => `
