@@ -55,10 +55,6 @@ try {
   const gruppi = perArea(corsi);
   if (!corsi.length) {
     $('elencoCorsi').innerHTML = '<div class="card"><p class="nota">Non hai ancora corsi assegnati. Rivolgiti all\'istruttore.</p></div>';
-  } else if (gruppi.length === 1) {
-    // una sola area: mostra subito i corsi, con il nome dell'area sopra
-    const g = gruppi[0];
-    $('elencoCorsi').innerHTML = `<div class="titolo-area" style="background:${g.tinta};color:${g.colore}">${g.nome}</div>` + vociCorsi(g.corsi);
   } else {
     $('sottoSaluto').textContent = 'Scegli un\'area per iniziare';
     $('elencoCorsi').innerHTML = riquadriAree(gruppi);

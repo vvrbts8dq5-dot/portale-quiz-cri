@@ -11,18 +11,17 @@ export const AREE = [
   { id: 'principi', nome: 'Principi e Valori Umanitari', colore: '#6A3594', tinta: '#F1E8F8',
     icona: svg('<path d="M12 4v16M6 20h12M4 8h16M6 8l-3 6h6zM18 8l-3 6h6z"/>') },
   { id: 'giovani', nome: 'Giovani', colore: '#17664D', tinta: '#E1F2EC',
-    icona: svg('<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/>') },
-  { id: 'sviluppo', nome: 'Sviluppo', colore: '#0E6E78', tinta: '#DFF2F3',
-    icona: svg('<path d="M4 20h16M6 16l4-4 3 3 5-6M14 9h4v4"/>') }
+    icona: svg('<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/>') }
 ];
 
 const ALTRO = { id: 'altro', nome: 'Altri corsi', colore: '#4A4242', tinta: '#F3EFEE', icona: svg('<path d="M4 6h16M4 12h16M4 18h10"/>') };
 
 export const area = id => AREE.find(a => a.id === id) || ALTRO;
 
-// Raggruppa i corsi per area, nell'ordine delle aree CRI
+// Raggruppa i corsi per area, nell'ordine delle aree CRI.
+// Tutte le aree compaiono sempre, anche senza corsi; "Altri corsi" solo se serve.
 export function perArea(corsi) {
-  const gruppi = new Map();
+  const gruppi = new Map(AREE.map(a => [a.id, { ...a, corsi: [] }]));
   for (const c of corsi) {
     const a = area(c.area);
     if (!gruppi.has(a.id)) gruppi.set(a.id, { ...a, corsi: [] });
@@ -49,9 +48,15 @@ export const vociCorsi = corsi => corsi.map(c => {
 }).join('');
 
 // Riquadri delle aree (home con più aree)
-export const riquadriAree = gruppi => `<div class="griglia-aree">${gruppi.map(g => `
+// Le aree senza corsi si vedono ma non si aprono
+export const riquadriAree = gruppi => `<div class="griglia-aree">${gruppi.map(g => g.corsi.length ? `
   <a class="riquadro-area" href="area.html?a=${encodeURIComponent(g.id)}">
     <span class="ic" style="background:${g.tinta};color:${g.colore}">${g.icona}</span>
     <span class="nome">${esc(g.nome)}</span>
     <span class="sub">${g.corsi.length === 1 ? '1 corso' : g.corsi.length + ' corsi'}</span>
-  </a>`).join('')}</div>`;
+  </a>` : `
+  <div class="riquadro-area vuota" aria-disabled="true">
+    <span class="ic" style="background:${g.tinta};color:${g.colore}">${g.icona}</span>
+    <span class="nome">${esc(g.nome)}</span>
+    <span class="sub">Corsi in arrivo</span>
+  </div>`).join('')}</div>`;

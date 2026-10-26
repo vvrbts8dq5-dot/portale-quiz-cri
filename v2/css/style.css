@@ -165,6 +165,10 @@ td code { font-family: 'DM Mono', monospace; font-size: 13px; }
 .riquadro-area { display: flex; flex-direction: column; gap: 6px; padding: 18px 16px; min-height: 150px; background: var(--bg2);
   border-radius: 22px; box-shadow: var(--shadow); text-decoration: none; color: var(--text); transition: transform 0.12s; }
 .riquadro-area:hover { transform: translateY(-1px); }
+.riquadro-area.vuota { background: rgba(255,255,255,0.6); box-shadow: none; cursor: default; }
+.riquadro-area.vuota:hover { transform: none; }
+.riquadro-area.vuota .ic { filter: grayscale(0.6); opacity: 0.6; }
+.riquadro-area.vuota .nome { color: var(--text3); }
 .riquadro-area .ic { width: 52px; height: 52px; border-radius: 16px; display: flex; align-items: center; justify-content: center; margin-bottom: auto; }
 .riquadro-area .ic svg { width: 28px; height: 28px; }
 .riquadro-area .nome { font-size: 17px; font-weight: 800; line-height: 1.2; margin-top: 14px; }
