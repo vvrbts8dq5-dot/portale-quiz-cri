@@ -163,10 +163,9 @@ service cloud.firestore {
              'numeroDomande', 'corrette', 'percentuale', 'superato', 'durataSec', 'tempoScaduto', 'risposte',
              'timestamp', 'modalita', 'edizione'])
         && request.resource.data.timestamp == request.time
-        && request.resource.data.numeroDomande is int
-        && request.resource.data.numeroDomande <= 60
-        && request.resource.data.corrette <= request.resource.data.numeroDomande
-        && request.resource.data.risposte.size() == request.resource.data.numeroDomande
+        && request.resource.data.numeroDomande is int && request.resource.data.numeroDomande <= 60
+        && request.resource.data.corrette is int && request.resource.data.corrette <= request.resource.data.numeroDomande
+        && request.resource.data.risposte is list && request.resource.data.risposte.size() == request.resource.data.numeroDomande
         && request.resource.data.get('modalita', 'quiz') in ['quiz', 'allenamento', 'ripasso'];
       allow read: if loggato() && (resource.data.uid == request.auth.uid || gestisce(resource.data.corso));
       allow update: if false;
