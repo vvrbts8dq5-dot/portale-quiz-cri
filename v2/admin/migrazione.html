@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Migrazione domande — Portale Formazione CRI Padova</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  td.num, th.num { text-align: right; font-family: 'DM Mono', monospace; }
+  #log { font-family: 'DM Mono', monospace; font-size: 12px; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px; max-height: 220px; overflow-y: auto; white-space: pre-wrap; margin-top: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap largo">
+  <div class="topbar">
+    <img src="../../logo-cri.png" alt="CRI">
+    <div><div class="t1">Migrazione domande</div><div class="t2">Fase 3 · dal portale attuale alla collezione unica</div></div>
+    <div class="spazio"></div>
+    <a class="link" href="index.html">Pannello admin</a>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Cosa fa</div>
+    <p class="nota">Copia le domande delle 15 collezioni del portale attuale nella collezione unica <code>domande</code>,
+      crea i corsi con le loro categorie e pubblica un pacchetto per categoria.
+      Le collezioni attuali <strong>non vengono modificate</strong>: il portale attuale continua a funzionare.
+      Rieseguirla non crea doppioni, ma sovrascrive le domande migrate con la versione del portale attuale.</p>
+    <div class="azioni" style="margin-top:16px">
+      <button class="btn piccolo" id="btnAnalizza" type="button">1 · Analizza (non scrive nulla)</button>
+      <button class="btn piccolo" id="btnEsegui" type="button" disabled>2 · Esegui migrazione</button>
+    </div>
+    <label class="check hidden" id="boxSovrascrivi"><input type="checkbox" id="chkSovrascrivi">
+      <span>La collezione <code>domande</code> contiene già <strong id="nEsistenti"></strong> domande: confermo di volerle sovrascrivere con quelle del portale attuale.</span></label>
+    <div id="msg"></div>
+    <div id="log" class="hidden"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Riepilogo per categoria</div>
+    <div class="tabella-wrap" id="tabella"><p class="nota">Premi "Analizza" per iniziare.</p></div>
+  </div>
+</div>
+
+<script type="module">
+import { db } from '../js/firebase.js';
+import { richiediUtente, esc, messaggioErrore } from '../js/auth.js';
+import { CATALOGO, daLegacy, idLegacy, pubblicaCategoria } from '../js/domande.js';
+import {
+  collection, doc, getDocs, getDoc, writeBatch, query, where, getCountFromServer, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const $ = id => document.getElementById(id);
+const { user } = await richiediUtente({ admin: true });
+
+const righe = CATALOGO.flatMap(c => c.categorie.map(cat => ({ corso: c.id, ...cat })));
+let analisi = null; // { [categoria]: { sorgente, domande: [{id, domanda}], errori: [] } }
+
+function log(t) { const l = $('log'); l.classList.remove('hidden'); l.textContent += t + '\n'; l.scrollTop = l.scrollHeight; }
+const msg = (tipo, t) => $('msg').innerHTML = t ? `<div class="msg ${tipo}">${t}</div>` : '';
+
+function disegna(verifica) {
+  let h = `<table><thead><tr><th>Corso</th><th>Categoria</th><th>Collezione attuale</th>
+    <th class="num">Domande</th><th class="num">Errori</th>${verifica ? '<th class="num">In archivio</th><th class="num">Nel pacchetto</th><th>Esito</th>' : ''}</tr></thead><tbody>`;
+  let tot = 0, totErr = 0;
+  for (const r of righe) {
+    const a = analisi[r.id];
+    tot += a.domande.length; totErr += a.errori.length;
+    h += `<tr><td>${esc(r.corso)}</td><td>${esc(r.nome)}</td><td><code>${esc(r.legacy)}</code></td>
+      <td class="num">${a.domande.length}</td><td class="num">${a.errori.length || ''}</td>`;
+    if (verifica) {
+      const v = verifica[r.id];
+      const ok = v.archivio === a.domande.length && v.pacchetto === a.domande.length;
+      h += `<td class="num">${v.archivio}</td><td class="num">${v.pacchetto}</td><td>${ok ? '<span class="badge si">OK</span>' : '<span class="badge no">Differenza</span>'}</td>`;
+    }
+    h += '</tr>';
+    for (const e of a.errori) h += `<tr><td></td><td colspan="${verifica ? 7 : 4}" class="nota">⚠ <code>${esc(e.id)}</code>: ${esc(e.errore)}</td></tr>`;
+  }
+  h += `<tr><td></td><td><strong>Totale</strong></td><td></td><td class="num"><strong>${tot}</strong></td><td class="num">${totErr || ''}</td>${verifica ? '<td colspan="3"></td>' : ''}</tr>`;
+  $('tabella').innerHTML = h + '</tbody></table>';
+  return { tot, totErr };
+}
+
+// ---------- 1. ANALISI ----------
+$('btnAnalizza').addEventListener('click', async () => {
+  $('btnAnalizza').disabled = true; $('btnEsegui').disabled = true; msg();
+  $('log').textContent = '';
+  try {
+    analisi = {};
+    for (const r of righe) {
+      const snap = await getDocs(collection(db, r.legacy));
+      const a = { domande: [], errori: [] };
+      snap.forEach(d => {
+        const dati = d.data();
+        const { domanda, errore } = daLegacy(dati, r.corso, r.id, r.legacy, d.id);
+        if (errore) { a.errori.push({ id: d.id, errore }); return; }
+        // controllo incrociato: la risposta indicata come giusta è la stessa di prima
+        const primaGiusta = typeof dati.corretta === 'number' ? (dati.risposte || [])[dati.corretta] : dati.corretta;
+        if (String(primaGiusta).trim() !== domanda.opzioni[domanda.corretta]) { a.errori.push({ id: d.id, errore: 'risposta corretta cambiata nella conversione' }); return; }
+        a.domande.push({ id: idLegacy(r.legacy, d.id), domanda });
+      });
+      analisi[r.id] = a;
+      log(`${r.legacy}: ${a.domande.length} domande, ${a.errori.length} errori`);
+    }
+    const { tot, totErr } = disegna();
+    const esistenti = (await getCountFromServer(collection(db, 'domande'))).data().count;
+    $('boxSovrascrivi').classList.toggle('hidden', esistenti === 0);
+    $('nEsistenti').textContent = esistenti;
+    if (totErr) msg('err', `${totErr} domande hanno errori e non verrebbero migrate. Correggile nel portale attuale o segnalamele prima di proseguire.`);
+    else { msg('ok', `Analisi completata: ${tot} domande pronte, nessun errore.`); $('btnEsegui').disabled = false; }
+  } catch (e) { msg('err', esc(messaggioErrore(e))); }
+  $('btnAnalizza').disabled = false;
+});
+
+// ---------- 2. MIGRAZIONE ----------
+$('btnEsegui').addEventListener('click', async () => {
+  if (!$('boxSovrascrivi').classList.contains('hidden') && !$('chkSovrascrivi').checked)
+    return msg('err', 'Spunta la conferma di sovrascrittura per proseguire.');
+  if (!confirm('Avviare la migrazione? Il portale attuale non verrà toccato.')) return;
+  $('btnEsegui').disabled = true; $('btnAnalizza').disabled = true; msg();
+  try {
+    // corsi e categorie
+    const bc = writeBatch(db);
+    for (const c of CATALOGO) {
+      bc.set(doc(db, 'corsi', c.id), {
+        nome: c.nome, icona: c.icona, ordine: c.ordine, attivo: true, quizGenerale: c.quizGenerale,
+        categorie: c.categorie.map((cat, i) => ({ id: cat.id, nome: cat.nome, icona: cat.icona, ordine: i + 1 })),
+        aggiornatoIl: serverTimestamp()
+      });
+    }
+    await bc.commit();
+    log('Corsi creati: ' + CATALOGO.map(c => c.id).join(', '));
+
+    // domande, a blocchi di 400 scritture
+    const tutte = righe.flatMap(r => analisi[r.id].domande);
+    for (let i = 0; i < tutte.length; i += 400) {
+      const b = writeBatch(db);
+      for (const { id, domanda } of tutte.slice(i, i + 400)) {
+        b.set(doc(db, 'domande', id), { ...domanda, creataIl: serverTimestamp(), aggiornataIl: serverTimestamp(), aggiornataDa: user.uid });
+      }
+      await b.commit();
+      log(`Domande scritte: ${Math.min(i + 400, tutte.length)} / ${tutte.length}`);
+    }
+
+    // pacchetti
+    for (const r of righe) {
+      const n = await pubblicaCategoria(r.corso, r.id, user.uid);
+      log(`Pacchetto ${r.id}: ${n} domande`);
+    }
+
+    // verifica
+    const verifica = {};
+    for (const r of righe) {
+      const archivio = (await getCountFromServer(query(collection(db, 'domande'), where('categoria', '==', r.id)))).data().count;
+      const p = await getDoc(doc(db, 'pacchetti', r.id));
+      verifica[r.id] = { archivio, pacchetto: p.exists() ? p.data().domande.length : 0 };
+    }
+    disegna(verifica);
+    const ko = righe.filter(r => verifica[r.id].archivio !== analisi[r.id].domande.length || verifica[r.id].pacchetto !== analisi[r.id].domande.length);
+    if (ko.length) msg('err', `Migrazione terminata ma con differenze in: ${ko.map(r => esc(r.id)).join(', ')}.`);
+    else msg('ok', `Migrazione completata e verificata: ${tutte.length} domande in archivio e nei pacchetti.`);
+    log('Fine.');
+  } catch (e) {
+    msg('err', esc(messaggioErrore(e)));
+    log('ERRORE: ' + (e.code || e.message));
+    $('btnEsegui').disabled = false;
+  }
+  $('btnAnalizza').disabled = false;
+});
+</script>
+</body>
+</html>
