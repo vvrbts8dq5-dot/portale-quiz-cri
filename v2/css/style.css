@@ -28,6 +28,12 @@ body {
 }
 .sfondo.principi span { position: absolute; font-weight: 800; white-space: nowrap; }
 .sfondo.attrezzature { opacity: 0.22; }
+/* Sfondo caldo delle pagine interne: velature calde e simboli CRI appena accennati */
+.sfondo.simboli { background:
+  radial-gradient(900px 600px at 0% 0%, rgba(200,16,46,0.07), transparent 70%),
+  radial-gradient(800px 600px at 100% 100%, rgba(217,130,43,0.09), transparent 70%),
+  radial-gradient(700px 500px at 100% 0%, rgba(242,181,68,0.07), transparent 70%); }
+.sfondo.simboli svg { position: absolute; }
 .sfondo.attrezzature svg { position: absolute; }
 
 /* Intestazione della pagina di accesso */
@@ -36,8 +42,12 @@ body {
 .header p { font-size: 13px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; color: var(--text2); margin-top: 14px; }
 
 /* Barra in alto delle pagine interne */
-.topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; row-gap: 8px; }
-.topbar img { width: 50px; height: 54px; object-fit: contain; }
+.topbar { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; flex-wrap: wrap; row-gap: 12px; }
+/* Emblema: grande e con spazio attorno */
+.topbar > img { width: 78px; height: 84px; object-fit: contain; flex-shrink: 0; margin: 2px 6px; }
+.topbar > img:first-child { margin-left: 0; margin-right: 10px; }
+.topbar > img:last-child { margin-right: 0; margin-left: 10px; }
+@media (max-width: 380px) { .topbar > img { width: 64px; height: 70px; } }
 .topbar .t1 { font-size: 14px; font-weight: 700; color: var(--text); line-height: 1.25; }
 .topbar .t2 { font-size: 13px; color: var(--text2); margin-top: 1px; }
 .topbar .spazio { flex: 1; }

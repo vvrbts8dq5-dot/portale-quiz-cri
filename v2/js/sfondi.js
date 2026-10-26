@@ -17,6 +17,20 @@ const ATTREZZATURE = [
   "<g stroke=\"#1E1A1A\" stroke-width=\"2.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"><rect x=\"4\" y=\"20\" width=\"38\" height=\"26\" rx=\"4\" fill=\"#FFFFFF\"/><path d=\"M42 28h10l8 9v9H42z\" fill=\"#FFFFFF\"/><path d=\"M46 31h5l5 6H46z\" fill=\"#9CC9F0\"/><rect x=\"13\" y=\"14\" width=\"12\" height=\"6\" rx=\"2\" fill=\"#4A90E2\"/><path d=\"M23 26v14M16 33h14\" stroke=\"#C8102E\" stroke-width=\"5\"/><circle cx=\"15\" cy=\"47\" r=\"6\" fill=\"#4A4242\"/><circle cx=\"50\" cy=\"47\" r=\"6\" fill=\"#4A4242\"/></g>"
 ];
 
+// Simboli caldi per le pagine interne (viewBox 24×24, solo contorno): croce, cuore, mani, stella,
+// emblema nel cerchio, persone, cuore con croce, sole
+const SIMBOLI = [
+  '<path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z"/>',
+  '<path d="M12 20s-8-5-8-11a4.5 4.5 0 0 1 8-2.5A4.5 4.5 0 0 1 20 9c0 6-8 11-8 11z"/>',
+  '<path d="M7 11l3-3a2 2 0 0 1 3 0l1 1M3 13l4-4 3 3M21 13l-4-4-5 5a1.5 1.5 0 0 0 2 2l3-3M5 15l4 4a2 2 0 0 0 3 0"/>',
+  '<path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.9z"/>',
+  '<circle cx="12" cy="12" r="9"/><path d="M10.5 7h3v3.5H17v3h-3.5V17h-3v-3.5H7v-3h3.5z"/>',
+  '<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5M15 15c3 0 6 1.5 6 4"/>',
+  '<path d="M12 20s-8-5-8-11a4.5 4.5 0 0 1 8-2.5A4.5 4.5 0 0 1 20 9c0 6-8 11-8 11z"/><path d="M12 9v6M9 12h6"/>',
+  '<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/>'
+];
+const COLORI_CALDI = ['#C8102E', '#D9822B', '#B8860B', '#E0563B', '#C8102E', '#9E0C24'];
+
 const ROTAZIONI = [-14, -10, -7, -4, 0, 3, 6, 9, 12, 15];
 
 // generatore pseudo-casuale con seme: stessa disposizione a ogni apertura
@@ -79,6 +93,25 @@ function misura(el) {
     : { W: Math.max(el.clientWidth, screen.width || 0), H: Math.max(el.clientHeight, screen.height || 0) };
 }
 
+// Simboli piccoli e radi, ruotati, molto tenui: danno calore senza disturbare la lettura
+function disegnaSimboli(el) {
+  const r = casuale(5), prossimo = sacchetto(r, SIMBOLI);
+  const { W, H } = misura(el);
+  const passo = W < 700 ? 78 : 96;
+  const parti = [];
+  for (let y = -10, riga = 0; y < H + 20; y += passo * 0.86, riga++) {
+    for (let x = -20 + (riga % 2 ? passo / 2 : 0); x < W + 20; x += passo) {
+      if (r() < 0.18) continue; // qualche vuoto, per non fare una griglia
+      const sz = tra(r, 20, 34), rot = tra(r, -30, 30);
+      const col = COLORI_CALDI[Math.floor(r() * COLORI_CALDI.length)];
+      const op = (0.10 + r() * 0.08).toFixed(2);
+      parti.push(`<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+        style="left:${Math.round(x + tra(r, -14, 14))}px;top:${Math.round(y + tra(r, -12, 12))}px;opacity:${op};transform:rotate(${rot}deg)">${prossimo()}</svg>`);
+    }
+  }
+  el.innerHTML = parti.join('');
+}
+
 function monta(classe, disegna) {
   const el = document.createElement('div');
   el.className = 'sfondo ' + classe;
@@ -102,3 +135,4 @@ function monta(classe, disegna) {
 
 export const sfondoPrincipi = () => monta('principi', disegnaPrincipi);
 export const sfondoAttrezzature = () => monta('attrezzature', disegnaAttrezzature);
+export const sfondoSimboli = () => monta('simboli', disegnaSimboli);
