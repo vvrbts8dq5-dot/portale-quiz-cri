@@ -4,15 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>I miei quiz — Portale Formazione CRI Padova</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="img/icona-180.png">
+<link rel="apple-touch-icon" href="img/icona-180.png">
 <link rel="stylesheet" href="css/style.css">
 <style>
   .kpi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-  .kpi > div { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px; text-align: center; }
-  .kpi .n { font: 600 24px 'DM Mono', monospace; }
+  .kpi > div { background: var(--bg); border-radius: 18px; padding: 14px; text-align: center; }
+  .kpi .n { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; }
   .kpi .l { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
   .riga-quiz { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px;
-    border: 1.5px solid var(--border); border-radius: 10px; background: var(--bg); margin-bottom: 10px; }
+    border-radius: 18px; background: var(--bg); margin-bottom: 10px; }
   .riga-quiz .tit { font-size: 14px; font-weight: 600; }
   .riga-quiz .sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
   .riga-quiz .pct { font-size: 18px; font-weight: 700; text-align: right; }
@@ -22,10 +24,10 @@
 <body>
 <div class="wrap">
   <div class="topbar">
-    <img src="../logo-cri.png" alt="CRI">
-    <div><div class="t1">Croce Rossa Italiana</div><div class="t2">Comitato di Padova · Formazione</div></div>
+    <a class="tondo" href="home.html" aria-label="Torna ai miei corsi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></a>
+    <div><div class="t1">I miei quiz</div><div class="t2">I tuoi risultati</div></div>
     <div class="spazio"></div>
-    <a class="link" href="home.html">← I miei corsi</a>
+    <img src="img/emblema-cri-padova.png" alt="Croce Rossa Italiana, Comitato di Padova">
   </div>
   <div class="card">
     <h1>I miei quiz</h1>

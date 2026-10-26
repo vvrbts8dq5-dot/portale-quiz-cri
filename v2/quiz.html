@@ -4,7 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Quiz — Portale Formazione CRI Padova</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="img/icona-180.png">
+<link rel="apple-touch-icon" href="img/icona-180.png">
 <link rel="stylesheet" href="css/style.css">
 <style>
   .wrap { max-width: 600px; }
@@ -12,67 +14,72 @@
   .schermata.attiva { display: block; }
 
   .scelta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
-  .scelta { border: 2px solid var(--border); border-radius: 10px; background: var(--bg); padding: 20px 16px;
+  .scelta { border: 2px solid transparent; border-radius: 20px; background: var(--campo); padding: 22px 16px;
     cursor: pointer; text-align: center; font-family: inherit; transition: all 0.2s; }
   .scelta:hover:not(:disabled) { border-color: var(--red); background: #fff; }
   .scelta:disabled { opacity: 0.5; cursor: default; }
-  .scelta .num { font-size: 32px; font-weight: 600; color: var(--red); line-height: 1; font-family: 'DM Mono', monospace; }
-  .scelta .lab { font-size: 13px; color: var(--text2); margin-top: 4px; }
+  .scelta .num { font-size: 36px; font-weight: 800; color: var(--red); line-height: 1; }
+  .scelta .lab { font-size: 14px; color: var(--text2); margin-top: 6px; }
 
-  .timer-wrap { display: flex; justify-content: center; margin-bottom: 16px; }
-  .timer { display: inline-flex; gap: 7px; align-items: center; background: var(--bg); border: 1.5px solid var(--border);
-    border-radius: 99px; padding: 6px 16px; font: 600 15px 'DM Mono', monospace; color: var(--text2); transition: all 0.3s; }
-  .timer.avviso { border-color: #f59e0b; color: var(--amber); background: var(--amber-bg); }
-  .timer.urgente { border-color: var(--red); color: var(--red); background: var(--err-bg); animation: pulsa 1s infinite; }
-  @keyframes pulsa { 50% { transform: scale(1.04); } }
+  .timer { display: inline-flex; gap: 6px; align-items: center; background: var(--bg2); border-radius: 999px; padding: 10px 14px;
+    font: 700 17px 'Figtree', sans-serif; font-variant-numeric: tabular-nums; color: var(--text); box-shadow: var(--shadow); transition: all 0.3s; }
+  .timer svg { width: 18px; height: 18px; color: var(--red); }
+  .timer.avviso { background: var(--amber-bg); color: var(--amber); }
+  .timer.avviso svg { color: var(--amber); }
+  .timer.urgente { background: var(--red); color: #fff; animation: pulsa 1s infinite; }
+  .timer.urgente svg { color: #fff; }
+  @keyframes pulsa { 50% { transform: scale(1.05); } }
 
-  .prog-info { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); margin-bottom: 8px; }
-  .prog { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; margin-bottom: 20px; }
-  .prog > div { height: 100%; background: var(--red); transition: width 0.4s ease; }
+  .prog-info { display: flex; justify-content: space-between; font-size: 14px; font-weight: 600; color: var(--text2); margin: 0 2px 8px; }
+  .prog { height: 10px; background: var(--linea); border-radius: 999px; overflow: hidden; margin-bottom: 16px; }
+  .prog > div { height: 100%; background: var(--red); border-radius: 999px; transition: width 0.4s ease; }
 
-  .tipo { display: inline-block; font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.6px;
-    padding: 2px 8px; border-radius: 4px; margin-bottom: 10px; }
-  .tipo.multipla { background: #e8f0fe; color: #1a56b0; }
-  .tipo.vf { background: #fef3e2; color: var(--amber); }
-  .testo { font-size: 17px; font-weight: 500; line-height: 1.5; margin-bottom: 22px; }
+  .tipo { display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
+    padding: 4px 10px; border-radius: 999px; margin-bottom: 12px; }
+  .tipo.multipla { background: var(--blue-tint); color: var(--blue); }
+  .tipo.vf { background: var(--amber-bg); color: var(--amber); }
+  .testo { font-size: 21px; font-weight: 800; line-height: 1.35; letter-spacing: -0.2px; margin-bottom: 18px; }
 
   .opzioni { display: flex; flex-direction: column; gap: 10px; }
-  .opz { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 1.5px solid var(--border);
-    border-radius: 10px; background: var(--bg); cursor: pointer; text-align: left; width: 100%;
-    font-family: inherit; font-size: 15px; color: var(--text); transition: all 0.15s; line-height: 1.4; }
+  .opz { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 2px solid transparent;
+    border-radius: 16px; background: var(--bg); cursor: pointer; text-align: left; width: 100%;
+    font: 500 16px 'Figtree', sans-serif; color: var(--text); transition: all 0.15s; line-height: 1.4; }
   .opz:hover:not(:disabled) { border-color: var(--red); background: #fff; }
-  .opz .lettera { width: 28px; height: 28px; flex-shrink: 0; border-radius: 50%; border: 1.5px solid var(--border);
-    display: flex; align-items: center; justify-content: center; font: 500 12px 'DM Mono', monospace; color: var(--text2); }
+  .opz .lettera { width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; background: var(--bg2);
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; color: var(--text); }
   .opz:disabled { cursor: default; }
-  .opz.scelta-fatta { border-color: var(--text); background: #fff; }
-  .opz.scelta-fatta .lettera { background: var(--text); border-color: var(--text); color: #fff; }
+  .opz.scelta-fatta { border-color: var(--text); background: #fff; font-weight: 700; }
+  .opz.scelta-fatta .lettera { background: var(--text); color: #fff; }
 
-  .esito-head { text-align: center; padding: 8px 0 20px; }
-  .esito-head .icona-grande { font-size: 48px; margin-bottom: 10px; }
-  .esito-head h2 { font-size: 22px; font-weight: 600; }
-  .punteggio { display: flex; justify-content: center; align-items: center; gap: 24px; margin: 8px 0 20px;
-    padding: 20px; background: var(--bg); border-radius: 10px; border: 1px solid var(--border); }
-  .punteggio .n { font: 600 28px 'DM Mono', monospace; text-align: center; line-height: 1; }
-  .punteggio .l { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; text-align: center; }
-  .punteggio .sep { width: 1px; height: 40px; background: var(--border); }
+  .esito-head { text-align: center; padding: 4px 0 18px; }
+  .esito-head .icona-grande { width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; }
+  .esito-head .icona-grande svg { width: 36px; height: 36px; }
+  .esito-head .icona-grande.ok { background: var(--green-bg); color: var(--green); }
+  .esito-head .icona-grande.ko { background: var(--red-tint); color: var(--red); }
+  .esito-head h2 { font-size: 26px; font-weight: 800; letter-spacing: -0.4px; }
+  .punteggio { display: flex; justify-content: center; align-items: center; gap: 24px; margin: 8px 0 18px;
+    padding: 20px; background: var(--bg); border-radius: 20px; }
+  .punteggio .n { font-size: 30px; font-weight: 800; text-align: center; line-height: 1; font-variant-numeric: tabular-nums; }
+  .punteggio .l { font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.6px; margin-top: 6px; text-align: center; }
+  .punteggio .sep { width: 1px; height: 40px; background: var(--linea); }
   .verde { color: var(--green); } .rosso { color: var(--red); }
 
-  .rev { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
-  .rev .q { padding: 12px 14px; font-size: 14px; font-weight: 500; background: var(--bg); border-bottom: 1px solid var(--border); line-height: 1.4; }
-  .rev .a { padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
-  .rev .tua { background: var(--err-bg); color: var(--red); padding: 6px 10px; border-radius: 6px; }
-  .rev .giusta { background: var(--green-bg); color: var(--green); padding: 6px 10px; border-radius: 6px; }
-  .rev .spieg { color: var(--text2); padding: 2px 10px; line-height: 1.5; }
+  .rev { border-radius: 18px; overflow: hidden; margin-bottom: 10px; background: var(--bg); }
+  .rev .q { padding: 14px 16px 8px; font-size: 15px; font-weight: 700; line-height: 1.4; }
+  .rev .a { padding: 4px 12px 12px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+  .rev .tua { background: var(--err-bg); color: var(--red-dark); padding: 8px 12px; border-radius: 12px; }
+  .rev .giusta { background: var(--green-bg); color: var(--green); padding: 8px 12px; border-radius: 12px; }
+  .rev .spieg { color: var(--text3); padding: 4px 6px 0; line-height: 1.5; }
   .azioni-col { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="topbar">
-    <img src="../logo-cri.png" alt="CRI">
-    <div><div class="t1">Croce Rossa Italiana</div><div class="t2" id="sottotitolo">Comitato di Padova · Formazione</div></div>
+    <a class="tondo" id="linkIndietro" href="home.html" aria-label="Indietro"></a>
+    <div><div class="t1" id="titoloArg">Quiz</div><div class="t2" id="sottotitolo">Formazione</div></div>
     <div class="spazio"></div>
-    <a class="link" id="linkIndietro" href="home.html">← Indietro</a>
+    <div class="timer hidden" id="timer"><span id="icTimer"></span><span id="timerTxt">15:00</span></div>
   </div>
 
   <!-- caricamento / errore -->
@@ -91,14 +98,15 @@
   </div>
 
   <!-- quiz -->
-  <div class="card schermata" id="sQuiz">
-    <div class="timer-wrap"><div class="timer" id="timer">⏱ <span id="timerTxt">15:00</span></div></div>
+  <div class="schermata" id="sQuiz">
     <div class="prog-info"><span id="progTxt"></span><span id="progPct"></span></div>
     <div class="prog"><div id="progBar" style="width:0%"></div></div>
-    <div id="tipo"></div>
-    <div class="testo" id="testo"></div>
-    <div class="opzioni" id="opzioni"></div>
-    <button class="btn hidden" id="btnAvanti" type="button" style="margin-top:16px">Prossima domanda →</button>
+    <div class="card">
+      <div id="tipo"></div>
+      <div class="testo" id="testo"></div>
+      <div class="opzioni" id="opzioni"></div>
+    </div>
+    <button class="btn hidden" id="btnAvanti" type="button">Prossima domanda</button>
   </div>
 
   <!-- risultati -->
@@ -120,9 +128,9 @@
     <div class="card-title" id="resTitoloErrori" style="margin-top:20px"></div>
     <div id="resErrori"></div>
     <div class="azioni-col">
-      <button class="btn" id="btnRifai" type="button">🔄 Rifai il test</button>
-      <a class="btn sec" href="storico.html" style="text-align:center;text-decoration:none">📊 I miei quiz</a>
-      <a class="btn sec" id="btnTorna" href="home.html" style="text-align:center;text-decoration:none">← Torna agli argomenti</a>
+      <button class="btn" id="btnRifai" type="button">Rifai il test</button>
+      <a class="btn sec" href="storico.html">I miei quiz</a>
+      <a class="btn sec" id="btnTorna" href="home.html">Torna agli argomenti</a>
     </div>
   </div>
 
@@ -134,10 +142,13 @@ import { db } from './js/firebase.js';
 import { richiediUtente, esc, messaggioErrore } from './js/auth.js';
 import { leggiCorsi } from './js/domande.js';
 import { selezionaDomande, preparaDomanda, calcolaEsito, formattaTempo, SECONDI_PER_DOMANDA } from './js/quiz-engine.js';
+import { ICONA, iconaArgomento } from './js/icone.js';
 import { doc, getDoc, addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const $ = id => document.getElementById(id);
-const mostra = id => { document.querySelectorAll('.schermata').forEach(s => s.classList.toggle('attiva', s.id === id)); window.scrollTo({ top: 0 }); };
+$('linkIndietro').innerHTML = ICONA.indietro;
+$('icTimer').innerHTML = ICONA.orologio;
+const mostra = id => { document.querySelectorAll('.schermata').forEach(s => s.classList.toggle('attiva', s.id === id)); $('timer').classList.toggle('hidden', id !== 'sQuiz'); window.scrollTo({ top: 0 }); };
 const errore = t => { $('testoCarica').innerHTML = `<span class="msg err" style="display:block">${t}</span>`; mostra('sCarica'); };
 
 const params = new URLSearchParams(location.search);
@@ -159,7 +170,8 @@ try {
 
   const indietro = corso.categorie.length > 1 ? `corso.html?c=${encodeURIComponent(corso.id)}` : 'home.html';
   $('linkIndietro').href = indietro; $('btnTorna').href = indietro;
-  $('sottotitolo').textContent = `${corso.nome} · ${stato.nomeCategoria}`;
+  $('titoloArg').textContent = stato.nomeCategoria;
+  $('sottotitolo').textContent = corso.nome;
   $('titoloScelta').textContent = stato.nomeCategoria;
   document.title = `${stato.nomeCategoria} — ${corso.nome}`;
 
@@ -222,7 +234,7 @@ function disegnaDomanda() {
       <span class="lettera">${d.tipo === 'vf' ? d.opzioni[orig][0] : 'ABCDEF'[pos]}</span><span>${esc(d.opzioni[orig])}</span>
     </button>`).join('');
   $('btnAvanti').classList.add('hidden');
-  $('btnAvanti').textContent = stato.i < tot - 1 ? 'Prossima domanda →' : 'Vedi i risultati →';
+  $('btnAvanti').textContent = stato.i < tot - 1 ? 'Prossima domanda' : 'Vedi i risultati';
 }
 
 $('opzioni').addEventListener('click', ev => {
@@ -257,7 +269,10 @@ async function termina(tempoScaduto) {
   const es = calcolaEsito(stato.risposte, stato.domande.length);
   const durataSec = Math.min(Math.round((Date.now() - stato.inizio) / 1000), stato.domande.length * SECONDI_PER_DOMANDA);
 
-  $('resIcona').textContent = es.superato ? '🏆' : '📚';
+  $('resIcona').className = 'icona-grande ' + (es.superato ? 'ok' : 'ko');
+  $('resIcona').innerHTML = es.superato
+    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h6a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4zM20 5h-6a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h6z"/></svg>';
   $('resTitolo').textContent = tempoScaduto ? 'Tempo scaduto' : (es.superato ? 'Ottimo lavoro!' : 'Continua a studiare!');
   $('resSub').textContent = `${profilo.nome} ${profilo.cognome} · ${stato.corso.nome} · ${stato.nomeCategoria}`;
   $('resBadge').innerHTML = `<span class="badge ${es.superato ? 'si' : 'no'}" style="font-size:13px;padding:6px 14px">${es.superato ? '✓ Superato' : '✗ Non superato'} (${es.percentuale}%)</span>`;
@@ -267,7 +282,7 @@ async function termina(tempoScaduto) {
 
   const perId = new Map(stato.domande.map(d => [d.id, d]));
   const sbagliate = stato.risposte.filter(r => !r.esatta);
-  $('resTitoloErrori').textContent = sbagliate.length ? `Domande sbagliate o senza risposta (${sbagliate.length})` : '🎉 Nessun errore';
+  $('resTitoloErrori').textContent = sbagliate.length ? `Domande sbagliate o senza risposta (${sbagliate.length})` : 'Nessun errore, complimenti!';
   $('resErrori').innerHTML = sbagliate.map(r => {
     const d = perId.get(r.id);
     return `<div class="rev"><div class="q">${esc(d.testo)}</div><div class="a">
@@ -278,7 +293,7 @@ async function termina(tempoScaduto) {
   }).join('');
   mostra('sRisultati');
 
-  $('resSalvataggio').textContent = '💾 Salvataggio del risultato…';
+  $('resSalvataggio').textContent = 'Salvataggio del risultato…';
   try {
     await addDoc(collection(db, 'esiti'), {
       uid: user.uid,

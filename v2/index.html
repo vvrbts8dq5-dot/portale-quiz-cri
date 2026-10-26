@@ -4,16 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Accesso — Portale Formazione CRI Padova</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="img/icona-180.png">
+<link rel="apple-touch-icon" href="img/icona-180.png">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <div class="wrap">
 
   <div class="header">
-    <img src="../logo-cri.png" alt="Croce Rossa Italiana">
-    <h2>Comitato di Padova</h2>
-    <p>Portale · Formazione</p>
+    <img src="img/emblema-cri-padova.png" alt="Croce Rossa Italiana, Comitato di Padova">
+    <p>Portale Formazione</p>
   </div>
 
   <div class="card" id="cardCaricamento"><p class="nota">Caricamento…</p></div>
@@ -81,6 +82,8 @@
 
 <script type="module">
 import { auth, db } from './js/firebase.js';
+import { sfondoPrincipi } from './js/sfondi.js';
+sfondoPrincipi();
 import { utenteCorrente, leggiProfilo, urlPagina, messaggioErrore, esc } from './js/auth.js';
 import {
   signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail,

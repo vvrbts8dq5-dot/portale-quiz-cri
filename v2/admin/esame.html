@@ -4,7 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Esame PDF — Pannello admin CRI Padova</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="../img/icona-180.png">
+<link rel="apple-touch-icon" href="../img/icona-180.png">
 <link rel="stylesheet" href="../css/style.css">
 <style>
   td.num, th.num { text-align: right; }
@@ -15,10 +17,10 @@
   #listaManuale { max-height: 420px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 0 8px; margin-top: 10px; }
 
   /* ----- foglio d'esame ----- */
-  #foglio { background: #fff; color: #000; font-family: 'DM Sans', Arial, sans-serif; font-size: 12.5px; line-height: 1.45;
+  #foglio { background: #fff; color: #000; font-family: 'Figtree', Arial, sans-serif; font-size: 12.5px; line-height: 1.45;
     border: 1px solid var(--border); border-radius: 12px; padding: 40px 44px; }
   #foglio .intest { display: flex; align-items: center; gap: 18px; border-bottom: 2px solid #CC0000; padding-bottom: 12px; margin-bottom: 14px; }
-  #foglio .intest img { width: 170px; height: auto; }
+  #foglio .intest img { height: 86px; width: auto; }
   #foglio .intest .tit { font-size: 17px; font-weight: 600; }
   #foglio .intest .sub { font-size: 12px; color: #444; margin-top: 2px; }
   #foglio .anagrafica { display: grid; grid-template-columns: 1fr 1fr 0.6fr; gap: 18px; margin: 10px 0 14px; }
@@ -49,7 +51,7 @@
 <body>
 <div class="wrap largo">
   <div class="topbar no-stampa">
-    <img src="../../logo-cri.png" alt="CRI">
+    <img src="../img/emblema-cri-padova.png" alt="CRI">
     <div><div class="t1">Pannello admin · Esame PDF</div><div class="t2" id="chiSono"></div></div>
     <div class="spazio"></div>
     <a class="link" href="index.html" style="margin-right:14px">Utenti e inviti</a>
@@ -183,7 +185,7 @@ function disegnaFoglio(c, domande) {
   const nomeCat = id => c.categorie.find(x => x.id === id)?.nome || '';
   const dataIt = $('dataEsame').value ? new Date($('dataEsame').value + 'T12:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
   const L = 'ABCDEF';
-  const intest = sub => `<div class="intest"><img src="../../logo-cri.png" alt="Croce Rossa Italiana">
+  const intest = sub => `<div class="intest"><img src="../img/emblema-cri-padova.png" alt="Croce Rossa Italiana">
     <div><div class="tit">${esc($('titolo').value)}</div><div class="sub">Comitato di Padova · ${esc(c.nome)}${dataIt ? ' · ' + dataIt : ''}${sub ? ' · ' + sub : ''}</div></div></div>`;
   const giusta = d => d.indici.indexOf(d.corretta); // posizione stampata della risposta giusta
 

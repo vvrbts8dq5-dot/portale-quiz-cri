@@ -4,84 +4,71 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>I miei corsi — Portale Formazione CRI Padova</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="img/icona-180.png">
+<link rel="apple-touch-icon" href="img/icona-180.png">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <div class="wrap">
 
   <div class="topbar">
-    <img src="../logo-cri.png" alt="CRI">
-    <div>
-      <div class="t1">Croce Rossa Italiana</div>
-      <div class="t2">Comitato di Padova · Formazione</div>
-    </div>
+    <img src="img/emblema-cri-padova.png" alt="Croce Rossa Italiana, Comitato di Padova">
+    <div><div class="t1">CRI Padova</div><div class="t2">Formazione</div></div>
     <div class="spazio"></div>
-    <button class="link" id="btnEsci" type="button">Esci</button>
+    <a class="avatar" id="avatar" href="profilo.html" aria-label="Il mio profilo"></a>
   </div>
 
-  <div class="card">
+  <div class="saluto">
     <h1 id="saluto">Ciao</h1>
-    <p class="nota" style="margin-top:4px">Scegli il corso su cui vuoi esercitarti.</p>
+    <p>Su cosa ti alleni oggi?</p>
   </div>
 
-  <div class="card">
-    <div class="card-title">I tuoi corsi</div>
-    <div id="elencoCorsi"><p class="nota">Caricamento…</p></div>
-  </div>
+  <div id="elencoCorsi"><div class="card"><p class="nota">Caricamento…</p></div></div>
 
-  <div class="card">
-    <div class="card-title">Il mio account</div>
-    <a class="voce" href="storico.html" style="text-decoration:none">
-      <div class="icona">📊</div>
-      <div><div class="tit">I miei quiz</div><div class="sub">Risultati dei quiz che hai svolto</div></div>
-      <span class="freccia">›</span>
-    </a>
-    <a class="voce" href="profilo.html" style="text-decoration:none">
-      <div class="icona">👤</div>
-      <div><div class="tit">Il mio profilo</div><div class="sub">Nome, cognome e password</div></div>
-      <span class="freccia">›</span>
-    </a>
-    <a class="voce hidden" id="voceAdmin" href="admin/index.html" style="text-decoration:none">
-      <div class="icona">⚙️</div>
-      <div><div class="tit">Pannello admin</div><div class="sub">Codici invito, utenti e domande</div></div>
-      <span class="freccia">›</span>
-    </a>
-  </div>
+  <nav class="navbar" id="navbar" aria-label="Navigazione"></nav>
 
-  <div class="footer">Portale riservato ai volontari CRI · v2</div>
+  <div class="footer">Portale riservato ai volontari CRI</div>
 </div>
 
 <script type="module">
-import { richiediUtente, esci, esc, messaggioErrore } from './js/auth.js';
+import { richiediUtente, esc, messaggioErrore } from './js/auth.js';
 import { leggiCorsi } from './js/domande.js';
+import { ICONA, iconaCorso, iniziali } from './js/icone.js';
+import { sfondoAttrezzature } from './js/sfondi.js';
 
+sfondoAttrezzature();
 const $ = id => document.getElementById(id);
-$('btnEsci').onclick = esci;
 
 const { profilo } = await richiediUtente();
 $('saluto').textContent = `Ciao ${profilo.nome}`;
-if (profilo.ruolo === 'admin') $('voceAdmin').classList.remove('hidden');
+$('avatar').textContent = iniziali(profilo);
+
+$('navbar').innerHTML = `
+  <a class="attiva" href="home.html">${ICONA.casa}Corsi</a>
+  <a href="storico.html">${ICONA.grafico}I miei quiz</a>
+  ${profilo.ruolo === 'admin' ? `<a href="admin/index.html">${ICONA.ingranaggio}Admin</a>` : `<a href="profilo.html">${ICONA.utente}Profilo</a>`}`;
 
 try {
   const corsi = await leggiCorsi(profilo.corsi);
   if (!corsi.length) {
-    $('elencoCorsi').innerHTML = '<p class="nota">Non hai ancora corsi assegnati. Rivolgiti all\'istruttore.</p>';
+    $('elencoCorsi').innerHTML = '<div class="card"><p class="nota">Non hai ancora corsi assegnati. Rivolgiti all\'istruttore.</p></div>';
   } else {
     $('elencoCorsi').innerHTML = corsi.map(c => {
       // un corso con una sola categoria porta direttamente al quiz
-      const href = c.categorie.length === 1
+      const una = c.categorie.length === 1;
+      const href = una
         ? `quiz.html?c=${encodeURIComponent(c.id)}&cat=${encodeURIComponent(c.categorie[0].id)}`
         : `corso.html?c=${encodeURIComponent(c.id)}`;
-      const sub = c.categorie.length === 1 ? '' : `${c.categorie.length} argomenti`;
-      return `<a class="voce" href="${href}" style="text-decoration:none">
-        <div class="icona">${esc(c.icona || '📘')}</div>
-        <div><div class="tit">${esc(c.nome)}</div>${sub ? `<div class="sub">${sub}</div>` : ''}</div>
-        <span class="freccia">›</span></a>`;
+      const ic = iconaCorso(c.id);
+      return `<a class="voce" href="${href}">
+        <span class="icona ${ic.tinta}">${ic.icona}</span>
+        <span><span class="tit" style="display:block">${esc(c.nome)}</span><span class="sub">${una ? 'Quiz diretto' : c.categorie.length + ' argomenti'}</span></span>
+        <span class="freccia">${ICONA.avanti}</span></a>`;
     }).join('');
   }
 } catch (e) {
-  $('elencoCorsi').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`;
+  $('elencoCorsi').innerHTML = `<div class="card"><div class="msg err">${esc(messaggioErrore(e))}</div></div>`;
 }
 </script>
 </body>
