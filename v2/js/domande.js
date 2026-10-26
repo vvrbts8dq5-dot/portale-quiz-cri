@@ -1,7 +1,7 @@
 // Catalogo corsi/categorie, formato unico delle domande e pubblicazione dei pacchetti.
 import { db } from './firebase.js';
 import {
-  collection, doc, getDocs, setDoc, query, where, serverTimestamp
+  collection, doc, getDoc, getDocs, setDoc, query, where, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // Catalogo iniziale: dalla fase 3 vive nella collezione `corsi`.
@@ -77,6 +77,14 @@ export function valida(d) {
   if (!Number.isInteger(d.corretta) || d.corretta < 0 || d.corretta >= (d.opzioni?.length || 0)) e.push('risposta corretta non valida');
   if (d.difficolta !== null && !DIFFICOLTA.includes(d.difficolta)) e.push(`difficoltà "${d.difficolta}" non valida`);
   return e;
+}
+
+// Corsi dell'utente, letti dalla collezione `corsi`, in ordine di menu
+export async function leggiCorsi(idCorsi) {
+  const docs = await Promise.all((idCorsi || []).map(id => getDoc(doc(db, 'corsi', id))));
+  return docs.filter(d => d.exists() && d.data().attivo !== false)
+    .map(d => ({ id: d.id, ...d.data(), categorie: [...(d.data().categorie || [])].sort((a, b) => a.ordine - b.ordine) }))
+    .sort((a, b) => a.ordine - b.ordine);
 }
 
 // Id stabile per le domande migrate: rieseguire la migrazione non crea doppioni

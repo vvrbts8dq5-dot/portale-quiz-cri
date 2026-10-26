@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>I miei quiz — Portale Formazione CRI Padova</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .kpi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .kpi div { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px; text-align: center; }
+  .kpi .n { font: 600 24px 'DM Mono', monospace; }
+  .kpi .l { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+  .riga-quiz { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px;
+    border: 1.5px solid var(--border); border-radius: 10px; background: var(--bg); margin-bottom: 10px; }
+  .riga-quiz .tit { font-size: 14px; font-weight: 600; }
+  .riga-quiz .sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .riga-quiz .pct { font-size: 18px; font-weight: 700; text-align: right; }
+  .riga-quiz .det { font-size: 11px; color: var(--text2); text-align: right; margin-top: 2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <img src="../logo-cri.png" alt="CRI">
+    <div><div class="t1">Croce Rossa Italiana</div><div class="t2">Comitato di Padova · Formazione</div></div>
+    <div class="spazio"></div>
+    <a class="link" href="home.html">← I miei corsi</a>
+  </div>
+  <div class="card">
+    <h1>I miei quiz</h1>
+    <div class="kpi" style="margin-top:16px">
+      <div><div class="n" id="kTot">–</div><div class="l">Quiz svolti</div></div>
+      <div><div class="n" id="kMedia">–</div><div class="l">Media</div></div>
+      <div><div class="n verde" id="kSup" style="color:var(--green)">–</div><div class="l">Superati</div></div>
+    </div>
+  </div>
+  <div class="card"><div id="elenco"><p class="nota">Caricamento…</p></div></div>
+</div>
+
+<script type="module">
+import { db } from './js/firebase.js';
+import { richiediUtente, esc, messaggioErrore } from './js/auth.js';
+import { leggiCorsi } from './js/domande.js';
+import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const $ = id => document.getElementById(id);
+const { user, profilo } = await richiediUtente();
+
+try {
+  const [snap, corsi] = await Promise.all([
+    getDocs(query(collection(db, 'esiti'), where('uid', '==', user.uid))),
+    leggiCorsi(profilo.corsi)
+  ]);
+  const nomeCorso = Object.fromEntries(corsi.map(c => [c.id, c.nome]));
+  const esiti = snap.docs.map(d => d.data())
+    .sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
+
+  $('kTot').textContent = esiti.length;
+  $('kMedia').textContent = esiti.length ? Math.round(esiti.reduce((s, e) => s + e.percentuale, 0) / esiti.length) + '%' : '–';
+  $('kSup').textContent = esiti.filter(e => e.superato).length;
+
+  if (!esiti.length) {
+    $('elenco').innerHTML = '<p class="nota">Non hai ancora svolto quiz. <a href="home.html">Inizia da uno dei tuoi corsi</a>.</p>';
+  } else {
+    $('elenco').innerHTML = esiti.slice(0, 50).map(e => {
+      const data = e.timestamp ? e.timestamp.toDate().toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+      return `<div class="riga-quiz">
+        <div><div class="tit">${esc(e.categoriaNome)}</div><div class="sub">${esc(nomeCorso[e.corso] || e.corso)} · ${data}${e.tempoScaduto ? ' · tempo scaduto' : ''}</div></div>
+        <div><div class="pct" style="color:var(${e.superato ? '--green' : '--red'})">${e.percentuale}%</div>
+          <div class="det">${e.corrette}/${e.numeroDomande} ${e.superato ? '✓' : '✗'}</div></div>
+      </div>`;
+    }).join('') + (esiti.length > 50 ? `<p class="nota">Mostrati gli ultimi 50 di ${esiti.length}.</p>` : '');
+  }
+} catch (e) {
+  $('elenco').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`;
+}
+</script>
+</body>
+</html>

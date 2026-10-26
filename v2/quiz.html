@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz — Portale Formazione CRI Padova</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .wrap { max-width: 600px; }
+  .schermata { display: none; }
+  .schermata.attiva { display: block; }
+
+  .scelta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+  .scelta { border: 2px solid var(--border); border-radius: 10px; background: var(--bg); padding: 20px 16px;
+    cursor: pointer; text-align: center; font-family: inherit; transition: all 0.2s; }
+  .scelta:hover:not(:disabled) { border-color: var(--red); background: #fff; }
+  .scelta:disabled { opacity: 0.5; cursor: default; }
+  .scelta .num { font-size: 32px; font-weight: 600; color: var(--red); line-height: 1; font-family: 'DM Mono', monospace; }
+  .scelta .lab { font-size: 13px; color: var(--text2); margin-top: 4px; }
+
+  .timer-wrap { display: flex; justify-content: center; margin-bottom: 16px; }
+  .timer { display: inline-flex; gap: 7px; align-items: center; background: var(--bg); border: 1.5px solid var(--border);
+    border-radius: 99px; padding: 6px 16px; font: 600 15px 'DM Mono', monospace; color: var(--text2); transition: all 0.3s; }
+  .timer.avviso { border-color: #f59e0b; color: var(--amber); background: var(--amber-bg); }
+  .timer.urgente { border-color: var(--red); color: var(--red); background: var(--err-bg); animation: pulsa 1s infinite; }
+  @keyframes pulsa { 50% { transform: scale(1.04); } }
+
+  .prog-info { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); margin-bottom: 8px; }
+  .prog { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; margin-bottom: 20px; }
+  .prog > div { height: 100%; background: var(--red); transition: width 0.4s ease; }
+
+  .tipo { display: inline-block; font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.6px;
+    padding: 2px 8px; border-radius: 4px; margin-bottom: 10px; }
+  .tipo.multipla { background: #e8f0fe; color: #1a56b0; }
+  .tipo.vf { background: #fef3e2; color: var(--amber); }
+  .testo { font-size: 17px; font-weight: 500; line-height: 1.5; margin-bottom: 22px; }
+
+  .opzioni { display: flex; flex-direction: column; gap: 10px; }
+  .opz { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 1.5px solid var(--border);
+    border-radius: 10px; background: var(--bg); cursor: pointer; text-align: left; width: 100%;
+    font-family: inherit; font-size: 15px; color: var(--text); transition: all 0.15s; line-height: 1.4; }
+  .opz:hover:not(:disabled) { border-color: var(--red); background: #fff; }
+  .opz .lettera { width: 28px; height: 28px; flex-shrink: 0; border-radius: 50%; border: 1.5px solid var(--border);
+    display: flex; align-items: center; justify-content: center; font: 500 12px 'DM Mono', monospace; color: var(--text2); }
+  .opz:disabled { cursor: default; }
+  .opz.scelta-fatta { border-color: var(--text); background: #fff; }
+  .opz.scelta-fatta .lettera { background: var(--text); border-color: var(--text); color: #fff; }
+
+  .esito-head { text-align: center; padding: 8px 0 20px; }
+  .esito-head .icona-grande { font-size: 48px; margin-bottom: 10px; }
+  .esito-head h2 { font-size: 22px; font-weight: 600; }
+  .punteggio { display: flex; justify-content: center; align-items: center; gap: 24px; margin: 8px 0 20px;
+    padding: 20px; background: var(--bg); border-radius: 10px; border: 1px solid var(--border); }
+  .punteggio .n { font: 600 28px 'DM Mono', monospace; text-align: center; line-height: 1; }
+  .punteggio .l { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; text-align: center; }
+  .punteggio .sep { width: 1px; height: 40px; background: var(--border); }
+  .verde { color: var(--green); } .rosso { color: var(--red); }
+
+  .rev { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
+  .rev .q { padding: 12px 14px; font-size: 14px; font-weight: 500; background: var(--bg); border-bottom: 1px solid var(--border); line-height: 1.4; }
+  .rev .a { padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+  .rev .tua { background: var(--err-bg); color: var(--red); padding: 6px 10px; border-radius: 6px; }
+  .rev .giusta { background: var(--green-bg); color: var(--green); padding: 6px 10px; border-radius: 6px; }
+  .rev .spieg { color: var(--text2); padding: 2px 10px; line-height: 1.5; }
+  .azioni-col { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <img src="../logo-cri.png" alt="CRI">
+    <div><div class="t1">Croce Rossa Italiana</div><div class="t2" id="sottotitolo">Comitato di Padova · Formazione</div></div>
+    <div class="spazio"></div>
+    <a class="link" id="linkIndietro" href="home.html">← Indietro</a>
+  </div>
+
+  <!-- caricamento / errore -->
+  <div class="card schermata attiva" id="sCarica"><p class="nota" id="testoCarica">Caricamento domande…</p></div>
+
+  <!-- scelta numero domande -->
+  <div class="card schermata" id="sScelta">
+    <div class="card-title" id="titoloScelta">Configura il test</div>
+    <p style="font-size:15px;font-weight:500;margin-bottom:6px">Quante domande vuoi fare?</p>
+    <p class="nota" style="margin-bottom:16px">Hai un minuto per domanda. Le risposte corrette le vedi alla fine.</p>
+    <div class="scelta-grid">
+      <button class="scelta" type="button" data-n="15"><div class="num">15</div><div class="lab">domande · 15 min</div></button>
+      <button class="scelta" type="button" data-n="30"><div class="num">30</div><div class="lab">domande · 30 min</div></button>
+    </div>
+    <p class="nota" id="notaPool" style="margin-top:14px"></p>
+  </div>
+
+  <!-- quiz -->
+  <div class="card schermata" id="sQuiz">
+    <div class="timer-wrap"><div class="timer" id="timer">⏱ <span id="timerTxt">15:00</span></div></div>
+    <div class="prog-info"><span id="progTxt"></span><span id="progPct"></span></div>
+    <div class="prog"><div id="progBar" style="width:0%"></div></div>
+    <div id="tipo"></div>
+    <div class="testo" id="testo"></div>
+    <div class="opzioni" id="opzioni"></div>
+    <button class="btn hidden" id="btnAvanti" type="button" style="margin-top:16px">Prossima domanda →</button>
+  </div>
+
+  <!-- risultati -->
+  <div class="card schermata" id="sRisultati">
+    <div class="esito-head">
+      <div class="icona-grande" id="resIcona"></div>
+      <h2 id="resTitolo"></h2>
+      <p class="nota" id="resSub" style="margin-top:4px"></p>
+      <div id="resBadge" style="margin-top:10px"></div>
+    </div>
+    <div class="punteggio">
+      <div><div class="n verde" id="resCorrette"></div><div class="l">Corrette</div></div>
+      <div class="sep"></div>
+      <div><div class="n" id="resTotale"></div><div class="l">Totale</div></div>
+      <div class="sep"></div>
+      <div><div class="n rosso" id="resErrate"></div><div class="l">Errate</div></div>
+    </div>
+    <p class="nota" id="resSalvataggio" style="text-align:center"></p>
+    <div class="card-title" id="resTitoloErrori" style="margin-top:20px"></div>
+    <div id="resErrori"></div>
+    <div class="azioni-col">
+      <button class="btn" id="btnRifai" type="button">🔄 Rifai il test</button>
+      <a class="btn sec" href="storico.html" style="text-align:center;text-decoration:none">📊 I miei quiz</a>
+      <a class="btn sec" id="btnTorna" href="home.html" style="text-align:center;text-decoration:none">← Torna agli argomenti</a>
+    </div>
+  </div>
+
+  <div class="footer">Portale riservato ai volontari CRI · v2</div>
+</div>
+
+<script type="module">
+import { db } from './js/firebase.js';
+import { richiediUtente, esc, messaggioErrore } from './js/auth.js';
+import { leggiCorsi } from './js/domande.js';
+import { selezionaDomande, preparaDomanda, calcolaEsito, formattaTempo, SECONDI_PER_DOMANDA } from './js/quiz-engine.js';
+import { doc, getDoc, addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const $ = id => document.getElementById(id);
+const mostra = id => { document.querySelectorAll('.schermata').forEach(s => s.classList.toggle('attiva', s.id === id)); window.scrollTo({ top: 0 }); };
+const errore = t => { $('testoCarica').innerHTML = `<span class="msg err" style="display:block">${t}</span>`; mostra('sCarica'); };
+
+const params = new URLSearchParams(location.search);
+const idCorso = params.get('c');
+const idCat = params.get('cat');
+const { user, profilo } = await richiediUtente();
+
+const stato = { corso: null, nomeCategoria: '', gruppi: [], domande: [], i: 0, risposte: [], fine: 0, inizio: 0, timer: null, inCorso: false };
+
+// ---------- caricamento ----------
+try {
+  if (!(profilo.corsi || []).includes(idCorso)) throw { nostro: 'Non sei iscritto a questo corso.' };
+  const [corso] = await leggiCorsi([idCorso]);
+  if (!corso) throw { nostro: 'Corso non trovato.' };
+  stato.corso = corso;
+  const categorie = idCat === 'generale' ? corso.categorie : corso.categorie.filter(c => c.id === idCat);
+  if (!categorie.length) throw { nostro: 'Argomento non trovato.' };
+  stato.nomeCategoria = idCat === 'generale' ? `Quiz generale` : categorie[0].nome;
+
+  const indietro = corso.categorie.length > 1 ? `corso.html?c=${encodeURIComponent(corso.id)}` : 'home.html';
+  $('linkIndietro').href = indietro; $('btnTorna').href = indietro;
+  $('sottotitolo').textContent = `${corso.nome} · ${stato.nomeCategoria}`;
+  $('titoloScelta').textContent = stato.nomeCategoria;
+  document.title = `${stato.nomeCategoria} — ${corso.nome}`;
+
+  const pacchetti = await Promise.all(categorie.map(c => getDoc(doc(db, 'pacchetti', c.id))));
+  stato.gruppi = pacchetti.map((p, k) => p.exists()
+    ? p.data().domande.map(d => ({ ...d, categoria: categorie[k].id })) : []);
+  const tot = stato.gruppi.flat().length;
+  if (!tot) throw { nostro: 'Per questo argomento non ci sono ancora domande pubblicate.' };
+
+  document.querySelectorAll('.scelta').forEach(b => {
+    const n = +b.dataset.n;
+    if (tot < n) { b.querySelector('.num').textContent = tot; b.querySelector('.lab').textContent = `domande · ${tot} min`; b.dataset.n = tot; }
+  });
+  if (tot < 30) $('notaPool').textContent = `Per questo argomento ci sono ${tot} domande in tutto.`;
+  mostra('sScelta');
+} catch (e) {
+  errore(esc(e.nostro || messaggioErrore(e)) + ' <a href="home.html">Torna ai tuoi corsi</a>.');
+}
+
+// ---------- avvio ----------
+document.querySelectorAll('.scelta').forEach(b => b.addEventListener('click', () => avvia(+b.dataset.n)));
+$('btnRifai').addEventListener('click', () => mostra('sScelta'));
+
+function avvia(n) {
+  stato.domande = selezionaDomande(stato.gruppi, n).map(d => preparaDomanda(d));
+  stato.i = 0;
+  stato.risposte = [];
+  stato.inizio = Date.now();
+  stato.fine = stato.inizio + stato.domande.length * SECONDI_PER_DOMANDA * 1000;
+  stato.inCorso = true;
+  clearInterval(stato.timer);
+  stato.timer = setInterval(aggiornaTimer, 500);
+  aggiornaTimer();
+  mostra('sQuiz');
+  disegnaDomanda();
+}
+
+// Il timer si basa sull'ora di fine, quindi resta giusto anche se il telefono mette la pagina in pausa
+function aggiornaTimer() {
+  const rimasti = Math.ceil((stato.fine - Date.now()) / 1000);
+  $('timerTxt').textContent = formattaTempo(rimasti);
+  $('timer').classList.toggle('urgente', rimasti < 60);
+  $('timer').classList.toggle('avviso', rimasti >= 60 && rimasti < 180);
+  if (rimasti <= 0) termina(true);
+}
+
+// ---------- domanda ----------
+function disegnaDomanda() {
+  const d = stato.domande[stato.i];
+  const tot = stato.domande.length;
+  const pct = Math.round(stato.i / tot * 100);
+  $('progTxt').textContent = `Domanda ${stato.i + 1} di ${tot}`;
+  $('progPct').textContent = pct + '%';
+  $('progBar').style.width = pct + '%';
+  $('tipo').innerHTML = d.tipo === 'vf'
+    ? '<span class="tipo vf">Vero / Falso</span>' : '<span class="tipo multipla">Risposta multipla</span>';
+  $('testo').textContent = d.testo;
+  $('opzioni').innerHTML = d.indici.map((orig, pos) => `
+    <button class="opz" type="button" data-orig="${orig}">
+      <span class="lettera">${d.tipo === 'vf' ? d.opzioni[orig][0] : 'ABCDEF'[pos]}</span><span>${esc(d.opzioni[orig])}</span>
+    </button>`).join('');
+  $('btnAvanti').classList.add('hidden');
+  $('btnAvanti').textContent = stato.i < tot - 1 ? 'Prossima domanda →' : 'Vedi i risultati →';
+}
+
+$('opzioni').addEventListener('click', ev => {
+  const b = ev.target.closest('.opz');
+  if (!b || b.disabled || !stato.inCorso) return;
+  const d = stato.domande[stato.i];
+  const scelta = +b.dataset.orig;
+  stato.risposte.push({ id: d.id, scelta, esatta: scelta === d.corretta });
+  document.querySelectorAll('.opz').forEach(x => x.disabled = true);
+  b.classList.add('scelta-fatta');
+  $('btnAvanti').classList.remove('hidden');
+});
+
+$('btnAvanti').addEventListener('click', () => {
+  stato.i++;
+  if (stato.i >= stato.domande.length) termina(false);
+  else { disegnaDomanda(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+});
+
+window.addEventListener('beforeunload', ev => { if (stato.inCorso) { ev.preventDefault(); ev.returnValue = ''; } });
+
+// ---------- fine ----------
+async function termina(tempoScaduto) {
+  if (!stato.inCorso) return;
+  stato.inCorso = false;
+  clearInterval(stato.timer);
+
+  // le domande non risposte (tempo scaduto) contano come errate
+  const date = new Set(stato.risposte.map(r => r.id));
+  for (const d of stato.domande) if (!date.has(d.id)) stato.risposte.push({ id: d.id, scelta: null, esatta: false });
+
+  const es = calcolaEsito(stato.risposte, stato.domande.length);
+  const durataSec = Math.min(Math.round((Date.now() - stato.inizio) / 1000), stato.domande.length * SECONDI_PER_DOMANDA);
+
+  $('resIcona').textContent = es.superato ? '🏆' : '📚';
+  $('resTitolo').textContent = tempoScaduto ? 'Tempo scaduto' : (es.superato ? 'Ottimo lavoro!' : 'Continua a studiare!');
+  $('resSub').textContent = `${profilo.nome} ${profilo.cognome} · ${stato.corso.nome} · ${stato.nomeCategoria}`;
+  $('resBadge').innerHTML = `<span class="badge ${es.superato ? 'si' : 'no'}" style="font-size:13px;padding:6px 14px">${es.superato ? '✓ Superato' : '✗ Non superato'} (${es.percentuale}%)</span>`;
+  $('resCorrette').textContent = es.corrette;
+  $('resTotale').textContent = `${es.corrette}/${es.totale}`;
+  $('resErrate').textContent = es.errate;
+
+  const perId = new Map(stato.domande.map(d => [d.id, d]));
+  const sbagliate = stato.risposte.filter(r => !r.esatta);
+  $('resTitoloErrori').textContent = sbagliate.length ? `Domande sbagliate o senza risposta (${sbagliate.length})` : '🎉 Nessun errore';
+  $('resErrori').innerHTML = sbagliate.map(r => {
+    const d = perId.get(r.id);
+    return `<div class="rev"><div class="q">${esc(d.testo)}</div><div class="a">
+      <div class="tua">${r.scelta === null ? 'Nessuna risposta' : 'La tua risposta: ' + esc(d.opzioni[r.scelta])}</div>
+      <div class="giusta">Risposta corretta: ${esc(d.opzioni[d.corretta])}</div>
+      ${d.spiegazione ? `<div class="spieg">${esc(d.spiegazione)}</div>` : ''}
+    </div></div>`;
+  }).join('');
+  mostra('sRisultati');
+
+  $('resSalvataggio').textContent = '💾 Salvataggio del risultato…';
+  try {
+    await addDoc(collection(db, 'esiti'), {
+      uid: user.uid,
+      nome: profilo.nome, cognome: profilo.cognome,
+      corso: stato.corso.id, categoria: idCat, categoriaNome: stato.nomeCategoria,
+      numeroDomande: es.totale, corrette: es.corrette, percentuale: es.percentuale, superato: es.superato,
+      durataSec, tempoScaduto,
+      risposte: stato.risposte,
+      timestamp: serverTimestamp()
+    });
+    $('resSalvataggio').textContent = '✓ Risultato salvato';
+  } catch (e) {
+    $('resSalvataggio').textContent = 'Risultato non salvato: ' + messaggioErrore(e);
+  }
+}
+</script>
+</body>
+</html>

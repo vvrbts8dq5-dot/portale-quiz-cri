@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Argomenti — Portale Formazione CRI Padova</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .voce.generale { border-color: var(--red); background: rgba(204,0,0,0.03); }
+  .voce.generale .icona { background: var(--red); color: #fff; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <img src="../logo-cri.png" alt="CRI">
+    <div><div class="t1">Croce Rossa Italiana</div><div class="t2">Comitato di Padova · Formazione</div></div>
+    <div class="spazio"></div>
+    <a class="link" href="home.html">← I miei corsi</a>
+  </div>
+
+  <div class="card">
+    <h1 id="titolo">Corso</h1>
+    <p class="nota" style="margin-top:4px">Seleziona l'argomento del quiz.</p>
+  </div>
+  <div class="card"><div id="elenco"><p class="nota">Caricamento…</p></div></div>
+</div>
+
+<script type="module">
+import { richiediUtente, esc, messaggioErrore } from './js/auth.js';
+import { leggiCorsi } from './js/domande.js';
+
+const $ = id => document.getElementById(id);
+const idCorso = new URLSearchParams(location.search).get('c');
+const { profilo } = await richiediUtente();
+
+try {
+  if (!(profilo.corsi || []).includes(idCorso)) throw { code: 'non-iscritto' };
+  const [corso] = await leggiCorsi([idCorso]);
+  if (!corso) throw { code: 'non-iscritto' };
+  document.title = `${corso.nome} — Portale Formazione CRI Padova`;
+  $('titolo').textContent = corso.nome;
+  const link = cat => `quiz.html?c=${encodeURIComponent(corso.id)}&cat=${encodeURIComponent(cat)}`;
+  let h = corso.categorie.map(cat => `
+    <a class="voce" href="${link(cat.id)}" style="text-decoration:none">
+      <div class="icona">${esc(cat.icona || '📘')}</div>
+      <div><div class="tit">${esc(cat.nome)}</div></div>
+      <span class="freccia">›</span></a>`).join('');
+  if (corso.quizGenerale && corso.categorie.length > 1) {
+    h += `<a class="voce generale" href="${link('generale')}" style="text-decoration:none;margin-top:18px">
+      <div class="icona">📋</div>
+      <div><div class="tit">Quiz generale ${esc(corso.nome)}</div><div class="sub">Domande da tutti gli argomenti</div></div>
+      <span class="freccia" style="color:var(--red)">›</span></a>`;
+  }
+  $('elenco').innerHTML = h;
+} catch (e) {
+  $('elenco').innerHTML = e.code === 'non-iscritto'
+    ? '<div class="msg err">Non sei iscritto a questo corso. <a href="home.html">Torna ai tuoi corsi</a>.</div>'
+    : `<div class="msg err">${esc(messaggioErrore(e))}</div>`;
+}
+</script>
+</body>
+</html>

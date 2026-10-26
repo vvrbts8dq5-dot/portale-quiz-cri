@@ -22,7 +22,7 @@
 
   <div class="card">
     <h1 id="saluto">Ciao</h1>
-    <p class="nota" id="sottotitolo" style="margin-top:4px">Scegli il corso su cui vuoi esercitarti.</p>
+    <p class="nota" style="margin-top:4px">Scegli il corso su cui vuoi esercitarti.</p>
   </div>
 
   <div class="card">
@@ -30,11 +30,21 @@
     <div id="elencoCorsi"><p class="nota">Caricamento…</p></div>
   </div>
 
-  <div class="card hidden" id="cardAdmin">
-    <div class="card-title">Amministrazione</div>
-    <a class="voce" href="admin/index.html" style="text-decoration:none">
+  <div class="card">
+    <div class="card-title">Il mio account</div>
+    <a class="voce" href="storico.html" style="text-decoration:none">
+      <div class="icona">📊</div>
+      <div><div class="tit">I miei quiz</div><div class="sub">Risultati dei quiz che hai svolto</div></div>
+      <span class="freccia">›</span>
+    </a>
+    <a class="voce" href="profilo.html" style="text-decoration:none">
+      <div class="icona">👤</div>
+      <div><div class="tit">Il mio profilo</div><div class="sub">Nome, cognome e password</div></div>
+      <span class="freccia">›</span>
+    </a>
+    <a class="voce hidden" id="voceAdmin" href="admin/index.html" style="text-decoration:none">
       <div class="icona">⚙️</div>
-      <div><div class="tit">Pannello admin</div><div class="sub">Codici invito e utenti</div></div>
+      <div><div class="tit">Pannello admin</div><div class="sub">Codici invito, utenti e domande</div></div>
       <span class="freccia">›</span>
     </a>
   </div>
@@ -43,41 +53,36 @@
 </div>
 
 <script type="module">
-import { CORSI } from './js/firebase.js';
-import { richiediUtente, esci, esc } from './js/auth.js';
+import { richiediUtente, esci, esc, messaggioErrore } from './js/auth.js';
+import { leggiCorsi } from './js/domande.js';
 
 const $ = id => document.getElementById(id);
 $('btnEsci').onclick = esci;
 
 const { profilo } = await richiediUtente();
 $('saluto').textContent = `Ciao ${profilo.nome}`;
-if (profilo.ruolo === 'admin') $('cardAdmin').classList.remove('hidden');
+if (profilo.ruolo === 'admin') $('voceAdmin').classList.remove('hidden');
 
-const corsi = (profilo.corsi || []).filter(c => CORSI[c]);
-if (!corsi.length) {
-  $('elencoCorsi').innerHTML = '<p class="nota">Non hai ancora corsi assegnati. Rivolgiti all\'istruttore.</p>';
-} else {
-  $('elencoCorsi').innerHTML = corsi.map(c => `
-    <button class="voce" type="button" data-corso="${esc(c)}">
-      <div class="icona">${CORSI[c].icona}</div>
-      <div><div class="tit">${esc(CORSI[c].label)}</div></div>
-      <span class="freccia">›</span>
-    </button>`).join('');
+try {
+  const corsi = await leggiCorsi(profilo.corsi);
+  if (!corsi.length) {
+    $('elencoCorsi').innerHTML = '<p class="nota">Non hai ancora corsi assegnati. Rivolgiti all\'istruttore.</p>';
+  } else {
+    $('elencoCorsi').innerHTML = corsi.map(c => {
+      // un corso con una sola categoria porta direttamente al quiz
+      const href = c.categorie.length === 1
+        ? `quiz.html?c=${encodeURIComponent(c.id)}&cat=${encodeURIComponent(c.categorie[0].id)}`
+        : `corso.html?c=${encodeURIComponent(c.id)}`;
+      const sub = c.categorie.length === 1 ? '' : `${c.categorie.length} argomenti`;
+      return `<a class="voce" href="${href}" style="text-decoration:none">
+        <div class="icona">${esc(c.icona || '📘')}</div>
+        <div><div class="tit">${esc(c.nome)}</div>${sub ? `<div class="sub">${sub}</div>` : ''}</div>
+        <span class="freccia">›</span></a>`;
+    }).join('');
+  }
+} catch (e) {
+  $('elencoCorsi').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`;
 }
-
-// FASE DI TRANSIZIONE: i quiz girano ancora sul portale attuale.
-// Gli passiamo nome, cognome e corso come farebbe la sua pagina di login,
-// così il volontario non deve più inserire password condivise né nome.
-$('elencoCorsi').addEventListener('click', ev => {
-  const b = ev.target.closest('[data-corso]');
-  if (!b) return;
-  const corso = b.dataset.corso;
-  sessionStorage.setItem('corso', corso);
-  sessionStorage.setItem('corsoLabel', CORSI[corso].label);
-  sessionStorage.setItem('nome', profilo.nome);
-  sessionStorage.setItem('cognome', profilo.cognome);
-  location.href = corso === 'squadra' ? '../quiz.html?corso=squadra' : '../index.html';
-});
 </script>
 </body>
 </html>

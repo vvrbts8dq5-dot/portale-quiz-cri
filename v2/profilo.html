@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Il mio profilo — Portale Formazione CRI Padova</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <img src="../logo-cri.png" alt="CRI">
+    <div><div class="t1">Croce Rossa Italiana</div><div class="t2">Comitato di Padova · Formazione</div></div>
+    <div class="spazio"></div>
+    <a class="link" href="home.html">← I miei corsi</a>
+  </div>
+
+  <div class="card">
+    <h1>Il mio profilo</h1>
+    <p class="nota" id="email" style="margin-top:4px"></p>
+    <div id="corsi" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Nome e cognome</div>
+    <form id="formNome" novalidate>
+      <div class="riga">
+        <div class="campo"><label for="nome">Nome</label><input type="text" id="nome" autocomplete="given-name"></div>
+        <div class="campo"><label for="cognome">Cognome</label><input type="text" id="cognome" autocomplete="family-name"></div>
+      </div>
+      <button class="btn" type="submit" id="btnSalva">Salva</button>
+      <div id="msgNome"></div>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Password</div>
+    <p class="nota" style="margin-bottom:14px">Ti mandiamo un'email con il link per scegliere una nuova password.</p>
+    <button class="btn sec" type="button" id="btnPassword">Cambia password</button>
+    <div id="msgPwd"></div>
+  </div>
+
+  <button class="btn sec" type="button" id="btnEsci">Esci</button>
+</div>
+
+<script type="module">
+import { db, auth } from './js/firebase.js';
+import { richiediUtente, esci, esc, messaggioErrore, urlPagina } from './js/auth.js';
+import { leggiCorsi } from './js/domande.js';
+import { doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { sendPasswordResetEmail, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const $ = id => document.getElementById(id);
+$('btnEsci').onclick = esci;
+const { user, profilo } = await richiediUtente();
+
+$('email').textContent = profilo.email;
+$('nome').value = profilo.nome;
+$('cognome').value = profilo.cognome;
+leggiCorsi(profilo.corsi).then(cs => {
+  $('corsi').innerHTML = cs.map(c => `<span class="badge neutro">${esc(c.nome)}</span>`).join(' ');
+}).catch(() => {});
+
+const titolo = s => s.trim().replace(/\s+/g, ' ').toLocaleLowerCase('it')
+  .replace(/(^|[\s'’-])(\p{L})/gu, (m, a, b) => a + b.toLocaleUpperCase('it'));
+
+$('formNome').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const nome = titolo($('nome').value), cognome = titolo($('cognome').value);
+  if (!nome || !cognome) return $('msgNome').innerHTML = '<div class="msg err">Compila nome e cognome.</div>';
+  $('btnSalva').disabled = true;
+  try {
+    await updateDoc(doc(db, 'utenti', user.uid), { nome, cognome });
+    await updateProfile(user, { displayName: `${nome} ${cognome}` }).catch(() => {});
+    $('nome').value = nome; $('cognome').value = cognome;
+    $('msgNome').innerHTML = '<div class="msg ok">Salvato.</div>';
+  } catch (e) { $('msgNome').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; }
+  $('btnSalva').disabled = false;
+});
+
+$('btnPassword').addEventListener('click', async () => {
+  $('btnPassword').disabled = true;
+  try {
+    await sendPasswordResetEmail(auth, profilo.email, { url: urlPagina('index.html') });
+    $('msgPwd').innerHTML = `<div class="msg ok">Email inviata a <strong>${esc(profilo.email)}</strong>. Controlla anche lo spam.</div>`;
+  } catch (e) { $('msgPwd').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; $('btnPassword').disabled = false; }
+});
+</script>
+</body>
+</html>
