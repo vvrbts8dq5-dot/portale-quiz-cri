@@ -37,16 +37,27 @@
   .scelta-ruolo strong { display: block; }
   .scelta-ruolo span.nota { font-size: 13px; }
   @media (max-width: 760px) { .filtri { grid-template-columns: 1fr 1fr; } }
+  .kpi-a { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .kpi-a > div { background: var(--bg); border-radius: 14px; padding: 14px; }
+  .kpi-a .n { font: 600 26px 'DM Mono', monospace; }
+  .kpi-a .l { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+  .richiesta { background: var(--bg2); border-radius: 20px; box-shadow: var(--shadow); padding: 18px 20px; margin-bottom: 12px; }
+  .richiesta .testa { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--text2); }
+  .richiesta .corpo { margin: 10px 0; font-size: 15px; line-height: 1.5; white-space: pre-wrap; }
+  .richiesta .tecnico { font-size: 12px; color: var(--text2); word-break: break-all; }
+  .richiesta .risp { background: var(--green-bg); color: var(--green); border-radius: 12px; padding: 8px 12px; font-size: 14px; margin-top: 8px; }
+  .richiesta .stelle-v { color: #F2B544; font-size: 20px; letter-spacing: 2px; }
 </style>
 </head>
 <body>
 <div class="wrap largo">
   <div class="topbar" id="barraPannello"></div>
 
-  <div class="schede" style="max-width:520px">
+  <div class="schede" style="max-width:680px">
     <button id="tabIstr" class="attiva" type="button">Istruttori</button>
     <button id="tabPersone" type="button">Utenti e ruoli</button>
     <button id="tabRegistro" type="button">Registro</button>
+    <button id="tabAssist" type="button">Assistenza</button>
   </div>
 
   <!-- ============ ISTRUTTORI ============ -->
@@ -98,6 +109,22 @@
     </div>
   </section>
 
+  <!-- ============ ASSISTENZA ============ -->
+  <section id="sezAssist" class="hidden">
+    <div class="card">
+      <div class="kpi-a">
+        <div><div class="n" id="aMedia">–</div><div class="l">Voto medio</div></div>
+        <div><div class="n" id="aVoti">–</div><div class="l">Valutazioni</div></div>
+        <div><div class="n" id="aAperti">–</div><div class="l">Ticket da gestire</div></div>
+      </div>
+      <div class="filtri" style="margin-top:14px">
+        <div class="campo"><label for="aTipo">Mostra</label><select id="aTipo"><option value="ticket">Ticket</option><option value="feedback">Valutazioni</option></select></div>
+        <div class="campo"><label for="aStato">Stato</label><select id="aStato"><option value="da">Da gestire</option><option value="risolto">Risolti</option><option value="">Tutti</option></select></div>
+      </div>
+    </div>
+    <div id="aElenco"><div class="card"><p class="nota">Caricamento…</p></div></div>
+  </section>
+
   <div class="footer">Area riservata al responsabile della formazione</div>
 </div>
 
@@ -142,7 +169,8 @@ import { richiediUtente, esc, messaggioErrore, NOMI_RUOLO } from '../js/auth.js'
 import { barraPannello, registra, AZIONI } from '../js/pannello.js';
 import { leggiTuttiCorsi } from '../js/domande.js';
 import { iniziali } from '../js/icone.js';
-import { collection, doc, getDocs, updateDoc, query, orderBy, limit, startAfter } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { CATEGORIE_TICKET, STATI_TICKET } from '../js/menu-utente.js';
+import { collection, doc, getDocs, updateDoc, query, orderBy, limit, startAfter, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const $ = id => document.getElementById(id);
 const { user, profilo } = await richiediUtente({ admin: true });
@@ -164,13 +192,14 @@ const PAGINA = 300;
 
 // ---------- schede ----------
 function scheda(n) {
-  [['tabIstr', 'sezIstr'], ['tabPersone', 'sezPersone'], ['tabRegistro', 'sezRegistro']].forEach(([t, s]) => {
+  [['tabIstr', 'sezIstr'], ['tabPersone', 'sezPersone'], ['tabRegistro', 'sezRegistro'], ['tabAssist', 'sezAssist']].forEach(([t, s]) => {
     $(t).classList.toggle('attiva', t === n); $(s).classList.toggle('hidden', t !== n);
   });
 }
 $('tabIstr').onclick = () => scheda('tabIstr');
 $('tabPersone').onclick = () => scheda('tabPersone');
 $('tabRegistro').onclick = () => scheda('tabRegistro');
+$('tabAssist').onclick = () => scheda('tabAssist');
 
 // ---------- caricamento ----------
 async function caricaUtenti() {
@@ -368,11 +397,68 @@ $('btnCsvRegistro').addEventListener('click', () => {
   registra('registro.esporta', `${L.length} operazioni`);
 });
 
+// ================= ASSISTENZA =================
+let assistenza = [];
+async function caricaAssistenza() {
+  assistenza = (await getDocs(collection(db, 'assistenza'))).docs.map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (b.creatoIl?.toMillis?.() || 0) - (a.creatoIl?.toMillis?.() || 0));
+}
+['aTipo', 'aStato'].forEach(id => $(id).addEventListener('input', disegnaAssistenza));
+function disegnaAssistenza() {
+  const voti = assistenza.filter(a => a.tipo === 'feedback');
+  const aperti = assistenza.filter(a => a.tipo === 'ticket' && a.stato !== 'risolto');
+  $('aMedia').textContent = voti.length ? (voti.reduce((s, a) => s + a.stelle, 0) / voti.length).toFixed(1).replace('.', ',') + ' ★' : '–';
+  $('aVoti').textContent = voti.length;
+  $('aAperti').textContent = aperti.length;
+  $('tabAssist').textContent = aperti.length ? `Assistenza (${aperti.length})` : 'Assistenza';
+  const tipo = $('aTipo').value, st = $('aStato').value;
+  $('aStato').parentElement.classList.toggle('hidden', tipo !== 'ticket');
+  const L = assistenza.filter(a => a.tipo === tipo && (tipo !== 'ticket' || !st || (st === 'da' ? a.stato !== 'risolto' : a.stato === st)));
+  $('aElenco').innerHTML = L.length ? L.map(a => `<div class="richiesta">
+    <div class="testa"><span><strong>${esc(a.cognome)} ${esc(a.nome)}</strong> · ${esc(a.email)}</span><span>${dataOra(a.creatoIl)}</span></div>
+    ${a.tipo === 'feedback'
+      ? `<div class="stelle-v" aria-label="${a.stelle} stelle">${'★'.repeat(a.stelle)}<span style="color:var(--linea)">${'★'.repeat(5 - a.stelle)}</span></div>
+         ${a.testo ? `<div class="corpo">${esc(a.testo)}</div>` : '<p class="nota">Nessun commento.</p>'}`
+      : `<div style="margin-top:8px">${BADGE_STATO_T(a.stato)} <span class="badge neutro">${esc(CATEGORIE_TICKET[a.categoria] || a.categoria)}</span></div>
+         <div class="corpo">${esc(a.testo)}</div>
+         <div class="tecnico">Pagina: ${esc(a.pagina)} · ${esc(a.dispositivo)}</div>
+         ${a.risposta ? `<div class="risp"><strong>Risposta:</strong> ${esc(a.risposta)}</div>` : ''}
+         <div class="azioni" style="margin-top:12px"><button class="btn piccolo" data-rispondi="${esc(a.id)}" type="button">${a.risposta ? 'Aggiorna' : 'Rispondi'}</button></div>`}
+  </div>`).join('') : `<div class="card"><p class="nota">${tipo === 'ticket' ? 'Nessun ticket.' : 'Nessuna valutazione ancora.'}</p></div>`;
+}
+const BADGE_STATO_T = s => `<span class="badge ${s === 'risolto' ? 'si' : s === 'lavorazione' ? 'istr' : 'no'}">${esc(STATI_TICKET[s] || s)}</span>`;
+$('aElenco').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-rispondi]'); if (!b) return;
+  const t = assistenza.find(a => a.id === b.dataset.rispondi);
+  const o = document.createElement('div');
+  o.className = 'overlay';
+  o.innerHTML = `<div class="modale"><h3>Rispondi a ${esc(t.nome)} ${esc(t.cognome)}</h3>
+    <p class="nota" style="margin-bottom:12px">${esc(t.testo.slice(0, 200))}</p>
+    <div class="campo"><label for="rtStato">Stato</label><select id="rtStato">${Object.entries(STATI_TICKET).map(([k, v]) => `<option value="${k}" ${k === (t.stato === 'aperto' ? 'risolto' : t.stato) ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+    <div class="campo"><label for="rtTesto">Risposta (la vede il volontario in "Le mie richieste")</label>
+      <textarea id="rtTesto" maxlength="1000" style="width:100%;min-height:100px;padding:12px;border-radius:14px;border:none;background:var(--campo);font:inherit">${esc(t.risposta || '')}</textarea></div>
+    <div class="azioni"><button class="btn piccolo" id="rtSalva" type="button">Salva</button><button class="btn sec piccolo" id="rtAnnulla" type="button">Annulla</button></div>
+    <div id="rtMsg"></div></div>`;
+  document.body.appendChild(o);
+  $('rtAnnulla').onclick = () => o.remove();
+  $('rtSalva').onclick = async () => {
+    const stato = $('rtStato').value, risposta = $('rtTesto').value.trim();
+    $('rtSalva').disabled = true;
+    try {
+      await updateDoc(doc(db, 'assistenza', t.id), { stato, risposta, gestitoDa: user.uid, gestitoIl: serverTimestamp() });
+      registra('assistenza.gestisci', `${t.cognome} ${t.nome}: ${STATI_TICKET[stato]}${risposta ? ' · ' + risposta.slice(0, 150) : ''}`, { rif: t.id });
+      Object.assign(t, { stato, risposta, gestitoIl: Timestamp.now() });
+      o.remove(); disegnaAssistenza();
+    } catch (e) { $('rtMsg').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; $('rtSalva').disabled = false; }
+  };
+});
+
 function disegnaTutto() { disegnaIstruttori(); disegnaUtenti(); opzioniRegistro(); disegnaRegistro(); }
 
 try {
   await Promise.all([caricaUtenti(), caricaRegistro()]);
   disegnaTutto();
+  caricaAssistenza().then(disegnaAssistenza).catch(e => $('aElenco').innerHTML = `<div class="card"><div class="msg err">${esc(messaggioErrore(e))}</div></div>`);
 } catch (e) {
   const m = `<div class="msg err">${esc(messaggioErrore(e))}</div>`;
   ['elencoIstr', 'tabUtenti', 'tabRegistro2'].forEach(id => $(id).innerHTML = m);

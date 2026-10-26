@@ -47,6 +47,7 @@ import { leggiCorsi } from './js/domande.js';
 import { ICONA, iniziali } from './js/icone.js';
 import { perArea, vociCorsi, riquadriAree } from './js/aree.js';
 import { sfondoAttrezzature } from './js/sfondi.js';
+import { menuUtente } from './js/menu-utente.js';
 import { db } from './js/firebase.js';
 import { doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
@@ -56,6 +57,7 @@ const $ = id => document.getElementById(id);
 const { profilo } = await richiediUtente();
 $('saluto').textContent = `Ciao ${profilo.nome}`;
 $('avatar').textContent = iniziali(profilo);
+menuUtente(profilo, $('avatar'));
 
 $('navbar').innerHTML = `
   <a class="attiva" href="home.html">${ICONA.casa}Corsi</a>

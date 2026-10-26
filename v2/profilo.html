@@ -146,7 +146,8 @@ $('btnElimina').addEventListener('click', async () => {
     for (let i = 0; i < esiti.length; i += 400) {
       const b = writeBatch(db); esiti.slice(i, i + 400).forEach(d => b.delete(d.ref)); await b.commit();
     }
-    const b = writeBatch(db); b.delete(doc(db, 'utenti', user.uid)); await b.commit();
+    const assist = (await getDocs(query(collection(db, 'assistenza'), where('uid', '==', user.uid)))).docs;
+    const b = writeBatch(db); assist.forEach(d => b.delete(d.ref)); b.delete(doc(db, 'utenti', user.uid)); await b.commit();
     await deleteUser(user);
     sessionStorage.clear();
     location.replace(urlPagina('index.html?msg=eliminato'));

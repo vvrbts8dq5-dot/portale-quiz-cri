@@ -189,6 +189,27 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ---------- Assistenza: valutazioni dell'app e ticket ----------
+    // Ognuno vede le proprie richieste; le gestisce il responsabile
+    match /assistenza/{id} {
+      allow create: if attivo()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['uid', 'nome', 'cognome', 'email', 'tipo', 'stelle', 'categoria', 'testo',
+             'pagina', 'dispositivo', 'stato', 'creatoIl'])
+        && request.resource.data.tipo in ['feedback', 'ticket']
+        && request.resource.data.stato == 'aperto'
+        && request.resource.data.creatoIl == request.time
+        && request.resource.data.testo is string && request.resource.data.testo.size() <= 2000
+        && request.resource.data.stelle is int
+        && (request.resource.data.tipo == 'ticket'
+            || (request.resource.data.stelle >= 1 && request.resource.data.stelle <= 5));
+      allow read: if loggato() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stato', 'risposta', 'gestitoDa', 'gestitoIl'])
+        && request.resource.data.gestitoDa == request.auth.uid;
+      allow delete: if isAdmin() || (loggato() && resource.data.uid == request.auth.uid);
+    }
+
     // ---------- Registro delle operazioni (solo aggiunta) ----------
     // Lo scrivono istruttori e responsabile; nessuno può modificarlo o cancellarlo.
     // Lo legge solo il responsabile.

@@ -83,5 +83,6 @@ export const AZIONI = {
   'utente.disattiva': 'Disattiva un utente',
   'utente.corsi': 'Cambia i corsi di un utente',
   'utente.ruolo': 'Cambia il ruolo di un utente',
-  'registro.esporta': 'Esporta il registro'
+  'registro.esporta': 'Esporta il registro',
+  'assistenza.gestisci': 'Risponde a un ticket'
 };
