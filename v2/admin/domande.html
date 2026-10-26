@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Domande — Pannello admin CRI Padova</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  td.num, th.num { text-align: right; font-family: 'DM Mono', monospace; }
+  .filtri { display: grid; grid-template-columns: 2fr 1.4fr 1fr 1fr 1fr; gap: 10px; }
+  .filtri .campo { margin-bottom: 0; }
+  .filtri input, .filtri select { padding: 10px 12px; font-size: 14px; }
+  .dom { display: block; width: 100%; text-align: left; font-family: inherit; background: var(--bg); border: 1.5px solid var(--border);
+    border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer; transition: border-color 0.15s; }
+  .dom:hover { border-color: var(--red); background: #fff; }
+  .dom .t { font-size: 14px; line-height: 1.45; color: var(--text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .dom .m { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .badge.bozza { background: var(--amber-bg); color: var(--amber); }
+  .badge.archiviata { background: #eee; color: #777; }
+  .modale.largo { max-width: 680px; }
+  textarea { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 8px; font-family: inherit;
+    font-size: 15px; background: var(--bg); resize: vertical; min-height: 80px; outline: none; }
+  textarea:focus { border-color: var(--red); background: #fff; }
+  .opz-riga { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .opz-riga input[type=radio] { width: 20px; height: 20px; accent-color: var(--green); flex-shrink: 0; margin: 0; }
+  .opz-riga input[type=text] { flex: 1; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px;
+    font-family: inherit; font-size: 14px; background: var(--bg); outline: none; }
+  .opz-riga input[type=text]:read-only { color: var(--text2); }
+  .opz-riga .lett { font: 500 12px 'DM Mono', monospace; color: var(--text2); width: 14px; }
+  .opz-riga button { border: none; background: none; color: var(--text2); cursor: pointer; font-size: 16px; padding: 4px 6px; }
+  .anteprima-import { max-height: 320px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; margin-top: 12px; }
+  .anteprima-import table { font-size: 13px; }
+  .barra { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  @media (max-width: 760px) { .filtri { grid-template-columns: 1fr 1fr; } .filtri .campo:first-child { grid-column: 1 / -1; } }
+</style>
+</head>
+<body>
+<div class="wrap largo">
+  <div class="topbar">
+    <img src="../../logo-cri.png" alt="CRI">
+    <div><div class="t1">Pannello admin · Domande</div><div class="t2" id="chiSono"></div></div>
+    <div class="spazio"></div>
+    <a class="link" href="index.html" style="margin-right:16px">Utenti e inviti</a>
+    <a class="link" href="../home.html">I miei corsi</a>
+  </div>
+
+  <!-- PUBBLICAZIONE -->
+  <div class="card">
+    <div class="barra">
+      <div class="card-title" style="margin:0">Pubblicazione per argomento</div>
+      <button class="btn piccolo" id="btnPubblicaTutto" type="button" disabled>Pubblica tutte le modifiche</button>
+    </div>
+    <p class="nota" style="margin-bottom:12px">I volontari vedono solo le domande <strong>attive</strong> dell'ultima pubblicazione.
+      Bozze e domande archiviate non entrano nei quiz.</p>
+    <div class="tabella-wrap" id="tabPubblica"><p class="nota">Caricamento…</p></div>
+    <div id="msgPubblica"></div>
+  </div>
+
+  <!-- ELENCO -->
+  <div class="card">
+    <div class="barra">
+      <div class="card-title" style="margin:0" id="titoloElenco">Domande</div>
+      <div class="azioni">
+        <button class="btn piccolo" id="btnNuova" type="button">+ Nuova domanda</button>
+        <button class="btn sec piccolo" id="btnImporta" type="button">Importa CSV</button>
+        <button class="btn sec piccolo" id="btnEsporta" type="button">Esporta CSV</button>
+      </div>
+    </div>
+    <div class="filtri">
+      <div class="campo"><input type="search" id="fTesto" placeholder="Cerca nel testo o nelle risposte"></div>
+      <div class="campo"><select id="fCategoria"><option value="">Tutti gli argomenti</option></select></div>
+      <div class="campo"><select id="fTipo"><option value="">Tutti i tipi</option><option value="multipla">Multipla</option><option value="vf">Vero/Falso</option></select></div>
+      <div class="campo"><select id="fDiff"><option value="">Ogni difficoltà</option><option value="facile">Facile</option><option value="medio">Medio</option><option value="difficile">Difficile</option><option value="-">Non indicata</option></select></div>
+      <div class="campo"><select id="fStato"><option value="">Tutti gli stati</option><option value="attiva">Attive</option><option value="bozza">Bozze</option><option value="archiviata">Archiviate</option></select></div>
+    </div>
+    <div class="azioni hidden" id="barraBozze" style="margin-top:12px">
+      <button class="btn sec piccolo" id="btnAttivaBozze" type="button"></button>
+    </div>
+    <div id="elenco" style="margin-top:14px"><p class="nota">Caricamento…</p></div>
+    <button class="btn sec hidden" id="btnAltre" type="button">Mostra altre</button>
+  </div>
+</div>
+
+<!-- EDITOR -->
+<div class="overlay hidden" id="modEditor">
+  <div class="modale largo">
+    <h3 id="edTitolo">Domanda</h3>
+    <div class="riga">
+      <div class="campo"><label for="edCategoria">Argomento</label><select id="edCategoria"></select></div>
+      <div class="campo"><label for="edTipo">Tipo</label>
+        <select id="edTipo"><option value="multipla">Risposta multipla</option><option value="vf">Vero / Falso</option></select></div>
+    </div>
+    <div class="campo"><label for="edTesto">Testo della domanda</label><textarea id="edTesto" rows="3"></textarea></div>
+    <div class="campo">
+      <label>Risposte <span class="nota" style="font-weight:400">— seleziona il pallino della risposta corretta</span></label>
+      <div id="edOpzioni"></div>
+      <button class="link" id="edAggiungiOpz" type="button">+ aggiungi risposta</button>
+    </div>
+    <div class="riga">
+      <div class="campo"><label for="edDiff">Difficoltà</label>
+        <select id="edDiff"><option value="">Non indicata</option><option value="facile">Facile</option><option value="medio">Medio</option><option value="difficile">Difficile</option></select></div>
+      <div class="campo"><label for="edStato">Stato</label>
+        <select id="edStato"><option value="attiva">Attiva</option><option value="bozza">Bozza</option><option value="archiviata">Archiviata</option></select></div>
+    </div>
+    <div class="campo"><label for="edSpieg">Spiegazione (facoltativa, mostrata nella revisione degli errori)</label><textarea id="edSpieg" rows="2"></textarea></div>
+    <p class="nota" id="edInfo"></p>
+    <div id="edMsg"></div>
+    <div class="azioni" style="margin-top:16px">
+      <button class="btn piccolo" id="edSalva" type="button">Salva</button>
+      <button class="btn sec piccolo" id="edAnnulla" type="button">Annulla</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT -->
+<div class="overlay hidden" id="modImport">
+  <div class="modale largo">
+    <h3>Importa domande da CSV</h3>
+    <p class="nota">Il file deve avere una riga di intestazione con queste colonne (l'ordine non conta):
+      <code>categoria, tipo, testo, opzione_a … opzione_f, corretta, difficolta, spiegazione</code>.
+      <code>corretta</code> è la lettera (A, B, C…) oppure Vero/Falso. Le domande vengono importate come <strong>bozze</strong>.</p>
+    <div class="azioni" style="margin:14px 0">
+      <button class="btn sec piccolo" id="btnModello" type="button">Scarica il modello</button>
+      <label class="btn piccolo" style="display:inline-block;cursor:pointer">Scegli file CSV<input type="file" id="impFile" accept=".csv,text/csv" class="hidden"></label>
+    </div>
+    <div id="impRiepilogo"></div>
+    <div class="anteprima-import hidden" id="impAnteprima"></div>
+    <label class="check hidden" id="impBoxDoppi"><input type="checkbox" id="impDoppi"> Importa anche le domande che sembrano già presenti</label>
+    <div id="impMsg"></div>
+    <div class="azioni" style="margin-top:16px">
+      <button class="btn piccolo" id="impConferma" type="button" disabled>Importa</button>
+      <button class="btn sec piccolo" id="impChiudi" type="button">Chiudi</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { db } from '../js/firebase.js';
+import { richiediUtente, esc, messaggioErrore } from '../js/auth.js';
+import { leggiTuttiCorsi, valida, chiaveTesto, daRigaCsv, aRigaCsv, COLONNE_CSV, pubblicaCategoria } from '../js/domande.js';
+import {
+  collection, doc, getDocs, addDoc, updateDoc, writeBatch, serverTimestamp, Timestamp
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const $ = id => document.getElementById(id);
+const { user, profilo } = await richiediUtente({ admin: true });
+$('chiSono').textContent = `${profilo.nome} ${profilo.cognome} · admin`;
+
+let corsi = [], categorie = [], perCat = new Map(), domande = [], pacchetti = new Map();
+let mostrate = 50;
+
+const nomeCat = id => perCat.get(id)?.nome || id;
+const BADGE_STATO = { attiva: '<span class="badge si">Attiva</span>', bozza: '<span class="badge bozza">Bozza</span>', archiviata: '<span class="badge archiviata">Archiviata</span>' };
+const ms = ts => ts?.toMillis ? ts.toMillis() : 0;
+
+// ---------- caricamento ----------
+async function carica() {
+  const [cs, sd, sp] = await Promise.all([leggiTuttiCorsi(), getDocs(collection(db, 'domande')), getDocs(collection(db, 'pacchetti'))]);
+  corsi = cs;
+  categorie = cs.flatMap(c => c.categorie.map(cat => ({ ...cat, corso: c.id, nomeCorso: c.nome })));
+  perCat = new Map(categorie.map(c => [c.id, c]));
+  domande = sd.docs.map(d => ({ id: d.id, ...d.data() }));
+  pacchetti = new Map(sp.docs.map(d => [d.id, d.data()]));
+  const opts = cs.map(c => `<optgroup label="${esc(c.nome)}">${c.categorie.map(cat => `<option value="${esc(cat.id)}">${esc(cat.nome)}</option>`).join('')}</optgroup>`).join('');
+  $('fCategoria').innerHTML = '<option value="">Tutti gli argomenti</option>' + opts;
+  $('edCategoria').innerHTML = opts;
+  disegnaPubblica();
+  disegnaElenco();
+}
+
+// ---------- pubblicazione ----------
+function statoCategoria(cat) {
+  const ds = domande.filter(d => d.categoria === cat.id);
+  const attive = ds.filter(d => d.stato === 'attiva').length;
+  const p = pacchetti.get(cat.id);
+  const pubbl = p ? ms(p.pubblicatoIl) : 0;
+  // da pubblicare se il numero di attive è cambiato o se qualcosa è stato modificato dopo l'ultima pubblicazione
+  const daPubblicare = !p || p.numero !== attive || ds.some(d => ms(d.aggiornataIl) > pubbl);
+  return { attive, bozze: ds.filter(d => d.stato === 'bozza').length, archiviate: ds.filter(d => d.stato === 'archiviata').length,
+           pubblicate: p?.numero ?? 0, quando: p?.pubblicatoIl, daPubblicare };
+}
+
+function disegnaPubblica() {
+  let h = `<table><thead><tr><th>Argomento</th><th class="num">Attive</th><th class="num">Bozze</th><th class="num">Archiviate</th>
+    <th class="num">Nei quiz</th><th>Ultima pubblicazione</th><th></th></tr></thead><tbody>`;
+  let quante = 0;
+  for (const c of corsi) {
+    h += `<tr><td colspan="7" style="font-weight:600;background:var(--bg)">${esc(c.nome)}</td></tr>`;
+    for (const cat of c.categorie) {
+      const s = statoCategoria(cat);
+      if (s.daPubblicare) quante++;
+      h += `<tr><td>${esc(cat.nome)}</td><td class="num">${s.attive}</td><td class="num">${s.bozze || ''}</td><td class="num">${s.archiviate || ''}</td>
+        <td class="num">${s.pubblicate}</td>
+        <td>${s.quando ? s.quando.toDate().toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+        <td>${s.daPubblicare ? `<button class="btn piccolo" data-pubblica="${esc(cat.id)}" type="button">Pubblica</button>` : '<span class="badge si">Aggiornato</span>'}</td></tr>`;
+    }
+  }
+  $('tabPubblica').innerHTML = h + '</tbody></table>';
+  $('btnPubblicaTutto').disabled = !quante;
+  $('btnPubblicaTutto').textContent = quante ? `Pubblica tutte le modifiche (${quante})` : 'Tutto pubblicato';
+}
+
+async function pubblica(ids) {
+  $('msgPubblica').innerHTML = '<div class="msg info">Pubblicazione in corso…</div>';
+  document.querySelectorAll('[data-pubblica], #btnPubblicaTutto').forEach(b => b.disabled = true);
+  try {
+    const fatti = [];
+    for (const id of ids) {
+      const n = await pubblicaCategoria(perCat.get(id).corso, id, user.uid);
+      pacchetti.set(id, { corso: perCat.get(id).corso, numero: n, pubblicatoIl: Timestamp.now() });
+      fatti.push(`${nomeCat(id)} (${n})`);
+    }
+    $('msgPubblica').innerHTML = `<div class="msg ok">Pubblicato: ${esc(fatti.join(', '))}. I volontari vedono le modifiche dal prossimo quiz.</div>`;
+  } catch (e) { $('msgPubblica').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; }
+  disegnaPubblica();
+}
+$('tabPubblica').addEventListener('click', ev => { const b = ev.target.closest('[data-pubblica]'); if (b) pubblica([b.dataset.pubblica]); });
+$('btnPubblicaTutto').addEventListener('click', () => pubblica(categorie.filter(c => statoCategoria(c).daPubblicare).map(c => c.id)));
+
+// ---------- elenco ----------
+function filtrate() {
+  const q = chiaveTesto($('fTesto').value);
+  const fc = $('fCategoria').value, ft = $('fTipo').value, fd = $('fDiff').value, fs = $('fStato').value;
+  return domande.filter(d =>
+    (!fc || d.categoria === fc) && (!ft || d.tipo === ft) && (!fs || d.stato === fs) &&
+    (!fd || (fd === '-' ? !d.difficolta : d.difficolta === fd)) &&
+    (!q || chiaveTesto(d.testo + ' ' + d.opzioni.join(' ') + ' ' + (d.spiegazione || '')).includes(q))
+  ).sort((a, b) => ms(b.aggiornataIl) - ms(a.aggiornataIl) || a.testo.localeCompare(b.testo, 'it'));
+}
+
+function disegnaElenco() {
+  const lista = filtrate();
+  $('titoloElenco').textContent = `Domande (${lista.length} di ${domande.length})`;
+  $('elenco').innerHTML = lista.length ? lista.slice(0, mostrate).map(d => `
+    <button class="dom" type="button" data-id="${esc(d.id)}">
+      <div class="t">${esc(d.testo)}</div>
+      <div class="m">${BADGE_STATO[d.stato] || ''}<span class="badge neutro">${esc(nomeCat(d.categoria))}</span>
+        <span class="badge neutro">${d.tipo === 'vf' ? 'V/F' : 'Multipla'}</span>
+        ${d.difficolta ? `<span class="badge neutro">${esc(d.difficolta)}</span>` : ''}
+        <span class="badge neutro" title="Risposta corretta">✓ ${esc(d.opzioni[d.corretta] || '?').slice(0, 60)}</span></div>
+    </button>`).join('') : '<p class="nota">Nessuna domanda corrisponde ai filtri.</p>';
+  $('btnAltre').classList.toggle('hidden', lista.length <= mostrate);
+  const bozze = lista.filter(d => d.stato === 'bozza');
+  $('barraBozze').classList.toggle('hidden', !bozze.length);
+  $('btnAttivaBozze').textContent = `Rendi attive le ${bozze.length} bozze mostrate`;
+}
+['fTesto', 'fCategoria', 'fTipo', 'fDiff', 'fStato'].forEach(id => $(id).addEventListener('input', () => { mostrate = 50; disegnaElenco(); }));
+$('btnAltre').addEventListener('click', () => { mostrate += 50; disegnaElenco(); });
+$('elenco').addEventListener('click', ev => { const b = ev.target.closest('[data-id]'); if (b) apriEditor(b.dataset.id); });
+
+$('btnAttivaBozze').addEventListener('click', async () => {
+  const bozze = filtrate().filter(d => d.stato === 'bozza');
+  const errate = bozze.filter(d => valida(d).length);
+  if (errate.length) return alert(`${errate.length} bozze hanno errori: aprile e correggile prima.`);
+  if (!confirm(`Rendere attive ${bozze.length} bozze? Entreranno nei quiz alla prossima pubblicazione dell'argomento.`)) return;
+  try {
+    for (let i = 0; i < bozze.length; i += 400) {
+      const b = writeBatch(db);
+      bozze.slice(i, i + 400).forEach(d => b.update(doc(db, 'domande', d.id), { stato: 'attiva', aggiornataIl: serverTimestamp(), aggiornataDa: user.uid }));
+      await b.commit();
+    }
+    const ora = Timestamp.now();
+    bozze.forEach(d => { d.stato = 'attiva'; d.aggiornataIl = ora; });
+    disegnaPubblica(); disegnaElenco();
+  } catch (e) { alert(messaggioErrore(e)); }
+});
+
+// ---------- editor ----------
+let inModifica = null; // id oppure null per nuova
+let opzioni = [], corretta = 0;
+
+function disegnaOpzioni() {
+  const vf = $('edTipo').value === 'vf';
+  $('edOpzioni').innerHTML = opzioni.map((o, i) => `
+    <div class="opz-riga">
+      <input type="radio" name="edCorretta" value="${i}" ${i === corretta ? 'checked' : ''} aria-label="Risposta corretta">
+      <span class="lett">${'ABCDEF'[i]}</span>
+      <input type="text" data-i="${i}" value="${esc(o)}" ${vf ? 'readonly' : ''}>
+      ${!vf && opzioni.length > 2 ? `<button type="button" data-togli="${i}" title="Togli">✕</button>` : ''}
+    </div>`).join('');
+  $('edAggiungiOpz').classList.toggle('hidden', vf || opzioni.length >= 6);
+}
+$('edOpzioni').addEventListener('input', ev => { if (ev.target.dataset.i !== undefined) opzioni[+ev.target.dataset.i] = ev.target.value; });
+$('edOpzioni').addEventListener('change', ev => { if (ev.target.name === 'edCorretta') corretta = +ev.target.value; });
+$('edOpzioni').addEventListener('click', ev => {
+  const t = ev.target.closest('[data-togli]'); if (!t) return;
+  const i = +t.dataset.togli; opzioni.splice(i, 1);
+  if (corretta === i) corretta = 0; else if (corretta > i) corretta--;
+  disegnaOpzioni();
+});
+$('edAggiungiOpz').addEventListener('click', () => { opzioni.push(''); disegnaOpzioni(); });
+$('edTipo').addEventListener('change', () => {
+  if ($('edTipo').value === 'vf') { opzioni = ['Vero', 'Falso']; corretta = Math.min(corretta, 1); }
+  else if (opzioni.join() === 'Vero,Falso') { opzioni = ['', '', '', '']; corretta = 0; }
+  disegnaOpzioni();
+});
+
+function apriEditor(id) {
+  const d = id ? domande.find(x => x.id === id) : null;
+  inModifica = id || null;
+  $('edTitolo').textContent = d ? 'Modifica domanda' : 'Nuova domanda';
+  $('edCategoria').value = d?.categoria || $('fCategoria').value || categorie[0]?.id;
+  $('edTipo').value = d?.tipo || 'multipla';
+  $('edTesto').value = d?.testo || '';
+  opzioni = d ? [...d.opzioni] : ['', '', '', ''];
+  corretta = d?.corretta ?? 0;
+  $('edDiff').value = d?.difficolta || '';
+  $('edStato').value = d?.stato || 'bozza';
+  $('edSpieg').value = d?.spiegazione || '';
+  $('edInfo').textContent = d
+    ? `Ultima modifica: ${d.aggiornataIl ? d.aggiornataIl.toDate().toLocaleString('it-IT') : '—'}${d.legacy ? ` · Origine: ${d.legacy.collezione}` : ''}`
+    : 'Le domande nuove partono come bozza: rendile attive quando sono pronte.';
+  $('edMsg').innerHTML = '';
+  disegnaOpzioni();
+  $('modEditor').classList.remove('hidden');
+  $('edTesto').focus();
+}
+$('btnNuova').addEventListener('click', () => apriEditor(null));
+$('edAnnulla').addEventListener('click', () => $('modEditor').classList.add('hidden'));
+
+$('edSalva').addEventListener('click', async () => {
+  const cat = perCat.get($('edCategoria').value);
+  const dati = {
+    corso: cat.corso, categoria: cat.id, tipo: $('edTipo').value,
+    testo: $('edTesto').value.trim().replace(/\s+/g, ' '),
+    opzioni: opzioni.map(o => o.trim().replace(/\s+/g, ' ')),
+    corretta, difficolta: $('edDiff').value || null,
+    spiegazione: $('edSpieg').value.trim(), stato: $('edStato').value
+  };
+  const errori = valida(dati);
+  if (errori.length) return $('edMsg').innerHTML = `<div class="msg err">${esc(errori.join(' · '))}</div>`;
+  const k = chiaveTesto(dati.testo);
+  const doppia = domande.find(d => d.id !== inModifica && d.categoria === dati.categoria && chiaveTesto(d.testo) === k);
+  if (doppia && !confirm('Esiste già una domanda con lo stesso testo in questo argomento. Salvare comunque?')) return;
+
+  $('edSalva').disabled = true;
+  try {
+    const meta = { aggiornataIl: serverTimestamp(), aggiornataDa: user.uid };
+    const ora = Timestamp.now();
+    if (inModifica) {
+      await updateDoc(doc(db, 'domande', inModifica), { ...dati, ...meta });
+      Object.assign(domande.find(d => d.id === inModifica), dati, { aggiornataIl: ora });
+    } else {
+      const r = await addDoc(collection(db, 'domande'), { ...dati, ...meta, creataIl: serverTimestamp() });
+      domande.push({ id: r.id, ...dati, aggiornataIl: ora });
+    }
+    $('modEditor').classList.add('hidden');
+    disegnaPubblica(); disegnaElenco();
+  } catch (e) { $('edMsg').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; }
+  $('edSalva').disabled = false;
+});
+
+// ---------- export / modello ----------
+function scaricaCsv(righe, nome) {
+  const testo = '﻿' + Papa.unparse({ fields: COLONNE_CSV, data: righe.map(r => COLONNE_CSV.map(c => r[c] ?? '')) }, { delimiter: ';' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([testo], { type: 'text/csv;charset=utf-8' }));
+  a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+}
+$('btnEsporta').addEventListener('click', () => {
+  const oggi = new Date().toISOString().slice(0, 10);
+  scaricaCsv(filtrate().map(aRigaCsv), `domande_${$('fCategoria').value || 'tutte'}_${oggi}.csv`);
+});
+$('btnModello').addEventListener('click', () => scaricaCsv([
+  { categoria: 'tssa_cardio', tipo: 'multipla', testo: 'Testo della domanda a risposta multipla', opzione_a: 'Prima risposta', opzione_b: 'Seconda risposta', opzione_c: 'Terza risposta', opzione_d: 'Quarta risposta', corretta: 'B', difficolta: 'medio', spiegazione: 'Perché la B è corretta' },
+  { categoria: 'tssa_resp', tipo: 'vf', testo: 'Affermazione da valutare come vera o falsa', opzione_a: 'Vero', opzione_b: 'Falso', corretta: 'Vero', difficolta: 'facile', spiegazione: '' }
+], 'modello_domande.csv'));
+
+// ---------- import ----------
+let daImportare = [];
+$('btnImporta').addEventListener('click', () => {
+  daImportare = []; $('impFile').value = ''; $('impRiepilogo').innerHTML = ''; $('impMsg').innerHTML = '';
+  $('impAnteprima').classList.add('hidden'); $('impBoxDoppi').classList.add('hidden'); $('impConferma').disabled = true;
+  $('modImport').classList.remove('hidden');
+});
+$('impChiudi').addEventListener('click', () => $('modImport').classList.add('hidden'));
+
+async function leggiFile(f) {
+  const buf = await f.arrayBuffer();
+  const utf8 = new TextDecoder('utf-8').decode(buf);
+  // Excel su Windows salva spesso in ANSI: se l'UTF-8 non torna, rileggi così
+  return utf8.includes('�') ? new TextDecoder('windows-1252').decode(buf) : utf8;
+}
+
+$('impFile').addEventListener('change', async () => {
+  const f = $('impFile').files[0]; if (!f) return;
+  const testo = await leggiFile(f);
+  const res = Papa.parse(testo.replace(/^﻿/, ''), { header: true, skipEmptyLines: 'greedy', transformHeader: h => h.trim().toLowerCase().replace(/\s+/g, '_') });
+  const mancanti = ['categoria', 'tipo', 'testo', 'corretta'].filter(c => !res.meta.fields.includes(c));
+  if (mancanti.length) { $('impRiepilogo').innerHTML = `<div class="msg err">Mancano le colonne: ${esc(mancanti.join(', '))}. Usa il modello.</div>`; return; }
+
+  const catCorso = new Map(categorie.map(c => [c.id, c.corso]));
+  const esistenti = new Set(domande.map(d => d.categoria + '|' + chiaveTesto(d.testo)));
+  const nelFile = new Set();
+  daImportare = res.data.map((riga, i) => {
+    const { domanda, errore } = daRigaCsv(riga, catCorso);
+    if (errore) return { n: i + 2, riga, errore };
+    const k = domanda.categoria + '|' + chiaveTesto(domanda.testo);
+    const doppia = esistenti.has(k) ? 'già presente' : nelFile.has(k) ? 'ripetuta nel file' : '';
+    nelFile.add(k);
+    return { n: i + 2, domanda, doppia };
+  });
+  disegnaImport();
+});
+
+function disegnaImport() {
+  const ok = daImportare.filter(r => r.domanda && !r.doppia).length;
+  const doppie = daImportare.filter(r => r.doppia).length;
+  const err = daImportare.filter(r => r.errore).length;
+  $('impRiepilogo').innerHTML = `<div class="msg ${err ? 'info' : 'ok'}">${daImportare.length} righe lette: <strong>${ok}</strong> pronte,
+    ${doppie} possibili doppioni, ${err} con errori (non verranno importate).</div>`;
+  $('impAnteprima').innerHTML = `<table><thead><tr><th>Riga</th><th>Argomento</th><th>Domanda</th><th>Esito</th></tr></thead><tbody>${
+    daImportare.map(r => `<tr><td>${r.n}</td><td>${esc(r.domanda ? nomeCat(r.domanda.categoria) : r.riga.categoria || '')}</td>
+      <td>${esc((r.domanda?.testo || r.riga?.testo || '').slice(0, 90))}</td>
+      <td>${r.errore ? `<span class="badge no">${esc(r.errore)}</span>` : r.doppia ? `<span class="badge bozza">${r.doppia}</span>` : '<span class="badge si">OK</span>'}</td></tr>`).join('')
+  }</tbody></table>`;
+  $('impAnteprima').classList.remove('hidden');
+  $('impBoxDoppi').classList.toggle('hidden', !doppie);
+  aggiornaConferma();
+}
+const daScrivere = () => daImportare.filter(r => r.domanda && (!r.doppia || $('impDoppi').checked));
+function aggiornaConferma() {
+  const n = daScrivere().length;
+  $('impConferma').disabled = !n;
+  $('impConferma').textContent = n ? `Importa ${n} domande come bozze` : 'Importa';
+}
+$('impDoppi').addEventListener('change', aggiornaConferma);
+
+$('impConferma').addEventListener('click', async () => {
+  const righe = daScrivere();
+  $('impConferma').disabled = true;
+  try {
+    const ora = Timestamp.now();
+    for (let i = 0; i < righe.length; i += 400) {
+      const b = writeBatch(db);
+      for (const r of righe.slice(i, i + 400)) {
+        const ref = doc(collection(db, 'domande'));
+        b.set(ref, { ...r.domanda, creataIl: serverTimestamp(), aggiornataIl: serverTimestamp(), aggiornataDa: user.uid, origine: 'import CSV' });
+        domande.push({ id: ref.id, ...r.domanda, aggiornataIl: ora });
+      }
+      await b.commit();
+    }
+    $('impMsg').innerHTML = `<div class="msg ok">${righe.length} domande importate come bozze. Controllale nell'elenco (filtro "Bozze"), poi rendile attive e pubblica.</div>`;
+    daImportare = [];
+    $('fStato').value = 'bozza'; mostrate = 50;
+    disegnaPubblica(); disegnaElenco();
+  } catch (e) { $('impMsg').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; $('impConferma').disabled = false; }
+});
+
+try { await carica(); }
+catch (e) { $('tabPubblica').innerHTML = $('elenco').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; }
+</script>
+</body>
+</html>
