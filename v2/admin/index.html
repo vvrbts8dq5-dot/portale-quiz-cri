@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pannello admin — Portale Formazione CRI Padova</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+</head>
+<body>
+<div class="wrap largo">
+
+  <div class="topbar no-stampa">
+    <img src="../../logo-cri.png" alt="CRI">
+    <div>
+      <div class="t1">Pannello admin</div>
+      <div class="t2" id="chiSono">Comitato di Padova · Formazione</div>
+    </div>
+    <div class="spazio"></div>
+    <a class="link" href="../home.html" style="margin-right:16px">I miei corsi</a>
+    <button class="link" id="btnEsci" type="button">Esci</button>
+  </div>
+
+  <div class="schede no-stampa" style="max-width:360px">
+    <button id="tabInviti" class="attiva" type="button">Codici invito</button>
+    <button id="tabUtenti" type="button">Utenti</button>
+  </div>
+
+  <!-- ================= INVITI ================= -->
+  <section id="sezInviti" class="no-stampa">
+    <div class="card">
+      <div class="card-title">Nuovo codice invito</div>
+      <p class="nota" style="margin-bottom:14px">Chi si registra con il codice riceve i corsi selezionati.
+        Il codice smette di funzionare alla scadenza o quando lo disattivi; chi si è già registrato non perde l'accesso.</p>
+      <div class="riga">
+        <div class="campo">
+          <label>Corsi</label>
+          <div id="nuovoCorsi"></div>
+        </div>
+        <div class="campo">
+          <label for="nuovoScadenza">Valido fino al</label>
+          <input type="date" id="nuovoScadenza">
+        </div>
+      </div>
+      <div class="campo">
+        <label for="nuovoNote">Note (facoltative)</label>
+        <input type="text" id="nuovoNote" maxlength="120" placeholder="es. Corso TSSA autunno 2026">
+      </div>
+      <button class="btn" id="btnCreaInvito" type="button" style="max-width:260px">Crea codice</button>
+      <div id="msgInvito"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Codici esistenti</div>
+      <div class="tabella-wrap" id="tabInvitiBody"><p class="nota">Caricamento…</p></div>
+    </div>
+  </section>
+
+  <!-- ================= UTENTI ================= -->
+  <section id="sezUtenti" class="hidden no-stampa">
+    <div class="card">
+      <div class="riga" style="align-items:flex-end">
+        <div class="campo" style="margin-bottom:0">
+          <label for="cercaUtente">Cerca</label>
+          <input type="text" id="cercaUtente" placeholder="Nome, cognome o email">
+        </div>
+        <div class="campo" style="margin-bottom:0">
+          <label for="filtroCorso">Corso</label>
+          <select id="filtroCorso"><option value="">Tutti</option></select>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" id="titoloUtenti">Utenti</div>
+      <div class="tabella-wrap" id="tabUtentiBody"><p class="nota">Caricamento…</p></div>
+    </div>
+  </section>
+
+  <div class="footer no-stampa">Portale riservato ai volontari CRI · v2</div>
+</div>
+
+<!-- Finestra QR -->
+<div class="overlay hidden" id="modaleQr">
+  <div class="modale" style="text-align:center">
+    <img src="../../logo-cri.png" alt="CRI" style="width:200px;max-width:70%">
+    <h3 style="margin-top:12px" id="qrTitolo"></h3>
+    <p class="nota">Inquadra il QR per registrarti al portale formazione</p>
+    <div class="qr" id="qrImmagine"></div>
+    <p style="font-family:'DM Mono',monospace;font-size:20px;letter-spacing:2px" id="qrCodice"></p>
+    <p class="nota" id="qrScadenza" style="margin-top:4px"></p>
+    <div class="no-stampa" style="margin-top:18px">
+      <div class="copia" id="qrLink"></div>
+      <div class="azioni" style="justify-content:center;margin-top:14px">
+        <button class="btn piccolo" id="btnStampaQr" type="button">Stampa</button>
+        <button class="btn sec piccolo" id="btnCopiaQr" type="button">Copia link</button>
+        <button class="btn sec piccolo" id="btnChiudiQr" type="button">Chiudi</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Finestra modifica corsi utente -->
+<div class="overlay hidden" id="modaleCorsi">
+  <div class="modale">
+    <h3 id="corsiTitolo">Corsi</h3>
+    <div id="corsiScelte"></div>
+    <div class="azioni" style="margin-top:18px">
+      <button class="btn piccolo" id="btnSalvaCorsi" type="button">Salva</button>
+      <button class="btn sec piccolo" id="btnAnnullaCorsi" type="button">Annulla</button>
+    </div>
+    <div id="msgCorsi"></div>
+  </div>
+</div>
+
+<script type="module">
+import { db, CORSI } from '../js/firebase.js';
+import { richiediUtente, esci, esc, messaggioErrore, urlPagina } from '../js/auth.js';
+import {
+  collection, doc, getDoc, getDocs, setDoc, updateDoc, serverTimestamp, Timestamp
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const $ = id => document.getElementById(id);
+$('btnEsci').onclick = esci;
+
+const { user, profilo } = await richiediUtente({ admin: true });
+$('chiSono').textContent = `${profilo.nome} ${profilo.cognome} · admin`;
+
+let utenti = [];
+let inviti = [];
+
+const ordineCorsi = Object.keys(CORSI);
+const badgeCorsi = lista => (lista || []).map(c => `<span class="badge neutro">${esc(CORSI[c]?.label || c)}</span>`).join(' ');
+const dataIt = ts => ts ? ts.toDate().toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+const caselleCorsi = (nomeGruppo, scelti = []) => ordineCorsi.map(c => `
+  <label class="check"><input type="checkbox" name="${nomeGruppo}" value="${c}" ${scelti.includes(c) ? 'checked' : ''}> ${esc(CORSI[c].label)}</label>`).join('');
+const corsiSelezionati = nomeGruppo =>
+  [...document.querySelectorAll(`input[name="${nomeGruppo}"]:checked`)].map(i => i.value)
+    .sort((a, b) => ordineCorsi.indexOf(a) - ordineCorsi.indexOf(b));
+
+// ---------- schede ----------
+function scheda(nome) {
+  const u = nome === 'utenti';
+  $('tabInviti').classList.toggle('attiva', !u);
+  $('tabUtenti').classList.toggle('attiva', u);
+  $('sezInviti').classList.toggle('hidden', u);
+  $('sezUtenti').classList.toggle('hidden', !u);
+}
+$('tabInviti').onclick = () => scheda('inviti');
+$('tabUtenti').onclick = () => scheda('utenti');
+
+// ---------- caricamento ----------
+async function caricaTutto() {
+  try {
+    const [su, si] = await Promise.all([getDocs(collection(db, 'utenti')), getDocs(collection(db, 'inviti'))]);
+    utenti = su.docs.map(d => ({ uid: d.id, ...d.data() }));
+    inviti = si.docs.map(d => ({ codice: d.id, ...d.data() }));
+    utenti.sort((a, b) => `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`, 'it'));
+    inviti.sort((a, b) => (b.creatoIl?.toMillis() || 0) - (a.creatoIl?.toMillis() || 0));
+    disegnaInviti();
+    disegnaUtenti();
+  } catch (e) {
+    const m = `<div class="msg err">${esc(messaggioErrore(e))}</div>`;
+    $('tabInvitiBody').innerHTML = m;
+    $('tabUtentiBody').innerHTML = m;
+  }
+}
+
+// ================= INVITI =================
+$('nuovoCorsi').innerHTML = caselleCorsi('nuovoCorso');
+const traSeiMesi = new Date(); traSeiMesi.setMonth(traSeiMesi.getMonth() + 6);
+$('nuovoScadenza').value = traSeiMesi.toISOString().slice(0, 10);
+
+function generaCodice(corsi) {
+  const prefisso = corsi.length === 1 ? corsi[0].toUpperCase() : 'CRI';
+  const alfabeto = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // senza 0/O e 1/I, che si confondono
+  const r = crypto.getRandomValues(new Uint32Array(8));
+  const pezzo = i => [0, 1, 2, 3].map(k => alfabeto[r[i + k] % alfabeto.length]).join('');
+  return `${prefisso}-${pezzo(0)}-${pezzo(4)}`;
+}
+
+$('btnCreaInvito').addEventListener('click', async () => {
+  const corsi = corsiSelezionati('nuovoCorso');
+  const scad = $('nuovoScadenza').value;
+  const msg = $('msgInvito');
+  msg.innerHTML = '';
+  if (!corsi.length) return msg.innerHTML = '<div class="msg err">Seleziona almeno un corso.</div>';
+  if (!scad) return msg.innerHTML = '<div class="msg err">Indica la data di scadenza.</div>';
+  const scadenza = new Date(scad + 'T23:59:59');
+  if (scadenza < new Date()) return msg.innerHTML = '<div class="msg err">La scadenza deve essere nel futuro.</div>';
+
+  const btn = $('btnCreaInvito');
+  btn.disabled = true;
+  try {
+    let codice;
+    do { codice = generaCodice(corsi); } while ((await getDoc(doc(db, 'inviti', codice))).exists());
+    await setDoc(doc(db, 'inviti', codice), {
+      corsi, attivo: true,
+      scadenza: Timestamp.fromDate(scadenza),
+      note: $('nuovoNote').value.trim(),
+      creatoIl: serverTimestamp(),
+      creatoDa: user.uid
+    });
+    $('nuovoNote').value = '';
+    document.querySelectorAll('input[name="nuovoCorso"]').forEach(i => i.checked = false);
+    await caricaTutto();
+    apriQr(codice);
+  } catch (e) {
+    msg.innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`;
+  }
+  btn.disabled = false;
+});
+
+function disegnaInviti() {
+  if (!inviti.length) {
+    $('tabInvitiBody').innerHTML = '<p class="nota">Nessun codice ancora. Creane uno qui sopra.</p>';
+    return;
+  }
+  const ora = Date.now();
+  let h = `<table><thead><tr><th>Codice</th><th>Corsi</th><th>Note</th><th>Scadenza</th><th>Registrati</th><th>Stato</th><th></th></tr></thead><tbody>`;
+  for (const i of inviti) {
+    const usi = utenti.filter(u => u.codiceInvito === i.codice).length;
+    const scaduto = i.scadenza && i.scadenza.toMillis() < ora;
+    const stato = !i.attivo ? '<span class="badge no">Disattivato</span>'
+      : scaduto ? '<span class="badge neutro">Scaduto</span>' : '<span class="badge si">Attivo</span>';
+    h += `<tr>
+      <td><code>${esc(i.codice)}</code></td>
+      <td>${badgeCorsi(i.corsi)}</td>
+      <td>${esc(i.note || '')}</td>
+      <td>${dataIt(i.scadenza)}</td>
+      <td>${usi}</td>
+      <td>${stato}</td>
+      <td><div class="azioni">
+        <button class="btn sec piccolo" data-qr="${esc(i.codice)}" type="button">QR</button>
+        <button class="btn sec piccolo" data-attiva="${esc(i.codice)}" data-valore="${i.attivo ? '0' : '1'}" type="button">${i.attivo ? 'Disattiva' : 'Riattiva'}</button>
+      </div></td></tr>`;
+  }
+  $('tabInvitiBody').innerHTML = h + '</tbody></table>';
+}
+
+$('tabInvitiBody').addEventListener('click', async ev => {
+  const qr = ev.target.closest('[data-qr]');
+  if (qr) return apriQr(qr.dataset.qr);
+  const b = ev.target.closest('[data-attiva]');
+  if (!b) return;
+  const attiva = b.dataset.valore === '1';
+  if (!attiva && !confirm(`Disattivare il codice ${b.dataset.attiva}? Nessuno potrà più usarlo per registrarsi.`)) return;
+  b.disabled = true;
+  try {
+    await updateDoc(doc(db, 'inviti', b.dataset.attiva), { attivo: attiva });
+    await caricaTutto();
+  } catch (e) { alert(messaggioErrore(e)); b.disabled = false; }
+});
+
+// ---------- QR ----------
+let linkQr = '';
+function apriQr(codice) {
+  const i = inviti.find(x => x.codice === codice);
+  linkQr = urlPagina('index.html?codice=' + encodeURIComponent(codice));
+  const q = qrcode(0, 'M');
+  q.addData(linkQr);
+  q.make();
+  $('qrImmagine').innerHTML = q.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
+  $('qrTitolo').textContent = (i?.corsi || []).map(c => CORSI[c]?.label || c).join(' · ');
+  $('qrCodice').textContent = codice;
+  $('qrScadenza').textContent = i?.scadenza ? `Valido fino al ${dataIt(i.scadenza)}` : '';
+  $('qrLink').textContent = linkQr;
+  $('modaleQr').classList.remove('hidden');
+}
+$('btnChiudiQr').onclick = () => $('modaleQr').classList.add('hidden');
+$('btnStampaQr').onclick = () => window.print();
+$('btnCopiaQr').onclick = async () => {
+  try { await navigator.clipboard.writeText(linkQr); $('btnCopiaQr').textContent = 'Copiato ✓'; }
+  catch { $('btnCopiaQr').textContent = 'Copia non riuscita'; }
+  setTimeout(() => $('btnCopiaQr').textContent = 'Copia link', 2000);
+};
+
+// ================= UTENTI =================
+$('filtroCorso').innerHTML += ordineCorsi.map(c => `<option value="${c}">${esc(CORSI[c].label)}</option>`).join('');
+$('cercaUtente').addEventListener('input', disegnaUtenti);
+$('filtroCorso').addEventListener('change', disegnaUtenti);
+
+function disegnaUtenti() {
+  const q = $('cercaUtente').value.trim().toLowerCase();
+  const fc = $('filtroCorso').value;
+  const lista = utenti.filter(u =>
+    (!q || `${u.nome} ${u.cognome} ${u.email}`.toLowerCase().includes(q)) &&
+    (!fc || (u.corsi || []).includes(fc)));
+  $('titoloUtenti').textContent = `Utenti (${lista.length} di ${utenti.length})`;
+  if (!lista.length) {
+    $('tabUtentiBody').innerHTML = `<p class="nota">${utenti.length ? 'Nessun utente corrisponde ai filtri.' : 'Nessun utente registrato.'}</p>`;
+    return;
+  }
+  let h = `<table><thead><tr><th>Nome</th><th>Email</th><th>Corsi</th><th>Ruolo</th><th>Stato</th><th>Registrato</th><th></th></tr></thead><tbody>`;
+  for (const u of lista) {
+    const io = u.uid === user.uid;
+    h += `<tr>
+      <td><strong>${esc(u.cognome)}</strong> ${esc(u.nome)}${io ? ' <span class="nota">(tu)</span>' : ''}</td>
+      <td>${esc(u.email)}</td>
+      <td>${badgeCorsi(u.corsi)}</td>
+      <td>${u.ruolo === 'admin' ? '<span class="badge admin">Admin</span>' : '<span class="badge neutro">Volontario</span>'}</td>
+      <td>${u.attivo ? '<span class="badge si">Attivo</span>' : '<span class="badge no">Disattivato</span>'}</td>
+      <td>${dataIt(u.creatoIl)}</td>
+      <td><div class="azioni">
+        <button class="btn sec piccolo" data-corsi="${u.uid}" type="button">Corsi</button>
+        ${io ? '' : `<button class="btn sec piccolo" data-stato="${u.uid}" type="button">${u.attivo ? 'Disattiva' : 'Riattiva'}</button>
+        <button class="btn sec piccolo" data-ruolo="${u.uid}" type="button">${u.ruolo === 'admin' ? 'Togli admin' : 'Rendi admin'}</button>`}
+      </div></td></tr>`;
+  }
+  $('tabUtentiBody').innerHTML = h + '</tbody></table>';
+}
+
+$('tabUtentiBody').addEventListener('click', async ev => {
+  const bc = ev.target.closest('[data-corsi]');
+  if (bc) return apriCorsi(bc.dataset.corsi);
+  const bs = ev.target.closest('[data-stato]');
+  const br = ev.target.closest('[data-ruolo]');
+  const b = bs || br;
+  if (!b) return;
+  const u = utenti.find(x => x.uid === (bs ? bs.dataset.stato : br.dataset.ruolo));
+  let modifica, domanda;
+  if (bs) {
+    modifica = { attivo: !u.attivo };
+    domanda = u.attivo ? `Disattivare ${u.nome} ${u.cognome}? Non potrà più accedere finché non lo riattivi.` : null;
+  } else {
+    const admin = u.ruolo !== 'admin';
+    modifica = { ruolo: admin ? 'admin' : 'volontario' };
+    domanda = admin
+      ? `Rendere ${u.nome} ${u.cognome} amministratore? Potrà gestire utenti, codici e domande.`
+      : `Togliere a ${u.nome} ${u.cognome} i permessi di amministratore?`;
+  }
+  if (domanda && !confirm(domanda)) return;
+  b.disabled = true;
+  try {
+    await updateDoc(doc(db, 'utenti', u.uid), modifica);
+    await caricaTutto();
+  } catch (e) { alert(messaggioErrore(e)); b.disabled = false; }
+});
+
+let uidCorsi = null;
+function apriCorsi(uid) {
+  const u = utenti.find(x => x.uid === uid);
+  uidCorsi = uid;
+  $('corsiTitolo').textContent = `Corsi di ${u.nome} ${u.cognome}`;
+  $('corsiScelte').innerHTML = caselleCorsi('corsoUtente', u.corsi || []);
+  $('msgCorsi').innerHTML = '';
+  $('modaleCorsi').classList.remove('hidden');
+}
+$('btnAnnullaCorsi').onclick = () => $('modaleCorsi').classList.add('hidden');
+$('btnSalvaCorsi').addEventListener('click', async () => {
+  const btn = $('btnSalvaCorsi');
+  btn.disabled = true;
+  try {
+    await updateDoc(doc(db, 'utenti', uidCorsi), { corsi: corsiSelezionati('corsoUtente') });
+    $('modaleCorsi').classList.add('hidden');
+    await caricaTutto();
+  } catch (e) { $('msgCorsi').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; }
+  btn.disabled = false;
+});
+
+await caricaTutto();
+</script>
+</body>
+</html>

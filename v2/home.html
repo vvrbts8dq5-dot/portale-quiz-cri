@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>I miei corsi — Portale Formazione CRI Padova</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <img src="../logo-cri.png" alt="CRI">
+    <div>
+      <div class="t1">Croce Rossa Italiana</div>
+      <div class="t2">Comitato di Padova · Formazione</div>
+    </div>
+    <div class="spazio"></div>
+    <button class="link" id="btnEsci" type="button">Esci</button>
+  </div>
+
+  <div class="card">
+    <h1 id="saluto">Ciao</h1>
+    <p class="nota" id="sottotitolo" style="margin-top:4px">Scegli il corso su cui vuoi esercitarti.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">I tuoi corsi</div>
+    <div id="elencoCorsi"><p class="nota">Caricamento…</p></div>
+  </div>
+
+  <div class="card hidden" id="cardAdmin">
+    <div class="card-title">Amministrazione</div>
+    <a class="voce" href="admin/index.html" style="text-decoration:none">
+      <div class="icona">⚙️</div>
+      <div><div class="tit">Pannello admin</div><div class="sub">Codici invito e utenti</div></div>
+      <span class="freccia">›</span>
+    </a>
+  </div>
+
+  <div class="footer">Portale riservato ai volontari CRI · v2</div>
+</div>
+
+<script type="module">
+import { CORSI } from './js/firebase.js';
+import { richiediUtente, esci, esc } from './js/auth.js';
+
+const $ = id => document.getElementById(id);
+$('btnEsci').onclick = esci;
+
+const { profilo } = await richiediUtente();
+$('saluto').textContent = `Ciao ${profilo.nome}`;
+if (profilo.ruolo === 'admin') $('cardAdmin').classList.remove('hidden');
+
+const corsi = (profilo.corsi || []).filter(c => CORSI[c]);
+if (!corsi.length) {
+  $('elencoCorsi').innerHTML = '<p class="nota">Non hai ancora corsi assegnati. Rivolgiti all\'istruttore.</p>';
+} else {
+  $('elencoCorsi').innerHTML = corsi.map(c => `
+    <button class="voce" type="button" data-corso="${esc(c)}">
+      <div class="icona">${CORSI[c].icona}</div>
+      <div><div class="tit">${esc(CORSI[c].label)}</div></div>
+      <span class="freccia">›</span>
+    </button>`).join('');
+}
+
+// FASE DI TRANSIZIONE: i quiz girano ancora sul portale attuale.
+// Gli passiamo nome, cognome e corso come farebbe la sua pagina di login,
+// così il volontario non deve più inserire password condivise né nome.
+$('elencoCorsi').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-corso]');
+  if (!b) return;
+  const corso = b.dataset.corso;
+  sessionStorage.setItem('corso', corso);
+  sessionStorage.setItem('corsoLabel', CORSI[corso].label);
+  sessionStorage.setItem('nome', profilo.nome);
+  sessionStorage.setItem('cognome', profilo.cognome);
+  location.href = corso === 'squadra' ? '../quiz.html?corso=squadra' : '../index.html';
+});
+</script>
+</body>
+</html>

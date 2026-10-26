@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Accesso — Portale Formazione CRI Padova</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <img src="../logo-cri.png" alt="Croce Rossa Italiana">
+    <h2>Comitato di Padova</h2>
+    <p>Portale · Formazione</p>
+  </div>
+
+  <div class="card" id="cardCaricamento"><p class="nota">Caricamento…</p></div>
+
+  <div class="card hidden" id="cardForm">
+    <div class="schede">
+      <button id="tabAccedi" class="attiva" type="button">Accedi</button>
+      <button id="tabRegistrati" type="button">Registrati</button>
+    </div>
+
+    <!-- ACCEDI -->
+    <form id="formAccedi" novalidate>
+      <div class="campo">
+        <label for="accEmail">Email</label>
+        <input type="email" id="accEmail" autocomplete="username" required>
+      </div>
+      <div class="campo">
+        <label for="accPwd">Password</label>
+        <input type="password" id="accPwd" autocomplete="current-password" required>
+      </div>
+      <button class="btn" type="submit" id="btnAccedi">Accedi</button>
+      <div style="text-align:center;margin-top:14px">
+        <button class="link" type="button" id="btnDimenticata">Password dimenticata?</button>
+      </div>
+    </form>
+
+    <!-- REGISTRATI -->
+    <form id="formRegistrati" class="hidden" novalidate>
+      <p class="nota" style="margin-bottom:16px">Ti serve il <strong>codice invito</strong> del tuo corso:
+        lo trovi nel QR code che ti ha dato l'istruttore.</p>
+      <div class="campo">
+        <label for="regCodice">Codice invito</label>
+        <input type="text" id="regCodice" class="codice" autocomplete="off" required>
+      </div>
+      <div class="riga">
+        <div class="campo">
+          <label for="regNome">Nome</label>
+          <input type="text" id="regNome" autocomplete="given-name" required>
+        </div>
+        <div class="campo">
+          <label for="regCognome">Cognome</label>
+          <input type="text" id="regCognome" autocomplete="family-name" required>
+        </div>
+      </div>
+      <div class="campo">
+        <label for="regEmail">Email</label>
+        <input type="email" id="regEmail" autocomplete="email" required>
+      </div>
+      <div class="campo">
+        <label for="regPwd">Password (almeno 8 caratteri)</label>
+        <input type="password" id="regPwd" autocomplete="new-password" required>
+      </div>
+      <div class="campo">
+        <label for="regPwd2">Ripeti la password</label>
+        <input type="password" id="regPwd2" autocomplete="new-password" required>
+      </div>
+      <button class="btn" type="submit" id="btnRegistrati">Crea il mio account</button>
+    </form>
+
+    <div id="messaggio"></div>
+  </div>
+
+  <div class="footer">Portale riservato ai volontari CRI · v2</div>
+</div>
+
+<script type="module">
+import { auth, db } from './js/firebase.js';
+import { utenteCorrente, leggiProfilo, urlPagina, messaggioErrore, esc } from './js/auth.js';
+import {
+  signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail,
+  updateProfile, signOut, deleteUser
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const $ = id => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+
+function mostra(tipo, testo) {
+  $('messaggio').innerHTML = testo ? `<div class="msg ${tipo}">${testo}</div>` : '';
+}
+
+function scheda(nome) {
+  const reg = nome === 'registrati';
+  $('tabAccedi').classList.toggle('attiva', !reg);
+  $('tabRegistrati').classList.toggle('attiva', reg);
+  $('formAccedi').classList.toggle('hidden', reg);
+  $('formRegistrati').classList.toggle('hidden', !reg);
+  mostra();
+}
+$('tabAccedi').onclick = () => scheda('accedi');
+$('tabRegistrati').onclick = () => scheda('registrati');
+
+function occupato(btn, si, testo) {
+  btn.disabled = si;
+  if (testo) btn.textContent = testo;
+}
+
+// ---------- AVVIO ----------
+const utente = await utenteCorrente();
+if (utente) {
+  const p = await leggiProfilo(utente.uid).catch(() => null);
+  if (p && p.attivo === true) { location.replace(urlPagina('home.html')); }
+  else { await signOut(auth); }
+}
+
+$('cardCaricamento').classList.add('hidden');
+$('cardForm').classList.remove('hidden');
+
+const codiceUrl = (params.get('codice') || '').trim().toUpperCase();
+if (codiceUrl) { $('regCodice').value = codiceUrl; scheda('registrati'); $('regNome').focus(); }
+if (params.get('msg') === 'disattivato') mostra('err', 'Il tuo account è stato disattivato. Rivolgiti all\'istruttore del corso.');
+if (params.get('msg') === 'profilo') mostra('err', 'Il tuo account non ha un profilo valido. Prova a registrarti di nuovo con il codice invito, o rivolgiti all\'istruttore.');
+
+// ---------- ACCEDI ----------
+$('formAccedi').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const email = $('accEmail').value.trim();
+  const pwd = $('accPwd').value;
+  if (!email || !pwd) return mostra('err', 'Inserisci email e password.');
+  const btn = $('btnAccedi');
+  occupato(btn, true, 'Accesso in corso…');
+  mostra();
+  try {
+    const cred = await signInWithEmailAndPassword(auth, email, pwd);
+    const p = await leggiProfilo(cred.user.uid);
+    if (!p) {
+      await signOut(auth);
+      mostra('err', 'Il tuo account non ha un profilo. Registrati di nuovo con il codice invito del corso.');
+    } else if (p.attivo !== true) {
+      await signOut(auth);
+      mostra('err', 'Il tuo account è stato disattivato. Rivolgiti all\'istruttore del corso.');
+    } else {
+      location.replace(urlPagina('home.html'));
+      return;
+    }
+  } catch (e) {
+    mostra('err', esc(messaggioErrore(e)));
+  }
+  occupato(btn, false, 'Accedi');
+});
+
+// ---------- PASSWORD DIMENTICATA ----------
+$('btnDimenticata').addEventListener('click', async () => {
+  const email = $('accEmail').value.trim();
+  if (!email) { $('accEmail').focus(); return mostra('info', 'Scrivi la tua email nel campo qui sopra, poi premi di nuovo "Password dimenticata?".'); }
+  try {
+    await sendPasswordResetEmail(auth, email, { url: urlPagina('index.html') });
+  } catch (e) {
+    if (e.code === 'auth/invalid-email' || e.code === 'auth/missing-email') return mostra('err', esc(messaggioErrore(e)));
+    // per gli altri casi non riveliamo se l'email è registrata
+  }
+  mostra('ok', `Se <strong>${esc(email)}</strong> è registrata, riceverai a breve un'email per scegliere una nuova password. Controlla anche lo spam.`);
+});
+
+// ---------- REGISTRATI ----------
+$('formRegistrati').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const codice = $('regCodice').value.trim().toUpperCase();
+  const nome = $('regNome').value.trim().replace(/\s+/g, ' ');
+  const cognome = $('regCognome').value.trim().replace(/\s+/g, ' ');
+  const email = $('regEmail').value.trim();
+  const pwd = $('regPwd').value;
+
+  if (!codice || !nome || !cognome || !email || !pwd) return mostra('err', 'Compila tutti i campi.');
+  if (!/^[A-Z0-9-]{4,40}$/.test(codice)) return mostra('err', 'Il codice invito contiene caratteri non validi.');
+  if (pwd.length < 8) return mostra('err', 'La password deve avere almeno 8 caratteri.');
+  if (pwd !== $('regPwd2').value) return mostra('err', 'Le due password non coincidono.');
+
+  const btn = $('btnRegistrati');
+  occupato(btn, true, 'Creazione account…');
+  mostra();
+
+  let cred = null;
+  try {
+    cred = await createUserWithEmailAndPassword(auth, email, pwd);
+  } catch (e) {
+    mostra('err', esc(messaggioErrore(e)));
+    return occupato(btn, false, 'Crea il mio account');
+  }
+
+  // L'account esiste: ora serve un invito valido per creare il profilo.
+  // Se qualcosa va storto l'account appena creato viene eliminato, così si può riprovare.
+  try {
+    const snap = await getDoc(doc(db, 'inviti', codice));
+    const inv = snap.exists() ? snap.data() : null;
+    if (!inv) throw { nostro: 'Codice invito non trovato. Controlla di averlo scritto bene.' };
+    if (inv.attivo !== true) throw { nostro: 'Questo codice invito è stato disattivato. Chiedi un nuovo QR all\'istruttore.' };
+    if (!inv.scadenza || inv.scadenza.toMillis() < Date.now()) throw { nostro: 'Questo codice invito è scaduto. Chiedi un nuovo QR all\'istruttore.' };
+
+    await setDoc(doc(db, 'utenti', cred.user.uid), {
+      nome, cognome,
+      email: cred.user.email,
+      ruolo: 'volontario',
+      attivo: true,
+      corsi: inv.corsi,
+      codiceInvito: codice,
+      creatoIl: serverTimestamp()
+    });
+    await updateProfile(cred.user, { displayName: `${nome} ${cognome}` }).catch(() => {});
+    location.replace(urlPagina('home.html'));
+  } catch (e) {
+    await deleteUser(cred.user).catch(() => signOut(auth));
+    mostra('err', esc(e.nostro || messaggioErrore(e)));
+    occupato(btn, false, 'Crea il mio account');
+  }
+});
+</script>
+</body>
+</html>
