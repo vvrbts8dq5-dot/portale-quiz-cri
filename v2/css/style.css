@@ -29,7 +29,7 @@ body::before {
 .header h2 { font-size: 16px; font-weight: 500; color: var(--red); }
 .header p { font-size: 13px; color: var(--text2); margin-top: 4px; }
 
-.topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+.topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; row-gap: 8px; }
 .topbar img { width: 36px; height: auto; }
 .topbar .t1 { font-size: 13px; font-weight: 600; color: var(--red); line-height: 1.2; }
 .topbar .t2 { font-size: 12px; color: var(--text2); margin-top: 2px; }

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Esame PDF — Pannello admin CRI Padova</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  td.num, th.num { text-align: right; }
+  .num input { width: 70px; padding: 6px 8px; border: 1.5px solid var(--border); border-radius: 6px; font: 14px 'DM Mono', monospace; text-align: right; background: var(--bg); }
+  textarea { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 14px; background: var(--bg); resize: vertical; }
+  .sel-dom { display: flex; gap: 10px; align-items: flex-start; padding: 8px 4px; border-bottom: 1px solid var(--border); font-size: 13px; cursor: pointer; }
+  .sel-dom input { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--red); flex-shrink: 0; }
+  #listaManuale { max-height: 420px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 0 8px; margin-top: 10px; }
+
+  /* ----- foglio d'esame ----- */
+  #foglio { background: #fff; color: #000; font-family: 'DM Sans', Arial, sans-serif; font-size: 12.5px; line-height: 1.45;
+    border: 1px solid var(--border); border-radius: 12px; padding: 40px 44px; }
+  #foglio .intest { display: flex; align-items: center; gap: 18px; border-bottom: 2px solid #CC0000; padding-bottom: 12px; margin-bottom: 14px; }
+  #foglio .intest img { width: 170px; height: auto; }
+  #foglio .intest .tit { font-size: 17px; font-weight: 600; }
+  #foglio .intest .sub { font-size: 12px; color: #444; margin-top: 2px; }
+  #foglio .anagrafica { display: grid; grid-template-columns: 1fr 1fr 0.6fr; gap: 18px; margin: 10px 0 14px; }
+  #foglio .anagrafica div { border-bottom: 1px solid #000; padding-top: 18px; font-size: 11px; color: #444; }
+  #foglio .istr { font-size: 11.5px; color: #333; background: #f6f6f6; padding: 8px 12px; border-radius: 6px; margin-bottom: 14px; white-space: pre-wrap; }
+  #foglio .q { break-inside: avoid; page-break-inside: avoid; margin-bottom: 12px; }
+  #foglio .q .tq { font-weight: 600; }
+  #foglio .q .arg { font-size: 10px; color: #777; font-weight: 400; }
+  #foglio .q ul { list-style: none; padding: 4px 0 0 22px; margin: 0; }
+  #foglio .q li { padding: 1.5px 0; }
+  #foglio .q li::before { content: '☐ '; font-size: 13px; }
+  #foglio .q ul.vf { display: flex; gap: 28px; }
+  #foglio .soluzioni { break-before: page; page-break-before: always; margin-top: 30px; }
+  #foglio .soluzioni h4 { font-size: 15px; margin-bottom: 4px; }
+  #foglio .soluzioni table { width: 100%; border-collapse: collapse; font-size: 11.5px; margin-top: 10px; }
+  #foglio .soluzioni td, #foglio .soluzioni th { border: 1px solid #bbb; padding: 4px 6px; text-align: left; }
+  #foglio .griglia { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-top: 10px; }
+  #foglio .griglia div { border: 1px solid #bbb; text-align: center; padding: 4px 0; font: 600 12px 'DM Mono', monospace; }
+  #foglio .griglia span { display: block; font-weight: 400; font-size: 9px; color: #777; }
+
+  @media print {
+    @page { size: A4; margin: 14mm 14mm 16mm; }
+    #foglio { border: none; padding: 0; border-radius: 0; font-size: 11.5px; }
+    .wrap.largo { max-width: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap largo">
+  <div class="topbar no-stampa">
+    <img src="../../logo-cri.png" alt="CRI">
+    <div><div class="t1">Pannello admin · Esame PDF</div><div class="t2" id="chiSono"></div></div>
+    <div class="spazio"></div>
+    <a class="link" href="index.html" style="margin-right:14px">Utenti e inviti</a>
+    <a class="link" href="domande.html" style="margin-right:14px">Domande</a>
+    <a class="link" href="statistiche.html" style="margin-right:14px">Statistiche</a>
+    <a class="link" href="../home.html">I miei corsi</a>
+  </div>
+
+  <div class="card no-stampa">
+    <div class="card-title">Impostazioni</div>
+    <div class="riga">
+      <div class="campo"><label for="selCorso">Corso</label><select id="selCorso"></select></div>
+      <div class="campo"><label for="dataEsame">Data</label><input type="date" id="dataEsame"></div>
+    </div>
+    <div class="campo"><label for="titolo">Titolo</label><input type="text" id="titolo"></div>
+    <div class="campo"><label for="istruzioni">Istruzioni per i candidati</label>
+      <textarea id="istruzioni" rows="2">Per ogni domanda segna con una X una sola risposta. Le risposte corrette sono una per domanda.</textarea></div>
+    <div class="schede" style="max-width:420px">
+      <button id="tabAuto" class="attiva" type="button">Scelta automatica</button>
+      <button id="tabManuale" type="button">Scelta manuale</button>
+    </div>
+    <div id="pannelloAuto">
+      <p class="nota" style="margin-bottom:8px">Indica quante domande estrarre da ogni argomento. Vengono pescate a caso tra quelle pubblicate.</p>
+      <div class="tabella-wrap" id="tabQuote"></div>
+    </div>
+    <div id="pannelloManuale" class="hidden">
+      <div class="riga">
+        <div class="campo" style="margin-bottom:0"><input type="search" id="cercaMan" placeholder="Cerca nel testo"></div>
+        <div class="campo" style="margin-bottom:0"><select id="catMan"></select></div>
+      </div>
+      <div id="listaManuale"></div>
+      <p class="nota" id="contaMan" style="margin-top:8px"></p>
+    </div>
+    <label class="check"><input type="checkbox" id="mescolaRisposte" checked> Mescola l'ordine delle risposte (le Vero/Falso restano in ordine)</label>
+    <label class="check"><input type="checkbox" id="mescolaArgomenti"> Mescola le domande dei diversi argomenti (altrimenti restano raggruppate)</label>
+    <div class="azioni" style="margin-top:14px">
+      <button class="btn piccolo" id="btnGenera" type="button">Genera anteprima</button>
+      <button class="btn sec piccolo" id="btnStampa" type="button" disabled>Stampa o salva PDF</button>
+    </div>
+    <div id="msg"></div>
+  </div>
+
+  <div id="foglio" class="hidden"></div>
+</div>
+
+<script type="module">
+import { db } from '../js/firebase.js';
+import { richiediUtente, esc, messaggioErrore } from '../js/auth.js';
+import { leggiTuttiCorsi } from '../js/domande.js';
+import { mescola, preparaDomanda } from '../js/quiz-engine.js';
+import { collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const $ = id => document.getElementById(id);
+const { profilo } = await richiediUtente({ admin: true });
+$('chiSono').textContent = `${profilo.nome} ${profilo.cognome} · admin`;
+
+let corsi = [], pacchetti = new Map(), modo = 'auto', scelte = new Set();
+$('dataEsame').value = new Date().toISOString().slice(0, 10);
+const corso = () => corsi.find(c => c.id === $('selCorso').value);
+
+async function carica() {
+  const [cs, sp] = await Promise.all([leggiTuttiCorsi(), getDocs(collection(db, 'pacchetti'))]);
+  corsi = cs;
+  sp.docs.forEach(d => pacchetti.set(d.id, d.data().domande.map(q => ({ ...q, categoria: d.id }))));
+  $('selCorso').innerHTML = cs.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+  cambiaCorso();
+}
+
+function cambiaCorso() {
+  const c = corso();
+  $('titolo').value = `Verifica — ${c.nome}`;
+  const predef = c.categorie.length === 1 ? 30 : Math.max(2, Math.round(30 / c.categorie.length));
+  $('tabQuote').innerHTML = `<table><thead><tr><th>Argomento</th><th class="num">Disponibili</th><th class="num">Da estrarre</th></tr></thead><tbody>${
+    c.categorie.map(cat => { const n = (pacchetti.get(cat.id) || []).length; return `<tr><td>${esc(cat.nome)}</td><td class="num">${n}</td>
+      <td class="num"><input type="number" min="0" max="${n}" value="${Math.min(predef, n)}" data-quota="${cat.id}"></td></tr>`; }).join('')
+  }<tr><td><strong>Totale</strong></td><td></td><td class="num"><strong id="totQuote"></strong></td></tr></tbody></table>`;
+  aggiornaTot();
+  $('catMan').innerHTML = '<option value="">Tutti gli argomenti</option>' + c.categorie.map(cat => `<option value="${cat.id}">${esc(cat.nome)}</option>`).join('');
+  scelte = new Set();
+  disegnaManuale();
+  $('foglio').classList.add('hidden'); $('btnStampa').disabled = true;
+}
+const aggiornaTot = () => $('totQuote').textContent = [...document.querySelectorAll('[data-quota]')].reduce((s, i) => s + (+i.value || 0), 0);
+$('tabQuote').addEventListener('input', aggiornaTot);
+$('selCorso').addEventListener('change', cambiaCorso);
+
+function scheda(m) {
+  modo = m;
+  $('tabAuto').classList.toggle('attiva', m === 'auto'); $('tabManuale').classList.toggle('attiva', m === 'manuale');
+  $('pannelloAuto').classList.toggle('hidden', m !== 'auto'); $('pannelloManuale').classList.toggle('hidden', m !== 'manuale');
+}
+$('tabAuto').onclick = () => scheda('auto'); $('tabManuale').onclick = () => scheda('manuale');
+
+function disegnaManuale() {
+  const c = corso(), q = $('cercaMan').value.trim().toLowerCase(), fc = $('catMan').value;
+  const tutte = c.categorie.flatMap(cat => pacchetti.get(cat.id) || []);
+  const lista = tutte.filter(d => (!fc || d.categoria === fc) && (!q || d.testo.toLowerCase().includes(q)));
+  $('listaManuale').innerHTML = lista.slice(0, 300).map(d => `<label class="sel-dom"><input type="checkbox" data-sel="${esc(d.id)}" ${scelte.has(d.id) ? 'checked' : ''}>
+    <span>${esc(d.testo)} <span class="nota">· ${d.tipo === 'vf' ? 'V/F' : 'multipla'}</span></span></label>`).join('')
+    || '<p class="nota" style="padding:10px">Nessuna domanda.</p>';
+  $('contaMan').textContent = `${scelte.size} domande selezionate${lista.length > 300 ? ' · mostrate le prime 300: usa la ricerca per trovarne altre' : ''}`;
+}
+$('cercaMan').addEventListener('input', disegnaManuale);
+$('catMan').addEventListener('change', disegnaManuale);
+$('listaManuale').addEventListener('change', ev => {
+  const id = ev.target.dataset.sel; if (!id) return;
+  ev.target.checked ? scelte.add(id) : scelte.delete(id);
+  $('contaMan').textContent = `${scelte.size} domande selezionate`;
+});
+
+// ---------- generazione ----------
+$('btnGenera').addEventListener('click', () => {
+  const c = corso();
+  let domande;
+  if (modo === 'auto') {
+    domande = [...document.querySelectorAll('[data-quota]')].flatMap(i =>
+      mescola(pacchetti.get(i.dataset.quota) || []).slice(0, +i.value || 0));
+  } else {
+    const ordine = c.categorie.map(cat => cat.id);
+    domande = c.categorie.flatMap(cat => pacchetti.get(cat.id) || []).filter(d => scelte.has(d.id))
+      .sort((a, b) => ordine.indexOf(a.categoria) - ordine.indexOf(b.categoria));
+  }
+  if (!domande.length) return $('msg').innerHTML = '<div class="msg err">Nessuna domanda selezionata.</div>';
+  $('msg').innerHTML = '';
+  if ($('mescolaArgomenti').checked) domande = mescola(domande);
+  domande = domande.map(d => $('mescolaRisposte').checked ? preparaDomanda(d) : { ...d, indici: d.opzioni.map((_, i) => i) });
+  disegnaFoglio(c, domande);
+});
+
+function disegnaFoglio(c, domande) {
+  const nomeCat = id => c.categorie.find(x => x.id === id)?.nome || '';
+  const dataIt = $('dataEsame').value ? new Date($('dataEsame').value + 'T12:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  const L = 'ABCDEF';
+  const intest = sub => `<div class="intest"><img src="../../logo-cri.png" alt="Croce Rossa Italiana">
+    <div><div class="tit">${esc($('titolo').value)}</div><div class="sub">Comitato di Padova · ${esc(c.nome)}${dataIt ? ' · ' + dataIt : ''}${sub ? ' · ' + sub : ''}</div></div></div>`;
+  const giusta = d => d.indici.indexOf(d.corretta); // posizione stampata della risposta giusta
+
+  let h = intest(`${domande.length} domande`);
+  h += `<div class="anagrafica"><div>Cognome</div><div>Nome</div><div>Firma</div></div>`;
+  if ($('istruzioni').value.trim()) h += `<div class="istr">${esc($('istruzioni').value.trim())}</div>`;
+  h += domande.map((d, n) => `<div class="q"><div class="tq">${n + 1}. ${esc(d.testo)}${c.categorie.length > 1 ? ` <span class="arg">(${esc(nomeCat(d.categoria))})</span>` : ''}</div>
+    <ul class="${d.tipo === 'vf' ? 'vf' : ''}">${d.indici.map((orig, pos) => `<li>${d.tipo === 'vf' ? '' : L[pos] + ') '}${esc(d.opzioni[orig])}</li>`).join('')}</ul></div>`).join('');
+
+  h += `<div class="soluzioni">${intest('Soluzioni')}
+    <h4>Foglio soluzioni — riservato all'istruttore</h4>
+    <div class="griglia">${domande.map((d, n) => `<div><span>${n + 1}</span>${d.tipo === 'vf' ? d.opzioni[d.corretta][0] : L[giusta(d)]}</div>`).join('')}</div>
+    <table><thead><tr><th style="width:36px">N.</th><th>Domanda</th><th>Risposta corretta</th></tr></thead><tbody>${
+      domande.map((d, n) => `<tr><td>${n + 1}</td><td>${esc(d.testo)}</td><td><strong>${d.tipo === 'vf' ? '' : L[giusta(d)] + ') '}${esc(d.opzioni[d.corretta])}</strong></td></tr>`).join('')
+    }</tbody></table></div>`;
+  $('foglio').innerHTML = h;
+  $('foglio').classList.remove('hidden');
+  $('btnStampa').disabled = false;
+  $('foglio').scrollIntoView({ behavior: 'smooth' });
+}
+$('btnStampa').addEventListener('click', () => window.print());
+
+try { await carica(); }
+catch (e) { $('msg').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; }
+</script>
+</body>
+</html>

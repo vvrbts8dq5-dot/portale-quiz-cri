@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Statistiche — Pannello admin CRI Padova</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  td.num, th.num { text-align: right; font-family: 'DM Mono', monospace; }
+  .filtri { display: grid; grid-template-columns: 1fr 1.6fr 1fr 1.4fr; gap: 10px; }
+  .filtri .campo { margin-bottom: 0; }
+  .filtri input, .filtri select { padding: 10px 12px; font-size: 14px; }
+  .kpi { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .kpi > div { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+  .kpi .n { font: 600 26px 'DM Mono', monospace; }
+  .kpi .l { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+  .barre .r { display: grid; grid-template-columns: minmax(140px, 2fr) 3fr 90px; gap: 10px; align-items: center; padding: 6px 0; font-size: 13px; }
+  .barre .track { height: 10px; background: var(--bg); border-radius: 99px; position: relative; overflow: hidden; }
+  .barre .fill { height: 100%; border-radius: 99px; }
+  .barre .soglia { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--text2); left: 70%; }
+  .barre .v { font-family: 'DM Mono', monospace; text-align: right; }
+  tr.clic { cursor: pointer; } tr.clic:hover td { background: var(--bg); }
+  .critica .t { font-size: 13px; line-height: 1.4; }
+  @media (max-width: 760px) { .filtri, .kpi { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap largo">
+  <div class="topbar">
+    <img src="../../logo-cri.png" alt="CRI">
+    <div><div class="t1">Pannello admin · Statistiche</div><div class="t2" id="chiSono"></div></div>
+    <div class="spazio"></div>
+    <a class="link" href="index.html" style="margin-right:14px">Utenti e inviti</a>
+    <a class="link" href="domande.html" style="margin-right:14px">Domande</a>
+    <a class="link" href="esame.html" style="margin-right:14px">Esame PDF</a>
+    <a class="link" href="../home.html">I miei corsi</a>
+  </div>
+
+  <div class="card">
+    <div class="filtri">
+      <div class="campo"><label for="fCorso">Corso</label><select id="fCorso"><option value="">Tutti</option></select></div>
+      <div class="campo"><label for="fCat">Argomento</label><select id="fCat"><option value="">Tutti</option></select></div>
+      <div class="campo"><label for="fPeriodo">Periodo</label>
+        <select id="fPeriodo"><option value="7">Ultimi 7 giorni</option><option value="30" selected>Ultimi 30 giorni</option><option value="90">Ultimi 90 giorni</option><option value="365">Ultimo anno</option><option value="">Sempre</option></select></div>
+      <div class="campo"><label for="fNome">Volontario</label><input type="search" id="fNome" placeholder="Nome o cognome"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="kpi">
+      <div><div class="n" id="kQuiz">–</div><div class="l">Quiz svolti</div></div>
+      <div><div class="n" id="kVol">–</div><div class="l">Volontari</div></div>
+      <div><div class="n" id="kMedia">–</div><div class="l">Media</div></div>
+      <div><div class="n" id="kSup">–</div><div class="l">Superati</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Media per argomento <span style="text-transform:none;letter-spacing:0">· la linea indica la soglia del 70%</span></div>
+    <div class="barre" id="barre"><p class="nota">Caricamento…</p></div>
+  </div>
+
+  <div class="card">
+    <div class="barra" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <div class="card-title" style="margin:0">Volontari</div>
+      <button class="btn sec piccolo" id="btnCsv" type="button">Esporta risultati CSV</button>
+    </div>
+    <div class="tabella-wrap" id="tabVolontari"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Domande critiche <span style="text-transform:none;letter-spacing:0">· sbagliate più spesso, con almeno 3 risposte</span></div>
+    <div class="tabella-wrap" id="tabCritiche"></div>
+  </div>
+</div>
+
+<!-- SCHEDA VOLONTARIO -->
+<div class="overlay hidden" id="modScheda">
+  <div class="modale" style="max-width:720px">
+    <h3 id="schTitolo"></h3>
+    <p class="nota" id="schSub"></p>
+    <div class="tabella-wrap" id="schEsiti" style="margin-top:14px"></div>
+    <div id="schMsg"></div>
+    <div class="azioni" style="margin-top:16px">
+      <button class="btn sec piccolo" id="schChiudi" type="button">Chiudi</button>
+      <button class="btn sec piccolo" id="schElimina" type="button" style="color:var(--red)">Elimina i risultati mostrati</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { db } from '../js/firebase.js';
+import { richiediUtente, esc, messaggioErrore } from '../js/auth.js';
+import { leggiTuttiCorsi } from '../js/domande.js';
+import { collection, getDocs, doc, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const $ = id => document.getElementById(id);
+const { profilo } = await richiediUtente({ admin: true });
+$('chiSono').textContent = `${profilo.nome} ${profilo.cognome} · admin`;
+
+let corsi = [], categorie = new Map(), esiti = [], utenti = new Map(), testi = new Map();
+const ms = ts => ts?.toMillis ? ts.toMillis() : 0;
+const data = ts => ts ? ts.toDate().toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+const colore = p => p >= 70 ? 'var(--green)' : p >= 50 ? '#f59e0b' : 'var(--red)';
+const nomeArg = e => e.categoria === 'generale' ? `Quiz generale ${corsi.find(c => c.id === e.corso)?.nome || e.corso}` : (categorie.get(e.categoria)?.nome || e.categoriaNome);
+
+async function carica() {
+  const [cs, se, su, sp] = await Promise.all([leggiTuttiCorsi(), getDocs(collection(db, 'esiti')),
+    getDocs(collection(db, 'utenti')), getDocs(collection(db, 'pacchetti'))]);
+  corsi = cs;
+  cs.forEach(c => c.categorie.forEach(cat => categorie.set(cat.id, { ...cat, corso: c.id })));
+  esiti = se.docs.map(d => ({ id: d.id, ...d.data() }));
+  su.docs.forEach(d => utenti.set(d.id, d.data()));
+  // testi delle domande dai pacchetti pubblicati (15 letture invece di oltre mille)
+  sp.docs.forEach(p => p.data().domande.forEach(q => testi.set(q.id, { ...q, categoria: p.id })));
+  $('fCorso').innerHTML += cs.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+  opzioniCategorie();
+  disegna();
+}
+
+function opzioniCategorie() {
+  const fc = $('fCorso').value;
+  const lista = corsi.filter(c => !fc || c.id === fc);
+  $('fCat').innerHTML = '<option value="">Tutti</option>' + lista.map(c =>
+    `<optgroup label="${esc(c.nome)}">${c.categorie.map(cat => `<option value="${cat.id}">${esc(cat.nome)}</option>`).join('')}
+     ${c.quizGenerale && c.categorie.length > 1 ? `<option value="generale|${c.id}">Quiz generale</option>` : ''}</optgroup>`).join('');
+}
+
+function filtrati() {
+  const fc = $('fCorso').value, fcat = $('fCat').value, giorni = +$('fPeriodo').value, q = $('fNome').value.trim().toLowerCase();
+  const da = giorni ? Date.now() - giorni * 86400e3 : 0;
+  return esiti.filter(e => {
+    if (fc && e.corso !== fc) return false;
+    if (fcat) {
+      if (fcat.startsWith('generale|')) { if (e.categoria !== 'generale' || e.corso !== fcat.split('|')[1]) return false; }
+      else if (e.categoria !== fcat) return false;
+    }
+    if (da && ms(e.timestamp) < da) return false;
+    if (q && !`${e.nome} ${e.cognome}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function disegna() {
+  const L = filtrati();
+  const media = L.length ? Math.round(L.reduce((s, e) => s + e.percentuale, 0) / L.length) : null;
+  $('kQuiz').textContent = L.length;
+  $('kVol').textContent = new Set(L.map(e => e.uid)).size;
+  $('kMedia').textContent = media === null ? '–' : media + '%';
+  $('kSup').textContent = L.length ? Math.round(L.filter(e => e.superato).length / L.length * 100) + '%' : '–';
+
+  // media per argomento
+  const perArg = new Map();
+  L.forEach(e => { const k = nomeArg(e); const a = perArg.get(k) || { n: 0, s: 0 }; a.n++; a.s += e.percentuale; perArg.set(k, a); });
+  const righe = [...perArg].map(([k, a]) => ({ k, n: a.n, m: Math.round(a.s / a.n) })).sort((a, b) => a.m - b.m);
+  $('barre').innerHTML = righe.length ? righe.map(r => `<div class="r"><div>${esc(r.k)}</div>
+    <div class="track"><div class="fill" style="width:${r.m}%;background:${colore(r.m)}"></div><div class="soglia"></div></div>
+    <div class="v">${r.m}% <span class="nota">· ${r.n}</span></div></div>`).join('') : '<p class="nota">Nessun quiz nel periodo selezionato.</p>';
+
+  // volontari
+  const perUt = new Map();
+  L.forEach(e => { const a = perUt.get(e.uid) || { uid: e.uid, nome: e.nome, cognome: e.cognome, n: 0, s: 0, sup: 0, ultimo: 0 };
+    a.n++; a.s += e.percentuale; a.sup += e.superato ? 1 : 0; a.ultimo = Math.max(a.ultimo, ms(e.timestamp)); perUt.set(e.uid, a); });
+  const vol = [...perUt.values()].map(v => ({ ...v, ...(utenti.get(v.uid) ? { nome: utenti.get(v.uid).nome, cognome: utenti.get(v.uid).cognome } : {}) }))
+    .sort((a, b) => `${a.cognome} ${a.nome}`.localeCompare(`${b.cognome} ${b.nome}`, 'it'));
+  $('tabVolontari').innerHTML = vol.length ? `<table><thead><tr><th>Volontario</th><th class="num">Quiz</th><th class="num">Media</th><th class="num">Superati</th><th>Ultimo quiz</th></tr></thead><tbody>${
+    vol.map(v => { const m = Math.round(v.s / v.n); return `<tr class="clic" data-uid="${esc(v.uid)}"><td><strong>${esc(v.cognome)}</strong> ${esc(v.nome)}</td>
+      <td class="num">${v.n}</td><td class="num" style="color:${colore(m)}">${m}%</td><td class="num">${v.sup}/${v.n}</td>
+      <td>${new Date(v.ultimo).toLocaleDateString('it-IT')}</td></tr>`; }).join('')}</tbody></table>
+    <p class="nota" style="margin-top:8px">Clicca su un volontario per vedere tutti i suoi quiz.</p>` : '<p class="nota">Nessun volontario nel periodo selezionato.</p>';
+
+  // domande critiche
+  const perDom = new Map();
+  L.forEach(e => (e.risposte || []).forEach(r => { const a = perDom.get(r.id) || { t: 0, err: 0, scelte: {} }; a.t++;
+    if (!r.esatta) { a.err++; const k = r.scelta === null ? '–' : r.scelta; a.scelte[k] = (a.scelte[k] || 0) + 1; } perDom.set(r.id, a); }));
+  const crit = [...perDom].filter(([, a]) => a.t >= 3 && a.err > 0).map(([id, a]) => ({ id, ...a, p: Math.round(a.err / a.t * 100) }))
+    .sort((a, b) => b.p - a.p || b.t - a.t).slice(0, 30);
+  $('tabCritiche').innerHTML = crit.length ? `<table><thead><tr><th>Domanda</th><th>Risposta sbagliata più scelta</th><th class="num">Errori</th><th></th></tr></thead><tbody>${
+    crit.map(c => { const q = testi.get(c.id); const top = Object.entries(c.scelte).sort((a, b) => b[1] - a[1])[0];
+      const sbagliata = !top ? '' : top[0] === '–' ? 'nessuna risposta' : (q?.opzioni[+top[0]] || '');
+      return `<tr class="critica"><td class="t">${esc(q?.testo || '(domanda non più pubblicata)')}<br><span class="nota">${esc(categorie.get(q?.categoria)?.nome || '')} · corretta: ${esc(q ? q.opzioni[q.corretta] : '')}</span></td>
+        <td class="t">${esc(sbagliata)}</td><td class="num" style="color:${colore(100 - c.p)}">${c.p}%<br><span class="nota">${c.err}/${c.t}</span></td>
+        <td><a class="btn sec piccolo" href="domande.html?id=${encodeURIComponent(c.id)}" style="text-decoration:none">Modifica</a></td></tr>`; }).join('')}</tbody></table>`
+    : '<p class="nota">Servono più quiz svolti per individuare le domande critiche.</p>';
+}
+
+['fCorso', 'fCat', 'fPeriodo', 'fNome'].forEach(id => $(id).addEventListener('input', () => { if (id === 'fCorso') opzioniCategorie(); disegna(); }));
+
+// ---------- scheda volontario ----------
+let schedaUid = null;
+function apriScheda(uid) {
+  schedaUid = uid;
+  const L = filtrati().filter(e => e.uid === uid).sort((a, b) => ms(b.timestamp) - ms(a.timestamp));
+  const u = utenti.get(uid) || L[0];
+  $('schTitolo').textContent = `${u.cognome} ${u.nome}`;
+  $('schSub').textContent = `${u.email || ''} · ${L.length} quiz nel periodo selezionato`;
+  $('schEsiti').innerHTML = `<table><thead><tr><th>Data</th><th>Argomento</th><th class="num">Risultato</th><th class="num">Tempo</th><th></th></tr></thead><tbody>${
+    L.map(e => `<tr><td>${data(e.timestamp)}</td><td>${esc(nomeArg(e))}</td>
+      <td class="num" style="color:${colore(e.percentuale)}">${e.percentuale}% <span class="nota">${e.corrette}/${e.numeroDomande}</span></td>
+      <td class="num">${Math.floor(e.durataSec / 60)}′${String(e.durataSec % 60).padStart(2, '0')}″${e.tempoScaduto ? ' ⏱' : ''}</td>
+      <td><button class="link" data-elimina="${esc(e.id)}" type="button">elimina</button></td></tr>`).join('')}</tbody></table>`;
+  $('schMsg').innerHTML = '';
+  $('modScheda').classList.remove('hidden');
+}
+$('tabVolontari').addEventListener('click', ev => { const r = ev.target.closest('[data-uid]'); if (r) apriScheda(r.dataset.uid); });
+$('schChiudi').addEventListener('click', () => $('modScheda').classList.add('hidden'));
+
+async function elimina(ids) {
+  try {
+    for (let i = 0; i < ids.length; i += 400) {
+      const b = writeBatch(db); ids.slice(i, i + 400).forEach(id => b.delete(doc(db, 'esiti', id))); await b.commit();
+    }
+    const via = new Set(ids); esiti = esiti.filter(e => !via.has(e.id));
+    disegna();
+    if (filtrati().some(e => e.uid === schedaUid)) apriScheda(schedaUid); else $('modScheda').classList.add('hidden');
+  } catch (e) { $('schMsg').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; }
+}
+$('schEsiti').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-elimina]');
+  if (b && confirm('Eliminare questo risultato? Non si può annullare.')) elimina([b.dataset.elimina]);
+});
+$('schElimina').addEventListener('click', () => {
+  const ids = filtrati().filter(e => e.uid === schedaUid).map(e => e.id);
+  if (confirm(`Eliminare ${ids.length} risultati di questo volontario (solo quelli dei filtri attuali)? Non si può annullare.`)) elimina(ids);
+});
+
+// ---------- export ----------
+$('btnCsv').addEventListener('click', () => {
+  const righe = filtrati().sort((a, b) => ms(a.timestamp) - ms(b.timestamp)).map(e => [
+    e.timestamp ? e.timestamp.toDate().toLocaleString('it-IT') : '', e.cognome, e.nome, utenti.get(e.uid)?.email || '',
+    corsi.find(c => c.id === e.corso)?.nome || e.corso, nomeArg(e), e.numeroDomande, e.corrette, e.percentuale,
+    e.superato ? 'sì' : 'no', e.durataSec, e.tempoScaduto ? 'sì' : 'no']);
+  const csv = '﻿' + Papa.unparse({ fields: ['data', 'cognome', 'nome', 'email', 'corso', 'argomento', 'domande', 'corrette', 'percentuale', 'superato', 'durata_sec', 'tempo_scaduto'], data: righe }, { delimiter: ';' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = `risultati_${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(a); a.click(); a.remove();
+});
+
+try { await carica(); }
+catch (e) { $('barre').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; }
+</script>
+</body>
+</html>

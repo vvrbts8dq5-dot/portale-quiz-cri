@@ -42,7 +42,9 @@
     <img src="../../logo-cri.png" alt="CRI">
     <div><div class="t1">Pannello admin · Domande</div><div class="t2" id="chiSono"></div></div>
     <div class="spazio"></div>
-    <a class="link" href="index.html" style="margin-right:16px">Utenti e inviti</a>
+    <a class="link" href="index.html" style="margin-right:14px">Utenti e inviti</a>
+    <a class="link" href="statistiche.html" style="margin-right:14px">Statistiche</a>
+    <a class="link" href="esame.html" style="margin-right:14px">Esame PDF</a>
     <a class="link" href="../home.html">I miei corsi</a>
   </div>
 
@@ -449,7 +451,12 @@ $('impConferma').addEventListener('click', async () => {
   } catch (e) { $('impMsg').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; $('impConferma').disabled = false; }
 });
 
-try { await carica(); }
+try {
+  await carica();
+  // arrivo dalle statistiche: apri direttamente la domanda indicata
+  const idUrl = new URLSearchParams(location.search).get('id');
+  if (idUrl && domande.some(d => d.id === idUrl)) apriEditor(idUrl);
+}
 catch (e) { $('tabPubblica').innerHTML = $('elenco').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; }
 </script>
 </body>
