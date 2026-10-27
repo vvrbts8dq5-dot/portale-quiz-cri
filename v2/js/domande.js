@@ -1,7 +1,8 @@
 // Catalogo corsi/categorie, formato unico delle domande e pubblicazione dei pacchetti.
 import { db } from './firebase.js';
+import { prendi, metti } from './cache.js';
 import {
-  collection, doc, getDoc, getDocs, setDoc, query, where, serverTimestamp
+  collection, doc, getDoc, getDocs, setDoc, updateDoc, query, where, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // Catalogo iniziale: dalla fase 3 vive nella collezione `corsi`.
@@ -80,12 +81,40 @@ export function valida(d) {
   return e;
 }
 
-// Corsi dell'utente, letti dalla collezione `corsi`, in ordine di menu
-export async function leggiCorsi(idCorsi) {
-  const docs = await Promise.all((idCorsi || []).map(id => getDoc(doc(db, 'corsi', id))));
-  return docs.filter(d => d.exists() && d.data().attivo !== false)
-    .map(d => ({ id: d.id, ...d.data(), categorie: [...(d.data().categorie || [])].sort((a, b) => a.ordine - b.ordine) }))
-    .sort((a, b) => a.ordine - b.ordine);
+// Corsi dell'utente, letti dalla collezione `corsi`, in ordine di menu.
+// Restano in memoria 15 minuti; fresco:true li rilegge (serve al quiz per sapere le versioni dei pacchetti).
+const DURATA_CORSI = 15 * 60 * 1000;
+export async function leggiCorsi(idCorsi, { fresco = false } = {}) {
+  const corsi = await Promise.all((idCorsi || []).map(async id => {
+    const salvato = fresco ? null : prendi('corso.' + id, { maxEta: DURATA_CORSI });
+    if (salvato) return salvato;
+    const d = await getDoc(doc(db, 'corsi', id));
+    if (!d.exists()) return null;
+    const c = { id: d.id, ...d.data(), categorie: [...(d.data().categorie || [])].sort((a, b) => a.ordine - b.ordine) };
+    metti('corso.' + id, c);
+    return c;
+  }));
+  return corsi.filter(c => c && c.attivo !== false).sort((a, b) => a.ordine - b.ordine);
+}
+
+// Pacchetto di domande di un argomento. Se il corso dice che la versione pubblicata è quella
+// già salvata sul dispositivo, non serve rileggerlo: zero letture.
+export async function leggiPacchetto(categoria, versioneAttesa = null) {
+  const salvato = prendi('pk.' + categoria);
+  if (salvato && versioneAttesa && salvato.versione === versioneAttesa) return salvato;
+  const d = await getDoc(doc(db, 'pacchetti', categoria));
+  if (!d.exists()) return null;
+  const x = d.data();
+  const p = { corso: x.corso, categoria, versione: x.versione, numero: x.numero, domande: x.domande };
+  metti('pk.' + categoria, p);
+  return p;
+}
+
+// Tutti i pacchetti di un elenco di corsi, usando quelli già sul dispositivo quando sono aggiornati
+export async function leggiPacchettiCorsi(corsi) {
+  const coppie = corsi.flatMap(c => c.categorie.map(cat => [cat.id, c.versioni?.[cat.id] || null]));
+  const p = await Promise.all(coppie.map(([id, v]) => leggiPacchetto(id, v).catch(() => null)));
+  return new Map(p.filter(Boolean).map(x => [x.categoria, x]));
 }
 
 // Tutti i corsi (per il pannello admin)
@@ -154,13 +183,16 @@ export async function pubblicaCategoria(corso, categoria, uid) {
     return { id: d.id, tipo: x.tipo, testo: x.testo, opzioni: x.opzioni, corretta: x.corretta,
              difficolta: x.difficolta ?? null, spiegazione: x.spiegazione || '' };
   }).sort((a, b) => a.id.localeCompare(b.id));
+  const versione = Date.now();
   await setDoc(doc(db, 'pacchetti', categoria), {
     corso, categoria,
     numero: domande.length,
-    versione: Date.now(),
+    versione,
     pubblicatoIl: serverTimestamp(),
     pubblicatoDa: uid,
     domande
   });
+  // il corso annota la versione: così i telefoni dei volontari sanno se riscaricare il pacchetto
+  await updateDoc(doc(db, 'corsi', corso), { [`versioni.${categoria}`]: versione });
   return domande.length;
 }

@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Statistiche — Pannello admin CRI Padova</title>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js">
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="icon" href="../img/icona-180.png">
 <link rel="apple-touch-icon" href="../img/icona-180.png">
@@ -97,7 +103,8 @@ sfondoSimboli();
 import { db } from '../js/firebase.js';
 import { richiediUtente, esc, messaggioErrore, corsiGestiti, eResponsabile } from '../js/auth.js';
 import { barraPannello, corsiDelPannello, avvisoSenzaCorsi, registra } from '../js/pannello.js';
-import { collection, getDocs, getDoc, doc, writeBatch, query, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { leggiPacchettiCorsi } from '../js/domande.js';
+import { collection, getDocs, getDoc, doc, writeBatch, query, where, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const $ = id => document.getElementById(id);
 const { user, profilo } = await richiediUtente({ staff: true });
@@ -116,24 +123,51 @@ async function carica() {
   const cs = await corsiDelPannello(profilo);
   if (!cs.length) { document.querySelectorAll('.wrap > .card').forEach(c => c.remove()); $('barraPannello').insertAdjacentHTML('afterend', avvisoSenzaCorsi()); return; }
   const qInviti = eResponsabile(profilo) ? collection(db, 'inviti') : query(collection(db, 'inviti'), where('creatoDa', '==', user.uid));
-  const [se, sp, si] = await Promise.all([getDocs(filtroCorsi('esiti')), getDocs(filtroCorsi('pacchetti')), getDocs(qInviti).catch(() => ({ docs: [] }))]);
+  const [, sp, si] = await Promise.all([caricaEsiti(+$('fPeriodo').value || 0), leggiPacchettiCorsi(cs), getDocs(qInviti).catch(() => ({ docs: [] }))]);
   si.docs.forEach(d => inviti.set(d.id, d.data()));
   corsi = cs;
   cs.forEach(c => c.categorie.forEach(cat => categorie.set(cat.id, { ...cat, corso: c.id })));
-  esiti = se.docs.map(d => ({ id: d.id, ...d.data() }));
   // Profili (email ed edizione): il responsabile li legge tutti, l'istruttore uno per uno quelli dei suoi corsi
   if (eResponsabile(profilo)) (await getDocs(collection(db, 'utenti'))).docs.forEach(d => utenti.set(d.id, d.data()));
-  else await Promise.all([...new Set(esiti.map(e => e.uid))].map(async uid => {
-    try { const d = await getDoc(doc(db, 'utenti', uid)); if (d.exists()) utenti.set(uid, d.data()); } catch { /* non più nei miei corsi */ }
-  }));
+  else await leggiProfiliMancanti();
   opzioniEdizioni();
   registra('statistiche.apri', `${esiti.length} risultati disponibili`);
   // testi delle domande dai pacchetti pubblicati (15 letture invece di oltre mille)
-  sp.docs.forEach(p => p.data().domande.forEach(q => testi.set(q.id, { ...q, categoria: p.id })));
+  sp.forEach(p => p.domande.forEach(q => testi.set(q.id, { ...q, categoria: p.categoria })));
   $('fCorso').innerHTML += cs.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('');
   opzioniCategorie();
   disegna();
 }
+
+// I risultati si leggono solo per il periodo scelto: aprire le statistiche non legge tutto lo storico.
+// Allargando il periodo si leggono solo quelli che mancano.
+let caricatoDa = Infinity; // il risultato più vecchio già caricato copre da questo istante (0 = tutto)
+async function caricaEsiti(giorni) {
+  const da = giorni ? Date.now() - giorni * 86400e3 : 0;
+  if (da >= caricatoDa) return;
+  const vincoli = [...(soloCorsi === null ? [] : [where('corso', 'in', soloCorsi)])];
+  const conPeriodo = [...vincoli, ...(da ? [where('timestamp', '>=', Timestamp.fromMillis(da))] : [])];
+  let snap;
+  try { snap = await getDocs(query(collection(db, 'esiti'), ...conPeriodo)); caricatoDa = da; }
+  catch (e) {
+    if (e.code !== 'failed-precondition') throw e;
+    // manca l'indice per corso + data (vedi console per il link): leggo tutto, come prima
+    console.warn('Indice mancante per le statistiche per periodo:', e.message);
+    snap = await getDocs(query(collection(db, 'esiti'), ...vincoli)); caricatoDa = 0;
+  }
+  const visti = new Set(esiti.map(x => x.id));
+  esiti.push(...snap.docs.filter(d => !visti.has(d.id)).map(d => ({ id: d.id, ...d.data() })));
+}
+async function leggiProfiliMancanti() {
+  await Promise.all([...new Set(esiti.map(e => e.uid))].filter(uid => !utenti.has(uid)).map(async uid => {
+    try { const d = await getDoc(doc(db, 'utenti', uid)); if (d.exists()) utenti.set(uid, d.data()); } catch { /* non più nei miei corsi */ }
+  }));
+}
+$('fPeriodo').addEventListener('change', async () => {
+  const prima = esiti.length;
+  try { await caricaEsiti(+$('fPeriodo').value || 0); } catch (e) { alert(messaggioErrore(e)); }
+  if (esiti.length !== prima) { if (!eResponsabile(profilo)) await leggiProfiliMancanti(); opzioniEdizioni(); disegna(); }
+});
 
 // Edizione = codice invito con cui il volontario si è registrato (es. "Corso TSSA autunno 2026")
 const edizione = e => e.edizione || utenti.get(e.uid)?.codiceInvito || '';

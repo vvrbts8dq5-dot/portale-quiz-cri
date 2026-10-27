@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Quiz — Portale Formazione CRI Padova</title>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js">
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="icon" href="img/icona-180.png">
 <link rel="apple-touch-icon" href="img/icona-180.png">
@@ -187,10 +193,11 @@
 <script type="module">
 import { db } from './js/firebase.js';
 import { richiediUtente, esc, messaggioErrore } from './js/auth.js';
-import { leggiCorsi } from './js/domande.js';
+import { leggiCorsi, leggiPacchetto } from './js/domande.js';
+import { leggiProgressi, aggiungiEsito, salvaProgressi } from './js/progressi.js';
 import { selezionaDomande, preparaDomanda, calcolaEsito, formattaTempo, SECONDI_PER_DOMANDA } from './js/quiz-engine.js';
 import { ICONA, iconaArgomento } from './js/icone.js';
-import { doc, getDoc, getDocs, addDoc, collection, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const $ = id => document.getElementById(id);
 $('linkIndietro').innerHTML = ICONA.indietro;
@@ -210,7 +217,7 @@ const aTempo = () => stato.modo === 'quiz';
 // ---------- caricamento ----------
 try {
   if (!(profilo.corsi || []).includes(idCorso)) throw { nostro: 'Non sei iscritto a questo corso.' };
-  const [corso] = await leggiCorsi([idCorso]);
+  const [corso] = await leggiCorsi([idCorso], { fresco: true });
   if (!corso) throw { nostro: 'Corso non trovato.' };
   stato.corso = corso;
   const categorie = idCat === 'generale' ? corso.categorie : corso.categorie.filter(c => c.id === idCat);
@@ -224,9 +231,9 @@ try {
   $('titoloScelta').textContent = stato.nomeCategoria;
   document.title = `${stato.nomeCategoria} — ${corso.nome}`;
 
-  const pacchetti = await Promise.all(categorie.map(c => getDoc(doc(db, 'pacchetti', c.id))));
-  stato.gruppi = pacchetti.map((p, k) => p.exists()
-    ? p.data().domande.map(d => ({ ...d, categoria: categorie[k].id })) : []);
+  // le domande già scaricate restano sul dispositivo finché l'istruttore non ripubblica l'argomento
+  const pacchetti = await Promise.all(categorie.map(c => leggiPacchetto(c.id, corso.versioni?.[c.id] || null)));
+  stato.gruppi = pacchetti.map((p, k) => p ? p.domande.map(d => ({ ...d, categoria: categorie[k].id })) : []);
   const tot = stato.gruppi.flat().length;
   if (!tot) throw { nostro: 'Per questo argomento non ci sono ancora domande pubblicate.' };
 
@@ -236,7 +243,7 @@ try {
   });
   if (tot < 30) $('notaPool').textContent = `Per questo argomento ci sono ${tot} domande in tutto.`;
   mostra('sScelta');
-  cercaErrori(categorie.map(c => c.id)).catch(() => {});
+  cercaErrori().catch(() => {});
 } catch (e) {
   errore(esc(e.nostro || messaggioErrore(e)) + ' <a href="home.html">Torna ai tuoi corsi</a>.');
 }
@@ -259,17 +266,18 @@ $('modoQuiz').onclick = () => scegliModo('quiz');
 $('modoAllena').onclick = () => scegliModo('allenamento');
 
 // Ripasso: le domande la cui ultima risposta del volontario è stata sbagliata
-async function cercaErrori(idCategorie) {
-  const snap = await getDocs(query(collection(db, 'esiti'), where('uid', '==', user.uid)));
-  const ultima = new Map();
-  snap.docs.map(d => d.data()).filter(e => e.corso === idCorso)
-    .sort((a, b) => (a.timestamp?.toMillis?.() || 0) - (b.timestamp?.toMillis?.() || 0))
-    .forEach(e => (e.risposte || []).forEach(r => ultima.set(r.id, r.esatta)));
+// Il riepilogo personale (1 lettura) dice quali domande del corso sono da ripassare
+let progressi = null;
+function aggiornaRipasso() {
   const disponibili = new Map(stato.gruppi.flat().map(d => [d.id, d]));
-  stato.daRipassare = [...ultima].filter(([id, ok]) => !ok && disponibili.has(id)).map(([id]) => disponibili.get(id));
+  stato.daRipassare = (progressi?.errori[idCorso] || []).filter(id => disponibili.has(id)).map(id => disponibili.get(id));
   const n = stato.daRipassare.length;
   $('btnRipasso').classList.toggle('hidden', !n);
   $('btnRipasso').innerHTML = `<span><strong>Ripassa i tuoi errori (${n})</strong><span class="nota">Le domande che hai sbagliato l'ultima volta che le hai viste</span></span>`;
+}
+async function cercaErrori() {
+  progressi = await leggiProgressi(user.uid);
+  aggiornaRipasso();
 }
 $('btnRipasso').addEventListener('click', () => {
   stato.modo = 'ripasso';
@@ -388,7 +396,7 @@ async function termina(tempoScaduto) {
 
   $('resSalvataggio').textContent = 'Salvataggio del risultato…';
   try {
-    await addDoc(collection(db, 'esiti'), {
+    const esito = {
       uid: user.uid,
       nome: profilo.nome, cognome: profilo.cognome,
       corso: stato.corso.id, categoria: idCat, categoriaNome: stato.nomeCategoria,
@@ -398,16 +406,17 @@ async function termina(tempoScaduto) {
       modalita: stato.modo,
       ...(profilo.codiceInvito ? { edizione: profilo.codiceInvito } : {}),
       timestamp: serverTimestamp()
-    });
-    // le domande corrette escono dal ripasso
-    const giuste = new Set(stato.risposte.filter(r => r.esatta).map(r => r.id));
-    const sbagliateOra = new Map(stato.domande.filter(d => !giuste.has(d.id)).map(d => [d.id, d]));
-    const resto = stato.daRipassare.filter(d => !giuste.has(d.id) && !sbagliateOra.has(d.id));
-    stato.daRipassare = [...resto, ...sbagliateOra.values()];
-    const n = stato.daRipassare.length;
-    $('btnRipasso').classList.toggle('hidden', !n);
-    $('btnRipasso').innerHTML = `<span><strong>Ripassa i tuoi errori (${n})</strong><span class="nota">Le domande che hai sbagliato l'ultima volta che le hai viste</span></span>`;
+    };
+    await addDoc(collection(db, 'esiti'), esito);
     $('resSalvataggio').textContent = '✓ Risultato salvato';
+    // riepilogo personale: le domande giuste escono dal ripasso, quelle sbagliate entrano
+    try {
+      let giaIncluso = false;
+      if (!progressi) { progressi = await leggiProgressi(user.uid); giaIncluso = !!progressi.ricostruito; }
+      if (!giaIncluso) aggiungiEsito(progressi, { ...esito, timestamp: Date.now() });
+      aggiornaRipasso();
+      await salvaProgressi(user.uid, progressi);
+    } catch (e) { console.warn('Riepilogo non aggiornato', e); }
   } catch (e) {
     $('resSalvataggio').textContent = 'Risultato non salvato: ' + messaggioErrore(e);
   }

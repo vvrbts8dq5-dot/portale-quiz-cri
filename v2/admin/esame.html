@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Esame PDF — Pannello admin CRI Padova</title>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js">
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="icon" href="../img/icona-180.png">
 <link rel="apple-touch-icon" href="../img/icona-180.png">
@@ -97,6 +103,7 @@
 <script type="module">
 import { db } from '../js/firebase.js';
 import { richiediUtente, esc, messaggioErrore, corsiGestiti } from '../js/auth.js';
+import { leggiPacchettiCorsi } from '../js/domande.js';
 import { barraPannello, corsiDelPannello, avvisoSenzaCorsi, registra } from '../js/pannello.js';
 import { mescola, preparaDomanda } from '../js/quiz-engine.js';
 import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -113,9 +120,9 @@ const corso = () => corsi.find(c => c.id === $('selCorso').value);
 async function carica() {
   const cs = await corsiDelPannello(profilo);
   if (!cs.length) { document.querySelectorAll('.wrap > .card').forEach(c => c.remove()); $('barraPannello').insertAdjacentHTML('afterend', avvisoSenzaCorsi()); return; }
-  const sp = await getDocs(soloCorsi === null ? collection(db, 'pacchetti') : query(collection(db, 'pacchetti'), where('corso', 'in', soloCorsi)));
+  const sp = await leggiPacchettiCorsi(cs);
   corsi = cs;
-  sp.docs.forEach(d => pacchetti.set(d.id, d.data().domande.map(q => ({ ...q, categoria: d.id }))));
+  sp.forEach((p, id) => pacchetti.set(id, p.domande.map(q => ({ ...q, categoria: id }))));
   $('selCorso').innerHTML = cs.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('');
   cambiaCorso();
 }

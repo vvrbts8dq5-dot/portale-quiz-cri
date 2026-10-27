@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>I miei corsi — Portale Formazione CRI Padova</title>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js">
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="icon" href="img/icona-180.png">
 <link rel="apple-touch-icon" href="img/icona-180.png">
@@ -43,6 +49,7 @@
 
 <script type="module">
 import { richiediUtente, esc, messaggioErrore, eStaff } from './js/auth.js';
+import { dimenticaProfilo } from './js/auth.js';
 import { leggiCorsi } from './js/domande.js';
 import { ICONA, iniziali } from './js/icone.js';
 import { perArea, vociCorsi, riquadriAree } from './js/aree.js';
@@ -67,7 +74,7 @@ $('navbar').innerHTML = `
 if (!profilo.privacyIl) {
   $('avvisoPrivacy').classList.remove('hidden');
   $('btnPrivacyOk').onclick = async () => {
-    try { await updateDoc(doc(db, 'utenti', profilo.uid), { privacyIl: serverTimestamp() }); $('avvisoPrivacy').classList.add('hidden'); }
+    try { await updateDoc(doc(db, 'utenti', profilo.uid), { privacyIl: serverTimestamp() }); dimenticaProfilo(); $('avvisoPrivacy').classList.add('hidden'); }
     catch (e) { alert(messaggioErrore(e)); }
   };
 }

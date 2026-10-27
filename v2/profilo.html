@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Il mio profilo — Portale Formazione CRI Padova</title>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js">
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="icon" href="img/icona-180.png">
 <link rel="apple-touch-icon" href="img/icona-180.png">
@@ -80,6 +86,7 @@ import { sfondoSimboli } from './js/sfondi.js';
 sfondoSimboli();
 import { db, auth } from './js/firebase.js';
 import { richiediUtente, esci, esc, messaggioErrore, urlPagina } from './js/auth.js';
+import { dimenticaProfilo } from './js/auth.js';
 import { leggiCorsi } from './js/domande.js';
 import { doc, updateDoc, getDocs, collection, query, where, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { sendPasswordResetEmail, updateProfile, deleteUser, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -105,6 +112,7 @@ $('formNome').addEventListener('submit', async ev => {
   $('btnSalva').disabled = true;
   try {
     await updateDoc(doc(db, 'utenti', user.uid), { nome, cognome });
+    dimenticaProfilo();
     await updateProfile(user, { displayName: `${nome} ${cognome}` }).catch(() => {});
     $('nome').value = nome; $('cognome').value = cognome;
     $('msgNome').innerHTML = '<div class="msg ok">Salvato.</div>';
@@ -149,7 +157,7 @@ $('btnElimina').addEventListener('click', async () => {
       const b = writeBatch(db); esiti.slice(i, i + 400).forEach(d => b.delete(d.ref)); await b.commit();
     }
     const assist = (await getDocs(query(collection(db, 'assistenza'), where('uid', '==', user.uid)))).docs;
-    const b = writeBatch(db); assist.forEach(d => b.delete(d.ref)); b.delete(doc(db, 'utenti', user.uid)); await b.commit();
+    const b = writeBatch(db); assist.forEach(d => b.delete(d.ref)); b.delete(doc(db, 'progressi', user.uid)); b.delete(doc(db, 'utenti', user.uid)); await b.commit();
     await deleteUser(user);
     sessionStorage.clear();
     location.replace(urlPagina('index.html?msg=eliminato'));

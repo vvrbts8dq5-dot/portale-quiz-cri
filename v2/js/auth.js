@@ -2,6 +2,12 @@
 import { auth, db } from './firebase.js';
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { prendi, metti, togli, aMs, svuotaTutto } from './cache.js';
+
+// Service worker: aperture più rapide (librerie e immagini in cache). Se non è supportato, nulla cambia.
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  navigator.serviceWorker.register(new URL('../sw.js', import.meta.url), { scope: new URL('../', import.meta.url).pathname }).catch(() => {});
+}
 
 // Cartella principale del portale v2 (funziona sia da /v2/ sia da /v2/admin/)
 export const RADICE = new URL('../', import.meta.url);
@@ -19,14 +25,32 @@ export async function leggiProfilo(uid) {
   return snap.exists() ? { uid, ...snap.data() } : null;
 }
 
+// Il profilo resta in memoria per qualche minuto: passando da una pagina all'altra non si rilegge ogni volta.
+// Le pagine del pannello lo rileggono sempre, così un cambio di ruolo vale subito.
+const DURATA_PROFILO = 5 * 60 * 1000;
+function profiloInMemoria(uid) {
+  const p = prendi('profilo', { maxEta: DURATA_PROFILO, sessione: true });
+  return p && p.uid === uid ? p : null;
+}
+function ricordaProfilo(p) {
+  const semplice = Object.fromEntries(Object.entries(p).map(([k, v]) => [k, aMs(v) ?? v]));
+  metti('profilo', semplice, { sessione: true });
+}
+export const dimenticaProfilo = () => togli('profilo', { sessione: true });
+
 // Da chiamare all'apertura di ogni pagina protetta.
 // Rimanda al login chi non è autenticato o ha il profilo disattivato.
 // staff:true  → pannello (istruttori e responsabile); admin:true → solo responsabile (livello 2).
 export async function richiediUtente({ admin = false, staff = false } = {}) {
   const user = await utenteCorrente();
   if (!user) { location.replace(urlPagina('index.html')); return new Promise(() => {}); }
-  const profilo = await leggiProfilo(user.uid);
+  let profilo = (admin || staff) ? null : profiloInMemoria(user.uid);
+  if (!profilo) {
+    profilo = await leggiProfilo(user.uid);
+    if (profilo) ricordaProfilo(profilo);
+  }
   if (!profilo || profilo.attivo !== true) {
+    dimenticaProfilo();
     await signOut(auth);
     location.replace(urlPagina('index.html?msg=' + (profilo ? 'disattivato' : 'profilo')));
     return new Promise(() => {});
@@ -47,7 +71,7 @@ export const corsiGestiti = p => eResponsabile(p) ? null : (p?.ruolo === 'istrut
 export const gestisce = (p, corso) => { const g = corsiGestiti(p); return g === null || g.includes(corso); };
 
 export async function esci() {
-  sessionStorage.clear();
+  svuotaTutto();
   await signOut(auth);
   location.replace(urlPagina('index.html'));
 }

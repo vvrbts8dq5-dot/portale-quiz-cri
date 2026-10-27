@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>I miei quiz — Portale Formazione CRI Padova</title>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js">
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="icon" href="img/icona-180.png">
 <link rel="apple-touch-icon" href="img/icona-180.png">
@@ -51,35 +57,31 @@ sfondoSimboli();
 import { db } from './js/firebase.js';
 import { richiediUtente, esc, messaggioErrore } from './js/auth.js';
 import { leggiCorsi } from './js/domande.js';
-import { collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { leggiProgressi, MAX_ULTIMI } from './js/progressi.js';
 
 const $ = id => document.getElementById(id);
 const { user, profilo } = await richiediUtente();
 
+// 1 lettura: il riepilogo personale contiene totali e ultimi quiz
 try {
-  const [snap, corsi] = await Promise.all([
-    getDocs(query(collection(db, 'esiti'), where('uid', '==', user.uid))),
-    leggiCorsi(profilo.corsi)
-  ]);
+  const [prog, corsi] = await Promise.all([leggiProgressi(user.uid), leggiCorsi(profilo.corsi)]);
   const nomeCorso = Object.fromEntries(corsi.map(c => [c.id, c.nome]));
-  const esiti = snap.docs.map(d => d.data())
-    .sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
+  const { totali, ultimi } = prog;
+  $('kTot').textContent = totali.quiz;
+  $('kMedia').textContent = totali.quiz ? Math.round(totali.somma / totali.quiz) + '%' : '–';
+  $('kSup').textContent = totali.superati;
 
-  $('kTot').textContent = esiti.length;
-  $('kMedia').textContent = esiti.length ? Math.round(esiti.reduce((s, e) => s + e.percentuale, 0) / esiti.length) + '%' : '–';
-  $('kSup').textContent = esiti.filter(e => e.superato).length;
-
-  if (!esiti.length) {
+  if (!ultimi.length) {
     $('elenco').innerHTML = '<p class="nota">Non hai ancora svolto quiz. <a href="home.html">Inizia da uno dei tuoi corsi</a>.</p>';
   } else {
-    $('elenco').innerHTML = esiti.slice(0, 50).map(e => {
-      const data = e.timestamp ? e.timestamp.toDate().toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+    $('elenco').innerHTML = ultimi.map(e => {
+      const data = new Date(e.t).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
       return `<div class="riga-quiz">
         <div><div class="tit">${esc(e.categoriaNome)}</div><div class="sub">${esc(nomeCorso[e.corso] || e.corso)} · ${data}${e.tempoScaduto ? ' · tempo scaduto' : ''}${e.modalita === 'allenamento' ? ' · allenamento' : e.modalita === 'ripasso' ? ' · ripasso errori' : ''}</div></div>
         <div><div class="pct" style="color:var(${e.superato ? '--green' : '--red'})">${e.percentuale}%</div>
           <div class="det">${e.corrette}/${e.numeroDomande} ${e.superato ? '✓' : '✗'}</div></div>
       </div>`;
-    }).join('') + (esiti.length > 50 ? `<p class="nota">Mostrati gli ultimi 50 di ${esiti.length}.</p>` : '');
+    }).join('') + (totali.quiz > ultimi.length ? `<p class="nota">Mostrati gli ultimi ${MAX_ULTIMI} di ${totali.quiz}.</p>` : '');
   }
 } catch (e) {
   $('elenco').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`;

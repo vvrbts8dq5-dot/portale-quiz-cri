@@ -131,6 +131,9 @@ service cloud.firestore {
     match /corsi/{corso} {
       allow read: if loggato();
       allow write: if isAdmin();
+      // pubblicando un argomento l'istruttore aggiorna solo il numero di versione
+      allow update: if gestisce(corso)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['versioni']);
     }
 
     // ---------- Archivio domande, comprese le bozze ----------
@@ -187,6 +190,16 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stato', 'gestitaDa', 'gestitaIl', 'nota'])
         && request.resource.data.gestitaDa == request.auth.uid;
       allow delete: if isAdmin();
+    }
+
+    // ---------- Riepilogo personale (ripasso errori, ultimi quiz) ----------
+    // Lo legge e lo scrive solo il diretto interessato: serve a risparmiare letture
+    match /progressi/{uid} {
+      allow read, delete: if loggato() && request.auth.uid == uid;
+      allow create, update: if loggato() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['errori', 'totali', 'ultimi', 'aggiornatoIl'])
+        && request.resource.data.ultimi is list && request.resource.data.ultimi.size() <= 50
+        && request.resource.data.aggiornatoIl == request.time;
     }
 
     // ---------- Assistenza: valutazioni dell'app e ticket ----------
