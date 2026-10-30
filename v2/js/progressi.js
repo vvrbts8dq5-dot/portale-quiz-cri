@@ -12,8 +12,11 @@ const vuoto = () => ({ errori: {}, totali: { quiz: 0, somma: 0, superati: 0 }, u
 // Aggiunge un esito al riepilogo (non salva)
 export function aggiungiEsito(p, e) {
   const errori = new Set(p.errori[e.corso] || []);
-  for (const r of e.risposte || []) r.esatta ? errori.delete(r.id) : errori.add(r.id);
+  // gli elementi propri dei giochi ("g:…") non sono domande: non entrano nel ripasso
+  for (const r of e.risposte || []) if (!String(r.id).startsWith('g:')) r.esatta ? errori.delete(r.id) : errori.add(r.id);
   p.errori[e.corso] = [...errori];
+  // le partite ai giochi aggiornano solo il ripasso: totali e "I miei quiz" restano dei quiz
+  if (e.modalita === 'gioco') return p;
   p.totali.quiz++; p.totali.somma += e.percentuale; p.totali.superati += e.superato ? 1 : 0;
   p.ultimi.unshift({ t: ms(e.timestamp), corso: e.corso, categoria: e.categoria, categoriaNome: e.categoriaNome,
     percentuale: e.percentuale, corrette: e.corrette, numeroDomande: e.numeroDomande, superato: !!e.superato,

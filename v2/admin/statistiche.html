@@ -51,7 +51,7 @@
         <select id="fPeriodo"><option value="7">Ultimi 7 giorni</option><option value="30" selected>Ultimi 30 giorni</option><option value="90">Ultimi 90 giorni</option><option value="365">Ultimo anno</option><option value="">Sempre</option></select></div>
       <div class="campo"><label for="fNome">Volontario</label><input type="search" id="fNome" placeholder="Nome o cognome"></div>
       <div class="campo"><label for="fEdizione">Edizione (codice invito)</label><select id="fEdizione"><option value="">Tutte</option></select></div>
-      <div class="campo"><label for="fModalita">Tipo</label><select id="fModalita"><option value="quiz" selected>Quiz</option><option value="allenamento">Allenamento</option><option value="ripasso">Ripasso errori</option><option value="">Tutti</option></select></div>
+      <div class="campo"><label for="fModalita">Tipo</label><select id="fModalita"><option value="quiz" selected>Quiz</option><option value="allenamento">Allenamento</option><option value="ripasso">Ripasso errori</option><option value="gioco">Giochi</option><option value="">Tutti</option></select></div>
     </div>
   </div>
 
@@ -65,7 +65,7 @@
   </div>
 
   <div class="card">
-    <div class="card-title">Media per argomento <span style="text-transform:none;letter-spacing:0">· la linea indica la soglia del 70%</span></div>
+    <div class="card-title">Media per argomento <span style="text-transform:none;letter-spacing:0">· la linea indica la soglia del 70% · <a href="andamento.html">andamento nel tempo e segnali</a></span></div>
     <div class="barre" id="barre"><p class="nota">Caricamento…</p></div>
   </div>
 
@@ -234,7 +234,7 @@ function disegna() {
 
   // domande critiche
   const perDom = new Map();
-  L.forEach(e => (e.risposte || []).forEach(r => { const a = perDom.get(r.id) || { t: 0, err: 0, scelte: {} }; a.t++;
+  L.forEach(e => (e.risposte || []).forEach(r => { if (String(r.id).startsWith('g:')) return; const a = perDom.get(r.id) || { t: 0, err: 0, scelte: {} }; a.t++;
     if (!r.esatta) { a.err++; const k = r.scelta === null ? '–' : r.scelta; a.scelte[k] = (a.scelte[k] || 0) + 1; } perDom.set(r.id, a); }));
   const crit = [...perDom].filter(([, a]) => a.t >= 3 && a.err > 0).map(([id, a]) => ({ id, ...a, p: Math.round(a.err / a.t * 100) }))
     .sort((a, b) => b.p - a.p || b.t - a.t).slice(0, 30);

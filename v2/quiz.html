@@ -127,6 +127,8 @@
     </div>
     <p class="nota" id="notaPool" style="margin-top:14px"></p>
     <button class="ripasso hidden" id="btnRipasso" type="button"></button>
+    <a class="ripasso" id="linkGiochi" href="giochi.html" style="background:var(--blue-tint);text-decoration:none">
+      <span><strong>Allenati giocando</strong><span class="nota">Sfide a tempo, sequenze, casi clinici: gli errori finiscono nel ripasso</span></span></a>
   </div>
 
   <!-- quiz -->
@@ -226,6 +228,7 @@ try {
 
   const indietro = corso.categorie.length > 1 ? `corso.html?c=${encodeURIComponent(corso.id)}` : `area.html?a=${encodeURIComponent(corso.area || 'altro')}`;
   $('linkIndietro').href = indietro; $('btnTorna').href = indietro;
+  $('linkGiochi').href = `giochi.html?c=${encodeURIComponent(corso.id)}${idCat !== 'generale' ? '&cat=' + encodeURIComponent(idCat) : ''}`;
   $('titoloArg').textContent = stato.nomeCategoria;
   $('sottotitolo').textContent = corso.nome;
   $('titoloScelta').textContent = stato.nomeCategoria;

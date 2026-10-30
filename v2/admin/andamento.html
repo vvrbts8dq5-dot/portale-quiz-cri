@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Andamento — Pannello formazione CRI Padova</title>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="../img/icona-180.png">
+<link rel="apple-touch-icon" href="../img/icona-180.png">
+<link rel="manifest" href="../manifest.webmanifest">
+<meta name="theme-color" content="#C8102E">
+<link rel="stylesheet" href="../css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  .filtri { display: grid; grid-template-columns: 1.4fr 1fr 1.2fr 1fr; gap: 10px; }
+  .filtri .campo { margin-bottom: 0; }
+  .filtri input, .filtri select { padding: 10px 12px; font-size: 14px; }
+  .kpi { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .kpi > div { background: var(--bg); border-radius: 14px; padding: 14px; }
+  .kpi .n { font: 600 26px 'DM Mono', monospace; }
+  .kpi .l { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+  .kpi .s { font-size: 12px; color: var(--text2); margin-top: 2px; }
+  .sotto { text-transform: none; letter-spacing: 0; font-weight: 500; }
+  td.num, th.num { text-align: right; font-family: 'DM Mono', monospace; }
+
+  .segnale { display: flex; gap: 12px; padding: 12px 14px; border-radius: 14px; background: var(--bg); margin-bottom: 8px; border-left: 5px solid var(--linea); cursor: default; }
+  .segnale.alto { border-left-color: var(--red); } .segnale.medio { border-left-color: #E5B000; }
+  .segnale.buono { border-left-color: var(--green); } .segnale.info { border-left-color: var(--blue); }
+  .segnale .t { font-weight: 700; font-size: 15px; } .segnale .d { font-size: 14px; color: var(--text3); margin-top: 2px; line-height: 1.45; }
+  .segnale.clic { cursor: pointer; } .segnale.clic:hover { background: var(--campo); }
+
+  .calore { border-collapse: separate; border-spacing: 3px; font-size: 12px; }
+  .calore th, .calore td { border: none; padding: 0; }
+  .calore th { font: 500 10px 'DM Mono', monospace; color: var(--text2); text-transform: none; letter-spacing: 0; padding: 0 2px 4px; text-align: center; }
+  .calore td.arg { padding: 4px 10px 4px 0; font-size: 13px; font-weight: 600; white-space: nowrap; max-width: 260px; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+  .calore td.arg .tot { font: 600 12px 'DM Mono', monospace; color: var(--text2); margin-left: 6px; }
+  .calore td.c { width: 42px; min-width: 42px; height: 30px; border-radius: 7px; text-align: center; font: 600 11px 'DM Mono', monospace; color: var(--text); }
+  .calore td.c.vuota { background: var(--bg); color: transparent; }
+  .calore tr.sel td.arg { color: var(--red); }
+  .legenda { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--text2); margin-top: 10px; align-items: center; }
+  .legenda i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 4px; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .chips button { border: 2px solid var(--linea); background: var(--bg2); border-radius: 999px; padding: 5px 11px; font: 600 12px 'Figtree', sans-serif; cursor: pointer; color: var(--text2); }
+  .chips button.on { color: #fff; }
+  .grafico { position: relative; height: 320px; }
+
+  .fonti .r { display: grid; grid-template-columns: minmax(150px, 1.5fr) repeat(3, 1fr); gap: 10px; align-items: center; padding: 7px 0; border-bottom: 1px solid var(--linea); font-size: 13px; }
+  .fonti .r.h { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; }
+  .barretta { display: flex; align-items: center; gap: 6px; font: 600 12px 'DM Mono', monospace; }
+  .barretta .tr { flex: 1; height: 8px; background: var(--bg); border-radius: 99px; overflow: hidden; position: relative; }
+  .barretta .tr > div { height: 100%; border-radius: 99px; }
+  .barretta .tr::after { content: ''; position: absolute; left: 70%; top: -2px; bottom: -2px; width: 2px; background: var(--text2); opacity: .5; }
+
+  .griglia2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .passi li { font-size: 13px; line-height: 1.45; margin: 4px 0 4px 18px; }
+  .passi .x { font: 600 12px 'DM Mono', monospace; color: var(--red-dark); }
+  .rcp-dist { display: flex; height: 26px; border-radius: 8px; overflow: hidden; margin: 8px 0; font: 600 11px 'DM Mono'; color: #fff; }
+  .rcp-dist > div { display: flex; align-items: center; justify-content: center; min-width: 0; }
+
+  .mappa td.c { text-align: center; font: 600 12px 'DM Mono', monospace; border-radius: 6px; }
+  .mappa th.v { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; max-height: 140px; text-align: left; padding: 4px 2px; font-size: 10px; }
+  .mappa tr.clic { cursor: pointer; } .mappa tr.clic:hover td { filter: brightness(.97); }
+  .mappa td.nome { white-space: nowrap; }
+
+  .esito-riga { border-radius: 12px; background: var(--bg); margin-bottom: 6px; }
+  .esito-riga summary { padding: 10px 12px; cursor: pointer; display: flex; gap: 10px; align-items: center; font-size: 14px; list-style: none; }
+  .esito-riga summary::-webkit-details-marker { display: none; }
+  .esito-riga .risp { padding: 0 12px 10px; font-size: 13px; }
+  .esito-riga .risp div { padding: 6px 0; border-top: 1px solid var(--linea); line-height: 1.4; }
+  .ok { color: var(--green); } .ko { color: var(--red-dark); }
+  .vuoto { padding: 18px; text-align: center; color: var(--text2); font-size: 14px; }
+  @media (max-width: 760px) { .filtri, .kpi, .griglia2 { grid-template-columns: 1fr 1fr; } .griglia2 { grid-template-columns: 1fr; } .fonti .r { grid-template-columns: 1.2fr repeat(3, 1fr); } }
+</style>
+</head>
+<body>
+<div class="wrap largo">
+  <div class="topbar" id="barraPannello"></div>
+
+  <div class="card">
+    <div class="filtri">
+      <div class="campo"><label for="fCorso">Corso</label><select id="fCorso"></select></div>
+      <div class="campo"><label for="fPeriodo">Periodo</label>
+        <select id="fPeriodo"><option value="30">Ultimi 30 giorni</option><option value="90" selected>Ultimi 3 mesi</option><option value="180">Ultimi 6 mesi</option><option value="365">Ultimo anno</option><option value="">Sempre</option></select></div>
+      <div class="campo"><label for="fEdizione">Edizione (codice invito)</label><select id="fEdizione"><option value="">Tutte</option></select></div>
+      <div class="campo"><label for="fFonte">Da dove</label>
+        <select id="fFonte"><option value="">Quiz, allenamenti e giochi</option><option value="quiz">Solo quiz a tempo</option><option value="allenamento">Solo allenamento e ripasso</option><option value="gioco">Solo giochi</option></select></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="kpi">
+      <div><div class="n" id="kRisp">–</div><div class="l">Risposte analizzate</div><div class="s" id="kRispS"></div></div>
+      <div><div class="n" id="kPct">–</div><div class="l">Risposte giuste</div><div class="s" id="kPctS"></div></div>
+      <div><div class="n" id="kVol">–</div><div class="l">Volontari attivi</div><div class="s" id="kVolS"></div></div>
+      <div><div class="n" id="kGiochi">–</div><div class="l">Partite ai giochi</div><div class="s" id="kGiochiS"></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Cosa richiede attenzione <span class="sotto">· segnali calcolati automaticamente sui dati del periodo</span></div>
+    <div id="segnali"><p class="nota">Caricamento…</p></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Mappa degli argomenti nel tempo <span class="sotto">· % di risposte giuste per periodo, tocca un argomento per vederlo nel grafico</span></div>
+    <div class="tabella-wrap" id="calore"></div>
+    <div class="legenda"><span><i style="background:#F8C9D1"></i>sotto 55%</span><span><i style="background:#FFE7B8"></i>55-69%</span><span><i style="background:#DDF0E7"></i>70-84%</span><span><i style="background:#BFE3D3"></i>85% e oltre</span><span><i style="background:var(--bg)"></i>meno di 3 risposte</span></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Andamento nel tempo <span class="sotto">· la linea tratteggiata è la soglia del 70%</span></div>
+    <div class="chips" id="chips"></div>
+    <div class="grafico"><canvas id="grafico"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Quiz, allenamento e giochi a confronto <span class="sotto">· stessa materia, contesti diversi</span></div>
+    <div class="fonti" id="fonti"></div>
+    <p class="nota" style="margin-top:10px">Se un argomento va bene giocando ma male nei quiz a tempo, spesso la conoscenza c'è ma non è ancora sicura. Il contrario può indicare contenuti dei giochi da rivedere.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Domande critiche <span class="sotto">· almeno 5 risposte, ordinate per percentuale di errore (quiz e giochi insieme)</span></div>
+    <div class="tabella-wrap" id="critiche"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Giochi <span class="sotto">· partite e punti deboli emersi giocando</span></div>
+    <div class="tabella-wrap" id="tabGiochi"></div>
+    <div class="griglia2" style="margin-top:18px">
+      <div><div class="card-title">Sequenze: passaggi fuori posto</div><div id="gSeq"></div></div>
+      <div><div class="card-title">Triage START per ramo dell'algoritmo</div><div id="gTri"></div>
+        <div class="card-title" style="margin-top:18px">Ritmo delle compressioni</div><div id="gRcp"></div></div>
+    </div>
+    <div class="card-title" style="margin-top:18px">Elementi dei giochi più sbagliati</div>
+    <div class="tabella-wrap" id="gElem"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Mappa delle competenze <span class="sotto">· volontari × argomenti, dal più in difficoltà; tocca un volontario per vedere i suoi quiz e le sue partite</span></div>
+    <input type="search" id="fNome" placeholder="Cerca un volontario" style="width:100%;padding:10px 12px;border:2px solid transparent;border-radius:12px;background:var(--campo);font:500 14px 'Figtree',sans-serif;margin-bottom:10px">
+    <div class="tabella-wrap" id="mappa"></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="modScheda">
+  <div class="modale" style="max-width:760px">
+    <h3 id="schTitolo"></h3>
+    <p class="nota" id="schSub"></p>
+    <div id="schArg" style="margin-top:14px"></div>
+    <div class="card-title" style="margin-top:18px">Quiz e partite del periodo <span class="sotto">· tocca per vedere le risposte</span></div>
+    <div id="schEsiti"></div>
+    <div class="azioni" style="margin-top:16px"><button class="btn sec piccolo" id="schChiudi" type="button">Chiudi</button></div>
+  </div>
+</div>
+
+<script type="module">
+import { sfondoSimboli } from '../js/sfondi.js';
+sfondoSimboli();
+import { db } from '../js/firebase.js';
+import { richiediUtente, esc, messaggioErrore, corsiGestiti, eResponsabile } from '../js/auth.js';
+import { barraPannello, corsiDelPannello, avvisoSenzaCorsi, registra } from '../js/pannello.js';
+import { leggiPacchettiCorsi } from '../js/domande.js';
+import { espandi, conta, periodi, matrice, segnali, domandeCritiche, analisiGiochi, partitePerGioco, mappaVolontari, pct, FONTI, SOGLIA } from '../js/analisi.js';
+import { descriviElemento, SEQUENZE, RAMI_START } from '../js/giochi/contenuti.js';
+import { GIOCHI } from '../js/giochi/catalogo.js';
+import { prendi, metti } from '../js/cache.js';
+import { collection, getDocs, query, where, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const $ = id => document.getElementById(id);
+const { profilo } = await richiediUtente({ staff: true });
+barraPannello(profilo, 'andamento', 'Andamento');
+
+const GIORNO = 86400e3;
+const COLORI = ['#C8102E', '#1D4F91', '#17664D', '#B35A00', '#6A3594', '#0E7C86', '#3E4C59', '#9E0C24', '#5B7F1F', '#D9822B'];
+const fondo = p => p === null ? 'var(--bg)' : p >= 85 ? '#BFE3D3' : p >= 70 ? '#DDF0E7' : p >= 55 ? '#FFE7B8' : '#F8C9D1';
+const tinta = p => p === null ? 'var(--text2)' : p >= 70 ? 'var(--green)' : p >= 55 ? '#8A5A00' : 'var(--red-dark)';
+const nomeGioco = id => GIOCHI.find(g => g.id === id)?.nome || id;
+const ms = ts => ts?.toMillis ? ts.toMillis() : 0;
+
+let corsi = [], testi = new Map(), cacheEsiti = new Map(), esitiCorso = [], grafico = null, selezionati = new Set(), righeCorr = [], esitiCorr = [];
+
+// ---------- caricamento ----------
+async function avvio() {
+  corsi = await corsiDelPannello(profilo);
+  if (!corsi.length) { document.querySelectorAll('.wrap > .card').forEach(c => c.remove()); $('barraPannello').insertAdjacentHTML('afterend', avvisoSenzaCorsi()); return; }
+  $('fCorso').innerHTML = corsi.map(c => `<option value="${esc(c.id)}">${esc(c.nome)}</option>`).join('');
+  // corso: quello dell'indirizzo, altrimenti l'ultimo guardato su questo dispositivo
+  const pre = new URLSearchParams(location.search).get('c') || prendi('andamento.corso');
+  if (pre && corsi.some(c => c.id === pre)) $('fCorso').value = pre;
+  const pacchetti = await leggiPacchettiCorsi(corsi);
+  pacchetti.forEach(p => p.domande.forEach(q => testi.set(q.id, { ...q, categoria: p.categoria })));
+  registra('andamento.apri', 'Apre l\'andamento degli argomenti');
+  await ricarica();
+}
+
+// Esiti del corso nel periodo; allargando il periodo si leggono solo quelli mancanti
+async function leggiEsiti(corso, giorni) {
+  const da = giorni ? Date.now() - giorni * GIORNO : 0;
+  const c = cacheEsiti.get(corso) || { da: Infinity, lista: [] };
+  if (da < c.da) {
+    let snap;
+    try {
+      snap = await getDocs(query(collection(db, 'esiti'), where('corso', '==', corso), ...(da ? [where('timestamp', '>=', Timestamp.fromMillis(da))] : [])));
+      c.da = da;
+    } catch (e) {
+      if (e.code !== 'failed-precondition') throw e;
+      console.warn('Indice mancante per corso + data, leggo tutti i risultati del corso:', e.message);
+      snap = await getDocs(query(collection(db, 'esiti'), where('corso', '==', corso))); c.da = 0;
+    }
+    const visti = new Set(c.lista.map(x => x.id));
+    c.lista.push(...snap.docs.filter(d => !visti.has(d.id)).map(d => ({ id: d.id, ...d.data() })));
+    cacheEsiti.set(corso, c);
+  }
+  return c.lista.filter(e => !da || ms(e.timestamp) >= da);
+}
+
+async function ricarica() {
+  $('segnali').innerHTML = '<p class="nota">Caricamento…</p>';
+  try { esitiCorso = await leggiEsiti($('fCorso').value, +$('fPeriodo').value || 0); }
+  catch (e) { $('segnali').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; return; }
+  const ed = [...new Set(esitiCorso.map(e => e.edizione).filter(Boolean))].sort();
+  const prima = $('fEdizione').value;
+  $('fEdizione').innerHTML = '<option value="">Tutte</option>' + ed.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join('');
+  if (ed.includes(prima)) $('fEdizione').value = prima;
+  selezionati = new Set();
+  disegna();
+}
+
+// ---------- disegno ----------
+function disegna() {
+  const corso = corsi.find(c => c.id === $('fCorso').value);
+  const categorie = corso.categorie.map(c => c.id);
+  const nomi = new Map(corso.categorie.map(c => [c.id, c.nome]));
+  const fed = $('fEdizione').value, ffo = $('fFonte').value;
+  esitiCorr = esitiCorso.filter(e => !fed || e.edizione === fed);
+  const tutte = espandi(esitiCorr, testi).filter(r => categorie.includes(r.cat));
+  righeCorr = tutte.filter(r => !ffo || r.fonte === ffo);
+  const R = righeCorr;
+  const ora = Date.now();
+  const giorni = +$('fPeriodo').value || 0;
+  const da = giorni ? ora - giorni * GIORNO : (R.length ? Math.min(...R.map(r => r.t)) : ora - 90 * GIORNO);
+
+  // KPI
+  const ok = R.filter(r => r.esatta).length;
+  $('kRisp').textContent = R.length.toLocaleString('it-IT');
+  $('kRispS').textContent = `da ${new Set(R.map(r => r.esito)).size} quiz e partite`;
+  $('kPct').textContent = R.length ? pct(ok, R.length) + '%' : '–';
+  $('kPct').style.color = tinta(R.length ? pct(ok, R.length) : null);
+  const metà = da + (ora - da) / 2, a = R.filter(r => r.t < metà), b = R.filter(r => r.t >= metà);
+  $('kPctS').textContent = a.length >= 20 && b.length >= 20 ? (() => { const d = pct(b.filter(r => r.esatta).length, b.length) - pct(a.filter(r => r.esatta).length, a.length); return `${d >= 0 ? '▲ +' : '▼ '}${d} punti nella seconda metà del periodo`; })() : '';
+  $('kVol').textContent = new Set(R.map(r => r.uid)).size;
+  const sett = new Set(R.filter(r => r.t >= ora - 7 * GIORNO).map(r => r.uid)).size;
+  $('kVolS').textContent = `${sett} negli ultimi 7 giorni`;
+  const partite = esitiCorr.filter(e => e.modalita === 'gioco');
+  $('kGiochi').textContent = partite.length;
+  $('kGiochiS').textContent = partite.length ? `${new Set(partite.map(e => e.uid)).size} volontari hanno giocato` : 'nessuna partita nel periodo';
+
+  // segnali
+  const S = segnali({ righe: R, categorie, nomi, testi, ora, descr: descriviElemento });
+  const VISIBILI = 6;
+  $('segnali').innerHTML = S.length ? S.map((s, i) => `<div class="segnale ${s.livello} ${s.cat ? 'clic' : ''} ${i >= VISIBILI ? 'hidden extra' : ''}" data-i="${i}">
+      <div><div class="t">${esc(s.titolo)}</div><div class="d">${esc(s.testo)}</div>
+      ${s.idDomanda ? `<a class="link" href="domande.html?id=${encodeURIComponent(s.idDomanda)}" style="font-size:13px">Apri la domanda</a>` : ''}</div></div>`).join('')
+      + (S.length > VISIBILI ? `<button class="btn sec piccolo" type="button" id="altriSegnali">Mostra altri ${S.length - VISIBILI} segnali</button>` : '')
+    : `<div class="vuoto">${R.length ? 'Nessun segnale particolare: gli argomenti sono sopra la soglia e stabili.' : 'Nessuna risposta nel periodo selezionato.'}</div>`;
+  $('segnali').onclick = ev => { if (ev.target.closest('a')) return;
+    if (ev.target.id === 'altriSegnali') { document.querySelectorAll('.segnale.extra').forEach(x => x.classList.remove('hidden')); ev.target.remove(); return; } const el = ev.target.closest('.segnale.clic'); if (!el) return; const s = S[+el.dataset.i];
+    if (s.cat) { selezionati.add(s.cat); disegnaGrafico(R, categorie, nomi, da, ora); $('grafico').scrollIntoView({ behavior: 'smooth', block: 'center' }); } };
+
+  // mappa di calore
+  const per = periodi(da, ora);
+  const M = matrice(R, categorie, per);
+  const perCat = conta(R, 'cat');
+  if (!selezionati.size) {
+    // all'inizio: i tre argomenti più deboli con abbastanza risposte
+    [...perCat].filter(([, x]) => x.n >= 10).sort((x, y) => pct(x[1].ok, x[1].n) - pct(y[1].ok, y[1].n)).slice(0, 3).forEach(([c]) => selezionati.add(c));
+  }
+  $('calore').innerHTML = R.length ? `<table class="calore"><thead><tr><th></th>${per.lista.map(p => `<th>${per.etichetta(p)}</th>`).join('')}</tr></thead><tbody>${
+    categorie.map(c => { const t = perCat.get(c); const tp = t ? pct(t.ok, t.n) : null;
+      return `<tr data-cat="${esc(c)}" class="${selezionati.has(c) ? 'sel' : ''}"><td class="arg" title="${esc(nomi.get(c))}">${esc(nomi.get(c))}<span class="tot" style="color:${tinta(tp)}">${tp === null ? '–' : tp + '%'}</span></td>${
+        per.lista.map(p => { const x = M.get(c).get(p); const v = x.n >= 3 ? pct(x.ok, x.n) : null;
+          return `<td class="c ${v === null ? 'vuota' : ''}" style="background:${fondo(v)}" title="${esc(nomi.get(c))} · ${per.etichetta(p)}: ${x.n ? pct(x.ok, x.n) + '% su ' + x.n + ' risposte' : 'nessuna risposta'}">${v === null ? '' : v}</td>`; }).join('')}</tr>`; }).join('')}</tbody></table>`
+    : '<div class="vuoto">Nessuna risposta nel periodo selezionato.</div>';
+  $('calore').onclick = ev => { const tr = ev.target.closest('tr[data-cat]'); if (!tr) return; const c = tr.dataset.cat;
+    selezionati.has(c) ? selezionati.delete(c) : selezionati.add(c); tr.classList.toggle('sel'); disegnaGrafico(R, categorie, nomi, da, ora); };
+
+  disegnaGrafico(R, categorie, nomi, da, ora);
+
+  // confronto fonti (sempre su tutte le fonti, indipendentemente dal filtro "da dove")
+  const pf = f => conta(tutte.filter(r => r.fonte === f), 'cat');
+  const fq = pf('quiz'), fa = pf('allenamento'), fg = pf('gioco');
+  const barretta = x => !x ? '<span class="nota">–</span>' : (() => { const p = pct(x.ok, x.n);
+    return `<div class="barretta"><div class="tr"><div style="width:${p}%;background:${tinta(p)}"></div></div><span style="min-width:62px;text-align:right">${p}% <span class="nota">${x.n}</span></span></div>`; })();
+  $('fonti').innerHTML = `<div class="r h"><div>Argomento</div><div>${FONTI.quiz}</div><div>${FONTI.allenamento}</div><div>${FONTI.gioco}</div></div>` +
+    categorie.map(c => `<div class="r"><div>${esc(nomi.get(c))}</div><div>${barretta(fq.get(c))}</div><div>${barretta(fa.get(c))}</div><div>${barretta(fg.get(c))}</div></div>`).join('');
+
+  // domande critiche
+  const crit = domandeCritiche(R, testi).slice(0, 20);
+  $('critiche').innerHTML = crit.length ? `<table><thead><tr><th>Domanda</th><th>Risposta sbagliata più data</th><th class="num">Errori</th><th></th></tr></thead><tbody>${
+    crit.map(d => `<tr><td style="font-size:13px;line-height:1.4">${esc(d.q?.testo || '(domanda non più pubblicata)')}<br>
+        <span class="nota">${esc(nomi.get(d.cat) || '')} · corretta: ${esc(d.q ? d.q.opzioni[d.q.corretta] : '')}${d.fonti.gioco ? ` · ${d.fonti.gioco} errori giocando` : ''}</span></td>
+      <td style="font-size:13px">${esc(d.sbagliataTop)}${d.quotaTop >= 60 && d.err >= 4 ? `<br><span class="badge no" style="margin-top:4px">${d.quotaTop}% degli errori</span>` : ''}</td>
+      <td class="num" style="color:${tinta(100 - d.p)}">${d.p}%<br><span class="nota">${d.err}/${d.n}</span></td>
+      <td><a class="btn sec piccolo" href="domande.html?id=${encodeURIComponent(d.id)}" style="text-decoration:none">Modifica</a></td></tr>`).join('')}</tbody></table>`
+    : '<div class="vuoto">Servono più risposte per individuare le domande critiche.</div>';
+
+  // giochi
+  const pg = partitePerGioco(esitiCorr);
+  $('tabGiochi').innerHTML = pg.length ? `<table><thead><tr><th>Gioco</th><th class="num">Partite</th><th class="num">Volontari</th><th class="num">Punti medi</th><th class="num">Risposte giuste</th></tr></thead><tbody>${
+    pg.map(g => `<tr><td><strong>${esc(nomeGioco(g.gioco))}</strong></td><td class="num">${g.partite}</td><td class="num">${g.giocatori}</td><td class="num">${g.mediaPunti.toLocaleString('it-IT')}</td>
+      <td class="num" style="color:${tinta(g.p)}">${g.p === null ? '–' : g.p + '%'}</td></tr>`).join('')}</tbody></table>`
+    : '<div class="vuoto">Nessuna partita nel periodo.</div>';
+  const G = analisiGiochi(R);
+  $('gSeq').innerHTML = G.seq.length ? G.seq.sort((x, y) => pct(x.ok, x.n) - pct(y.ok, y.n)).map(s => {
+    const sq = SEQUENZE.find(x => x.id === s.id);
+    const top = Object.entries(s.passi).sort((a, b) => b[1] - a[1]).slice(0, 3);
+    return `<div style="margin-bottom:12px"><strong style="font-size:14px">${esc(sq?.titolo || s.id)}</strong> <span class="nota">· ${pct(s.ok, s.n)}% perfette su ${s.n}</span>
+      ${top.length ? `<ol class="passi">${top.map(([p, v]) => `<li value="${p}">${esc(sq?.passi[+p - 1] || '')} <span class="x">fuori posto ${Math.round(v / s.n * 100)}%</span></li>`).join('')}</ol>` : ''}</div>`; }).join('')
+    : '<div class="vuoto">Nessuna sequenza giocata.</div>';
+  $('gTri').innerHTML = G.tri.length ? `<table><tbody>${G.tri.sort((x, y) => pct(x.ok, x.n) - pct(y.ok, y.n)).map(t => {
+    const sb = Object.entries(t.scelte).sort((a, b) => b[1] - a[1])[0];
+    return `<tr><td style="font-size:13px">${esc(RAMI_START[t.ramo] || t.ramo)}${sb ? `<br><span class="nota">errore tipico: ${esc(sb[0])}</span>` : ''}</td>
+      <td class="num" style="color:${tinta(pct(t.ok, t.n))}">${pct(t.ok, t.n)}%<br><span class="nota">${t.n}</span></td></tr>`; }).join('')}</tbody></table>`
+    : '<div class="vuoto">Nessuna partita a Triage START.</div>';
+  $('gRcp').innerHTML = G.rcp ? `<div class="rcp-dist">
+      ${G.rcp.lente ? `<div style="flex:${G.rcp.lente};background:#E5B000">${G.rcp.lente}</div>` : ''}
+      ${G.rcp.giuste ? `<div style="flex:${G.rcp.giuste};background:#17664D">${G.rcp.giuste}</div>` : ''}
+      ${G.rcp.veloci ? `<div style="flex:${G.rcp.veloci};background:#C8102E">${G.rcp.veloci}</div>` : ''}</div>
+      <p class="nota">Media ${G.rcp.media}/min su ${G.rcp.n} prove · <span style="color:#8A5A00">troppo lente</span> · <span class="ok">100-120</span> · <span class="ko">troppo veloci</span></p>`
+    : '<div class="vuoto">Nessuna prova di ritmo RCP.</div>';
+  $('gElem').innerHTML = G.elementi.length ? `<table><tbody>${G.elementi.slice(0, 15).map(x => `<tr><td style="font-size:13px;line-height:1.4">${esc(descriviElemento(x.id))}</td>
+      <td class="num" style="color:${tinta(100 - x.p)}">${x.p}%<br><span class="nota">${x.n - x.ok}/${x.n} errati</span></td></tr>`).join('')}</tbody></table>`
+    : '<div class="vuoto">Servono più partite.</div>';
+
+  disegnaMappa(R, categorie, nomi);
+}
+
+function disegnaGrafico(R, categorie, nomi, da, ora) {
+  const per = periodi(da, ora);
+  const M = matrice(R, categorie, per);
+  const tot = new Map(per.lista.map(p => [p, { n: 0, ok: 0 }]));
+  R.forEach(r => { const c = tot.get(per.inizio(r.t)); if (c) { c.n++; if (r.esatta) c.ok++; } });
+  const colore = new Map(categorie.map((c, i) => [c, COLORI[i % COLORI.length]]));
+  $('chips').innerHTML = categorie.map(c => `<button type="button" data-cat="${esc(c)}" class="${selezionati.has(c) ? 'on' : ''}"
+    style="${selezionati.has(c) ? `background:${colore.get(c)};border-color:${colore.get(c)}` : ''}">${esc(nomi.get(c))}</button>`).join('');
+  $('chips').onclick = ev => { const b = ev.target.closest('[data-cat]'); if (!b) return; const c = b.dataset.cat;
+    selezionati.has(c) ? selezionati.delete(c) : selezionati.add(c);
+    document.querySelectorAll('#calore tr[data-cat]').forEach(tr => tr.classList.toggle('sel', selezionati.has(tr.dataset.cat)));
+    disegnaGrafico(R, categorie, nomi, da, ora); };
+  // nel grafico un punto solo con almeno 5 risposte (la settimana in corso spesso ne ha poche)
+  const serie = m => per.lista.map(p => { const x = m.get(p); return x.n >= 5 ? pct(x.ok, x.n) : null; });
+  const ds = [
+    { label: 'Tutti gli argomenti', data: serie(tot), borderColor: '#1E1A1A', backgroundColor: '#1E1A1A', borderWidth: 3, tension: .3, spanGaps: true, pointRadius: 3 },
+    ...categorie.filter(c => selezionati.has(c)).map(c => ({ label: nomi.get(c), data: serie(M.get(c)), borderColor: colore.get(c), backgroundColor: colore.get(c),
+      borderWidth: 2, tension: .3, spanGaps: true, pointRadius: 3 })),
+    { label: 'Soglia 70%', data: per.lista.map(() => SOGLIA), borderColor: '#9B9090', borderDash: [6, 6], borderWidth: 1.5, pointRadius: 0, fill: false }
+  ];
+  const conteggi = new Map([['Tutti gli argomenti', tot], ...categorie.map(c => [nomi.get(c), M.get(c)])]);
+  if (typeof Chart === 'undefined') { $('grafico').parentElement.innerHTML = '<div class="vuoto">Grafico non disponibile (libreria non caricata).</div>'; return; }
+  if (grafico) grafico.destroy();
+  grafico = new Chart($('grafico'), {
+    type: 'line',
+    data: { labels: per.lista.map(per.etichetta), datasets: ds },
+    options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+      scales: { y: { min: 0, max: 100, ticks: { callback: v => v + '%' } }, x: { grid: { display: false } } },
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { family: 'Figtree' } } },
+        tooltip: { callbacks: { label: ctx => { if (ctx.dataset.label === 'Soglia 70%') return null; const m = conteggi.get(ctx.dataset.label);
+          const x = m?.get(per.lista[ctx.dataIndex]); return `${ctx.dataset.label}: ${ctx.parsed.y}%${x ? ` (${x.n} risposte)` : ''}`; } } } } }
+  });
+}
+
+function disegnaMappa(R, categorie, nomi) {
+  const q = $('fNome').value.trim().toLowerCase();
+  const V = mappaVolontari(R).filter(v => !q || `${v.nome} ${v.cognome}`.toLowerCase().includes(q)).sort((a, b) => a.p - b.p);
+  $('mappa').innerHTML = V.length ? `<table class="mappa"><thead><tr><th>Volontario</th><th class="num">Tot.</th>${categorie.map(c => `<th class="v" title="${esc(nomi.get(c))}">${esc(nomi.get(c).length > 26 ? nomi.get(c).slice(0, 25) + '…' : nomi.get(c))}</th>`).join('')}<th>Ultima attività</th></tr></thead><tbody>${
+    V.map(v => `<tr class="clic" data-uid="${esc(v.uid)}"><td class="nome"><strong>${esc(v.cognome)}</strong> ${esc(v.nome)}${v.deboli.length >= 2 ? ' <span class="badge no">da seguire</span>' : ''}</td>
+      <td class="num" style="color:${tinta(v.p)}">${v.p}%<br><span class="nota">${v.n}</span></td>
+      ${categorie.map(c => { const x = v.cat.get(c); const p = x && x.n >= 3 ? pct(x.ok, x.n) : null;
+        return `<td class="c" style="background:${fondo(p)}" title="${esc(nomi.get(c))}: ${x ? pct(x.ok, x.n) + '% su ' + x.n : 'nessuna risposta'}">${p === null ? '' : p}</td>`; }).join('')}
+      <td style="white-space:nowrap">${new Date(v.ultimo).toLocaleDateString('it-IT')}</td></tr>`).join('')}</tbody></table>`
+    : '<div class="vuoto">Nessun volontario nel periodo.</div>';
+}
+$('fNome').addEventListener('input', () => { const corso = corsi.find(c => c.id === $('fCorso').value); disegnaMappa(righeCorr, corso.categorie.map(c => c.id), new Map(corso.categorie.map(c => [c.id, c.nome]))); });
+
+// ---------- scheda del volontario ----------
+$('mappa').addEventListener('click', ev => { const tr = ev.target.closest('tr[data-uid]'); if (tr) apriScheda(tr.dataset.uid); });
+function apriScheda(uid) {
+  const corso = corsi.find(c => c.id === $('fCorso').value);
+  const nomi = new Map(corso.categorie.map(c => [c.id, c.nome]));
+  const R = righeCorr.filter(r => r.uid === uid);
+  const E = esitiCorr.filter(e => e.uid === uid).sort((a, b) => ms(b.timestamp) - ms(a.timestamp));
+  const u = E[0] || R[0];
+  $('schTitolo').textContent = `${u.cognome} ${u.nome}`;
+  $('schSub').textContent = `${E.filter(e => e.modalita !== 'gioco').length} quiz e allenamenti, ${E.filter(e => e.modalita === 'gioco').length} partite · ${pct(R.filter(r => r.esatta).length, R.length)}% di risposte giuste`;
+  const pc = conta(R, 'cat');
+  $('schArg').innerHTML = corso.categorie.map(c => { const x = pc.get(c.id); const p = x ? pct(x.ok, x.n) : null;
+    return `<div class="barretta" style="margin-bottom:6px;font-family:'Figtree',sans-serif;font-size:13px"><span style="min-width:200px;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.nome)}</span>
+      <div class="tr"><div style="width:${p || 0}%;background:${tinta(p)}"></div></div><span style="min-width:70px;text-align:right;font-family:'DM Mono'">${p === null ? '–' : p + '%'} <span class="nota">${x?.n || 0}</span></span></div>`; }).join('');
+  $('schEsiti').innerHTML = E.length ? E.map(e => {
+    const tipo = e.modalita === 'gioco' ? `Gioco · ${nomeGioco(e.gioco)}` : ({ quiz: 'Quiz a tempo', allenamento: 'Allenamento', ripasso: 'Ripasso errori' }[e.modalita || 'quiz']);
+    const arg = e.modalita === 'gioco' ? (nomi.get(e.categoria) || 'più argomenti') : (e.categoria === 'generale' ? 'Quiz generale' : (nomi.get(e.categoria) || e.categoriaNome));
+    return `<details class="esito-riga"><summary><span style="font:500 12px 'DM Mono';color:var(--text2);min-width:92px">${e.timestamp ? e.timestamp.toDate().toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}</span>
+      <span style="flex:1"><strong>${esc(tipo)}</strong> · ${esc(arg)}</span>
+      <span style="font:600 13px 'DM Mono';color:${tinta(e.percentuale)}">${e.percentuale}% <span class="nota">${e.corrette}/${e.numeroDomande}</span></span></summary>
+      <div class="risp">${(e.risposte || []).map(r => {
+        const id = String(r.id);
+        if (id.startsWith('g:')) return `<div><span class="${r.esatta ? 'ok' : 'ko'}">${r.esatta ? '✓' : '✗'}</span> ${esc(descriviElemento(id))}${r.det !== undefined && !r.esatta ? ` <span class="nota">(${esc(r.det)})</span>` : ''}</div>`;
+        const q = testi.get(id);
+        if (!q) return `<div><span class="${r.esatta ? 'ok' : 'ko'}">${r.esatta ? '✓' : '✗'}</span> <span class="nota">domanda non più pubblicata</span></div>`;
+        return `<div><span class="${r.esatta ? 'ok' : 'ko'}">${r.esatta ? '✓' : '✗'}</span> ${esc(q.testo)}
+          ${r.esatta ? '' : `<br><span class="ko">Ha risposto: ${r.scelta === null || r.scelta === undefined ? 'nessuna risposta' : esc(q.opzioni[r.scelta])}</span> · <span class="ok">Corretta: ${esc(q.opzioni[q.corretta])}</span>`}</div>`;
+      }).join('')}</div></details>`; }).join('') : '<div class="vuoto">Nessun quiz nel periodo.</div>';
+  $('modScheda').classList.remove('hidden');
+  if (apriScheda.ultima !== uid) { apriScheda.ultima = uid; registra('scheda.apri', `${u.cognome} ${u.nome} (andamento)`, { rif: uid }); }
+}
+$('schChiudi').addEventListener('click', () => $('modScheda').classList.add('hidden'));
+$('modScheda').addEventListener('click', ev => { if (ev.target.id === 'modScheda') $('modScheda').classList.add('hidden'); });
+
+// ---------- filtri ----------
+$('fCorso').addEventListener('change', () => { metti('andamento.corso', $('fCorso').value); const u = new URL(location.href); u.searchParams.set('c', $('fCorso').value); history.replaceState(null, '', u); ricarica(); });
+$('fPeriodo').addEventListener('change', ricarica);
+$('fEdizione').addEventListener('change', () => { selezionati = new Set(); disegna(); });
+$('fFonte').addEventListener('change', () => { selezionati = new Set(); disegna(); });
+
+try { await avvio(); }
+catch (e) { console.error(e); $('segnali').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; }
+</script>
+</body>
+</html>

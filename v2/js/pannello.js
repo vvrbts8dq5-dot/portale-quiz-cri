@@ -8,7 +8,9 @@ const VOCI = [
   { id: 'inviti', href: 'index.html', nome: 'Codici invito' },
   { id: 'domande', href: 'domande.html', nome: 'Domande' },
   { id: 'segnalazioni', href: 'segnalazioni.html', nome: 'Segnalazioni' },
+  { id: 'andamento', href: 'andamento.html', nome: 'Andamento' },
   { id: 'statistiche', href: 'statistiche.html', nome: 'Statistiche' },
+  { id: 'giochi', href: 'giochi.html', nome: 'Contenuti giochi' },
   { id: 'esame', href: 'esame.html', nome: 'Esame PDF' },
   { id: 'guida', href: 'guida.html', nome: 'Guida' }
 ];
@@ -75,6 +77,7 @@ export const AZIONI = {
   'domande.esporta': 'Esporta le domande in CSV',
   'pubblica': 'Pubblica un argomento',
   'statistiche.apri': 'Apre le statistiche',
+  'andamento.apri': 'Apre l\'andamento degli argomenti',
   'scheda.apri': 'Guarda la scheda di un volontario',
   'esiti.elimina': 'Elimina risultati',
   'esiti.esporta': 'Esporta i risultati in CSV',

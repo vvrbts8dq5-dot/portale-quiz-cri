@@ -164,12 +164,16 @@ service cloud.firestore {
         && haCorso(request.resource.data.corso)
         && request.resource.data.keys().hasOnly(['uid', 'nome', 'cognome', 'corso', 'categoria', 'categoriaNome',
              'numeroDomande', 'corrette', 'percentuale', 'superato', 'durataSec', 'tempoScaduto', 'risposte',
-             'timestamp', 'modalita', 'edizione'])
+             'timestamp', 'modalita', 'edizione', 'gioco', 'punti'])
         && request.resource.data.timestamp == request.time
         && request.resource.data.numeroDomande is int && request.resource.data.numeroDomande <= 60
         && request.resource.data.corrette is int && request.resource.data.corrette <= request.resource.data.numeroDomande
         && request.resource.data.risposte is list && request.resource.data.risposte.size() == request.resource.data.numeroDomande
-        && request.resource.data.get('modalita', 'quiz') in ['quiz', 'allenamento', 'ripasso'];
+        && request.resource.data.get('modalita', 'quiz') in ['quiz', 'allenamento', 'ripasso', 'gioco']
+        // partite ai giochi: nome del gioco e punteggio
+        && (request.resource.data.get('modalita', 'quiz') != 'gioco'
+            || (request.resource.data.gioco is string && request.resource.data.gioco.size() <= 30
+                && request.resource.data.punti is int && request.resource.data.punti >= 0));
       allow read: if loggato() && (resource.data.uid == request.auth.uid || gestisce(resource.data.corso));
       allow update: if false;
       allow delete: if gestisce(resource.data.corso) || (loggato() && resource.data.uid == request.auth.uid);

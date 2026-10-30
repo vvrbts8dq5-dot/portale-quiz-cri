@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Giochi — Portale Formazione CRI Padova</title>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="img/icona-180.png">
+<link rel="apple-touch-icon" href="img/icona-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#C8102E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Formazione CRI">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/giochi.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a class="tondo" id="indietro" href="home.html" aria-label="Indietro"></a>
+    <div><div class="t1" id="titoloBreve">Giochi</div><div class="t2">Allenati giocando</div></div>
+    <div class="spazio"></div>
+    <img src="img/emblema-cri-padova.png" alt="Croce Rossa Italiana, Comitato di Padova">
+  </div>
+
+  <div class="saluto"><h1>Giochi</h1><p id="sottotitolo">Allenati giocando</p></div>
+
+  <div class="card hidden" id="cardArg" style="padding:16px 18px">
+    <div class="campo" style="margin:0"><label for="fArg">Domande da usare nei giochi con le domande</label>
+      <select id="fArg"></select></div>
+  </div>
+  <div id="elenco"><div class="card"><p class="nota">Caricamento…</p></div></div>
+  <div class="footer">Le partite valgono come allenamento: gli errori finiscono nel tuo ripasso e aiutano gli istruttori a capire dove serve più formazione.</div>
+</div>
+
+<script type="module">
+import { sfondoSimboli } from './js/sfondi.js';
+sfondoSimboli();
+import { richiediUtente, esc, messaggioErrore } from './js/auth.js';
+import { leggiCorsi, leggiPacchetto } from './js/domande.js';
+import { ICONA } from './js/icone.js';
+import { GIOCHI, GRUPPI, ICONE_GIOCHI } from './js/giochi/catalogo.js';
+import { record } from './js/giochi/comune.js';
+
+const $ = id => document.getElementById(id);
+$('indietro').innerHTML = ICONA.indietro;
+const params = new URLSearchParams(location.search);
+const idCorso = params.get('c');
+const { profilo } = await richiediUtente();
+let corso, perCat = new Map();
+const TINTA = { domande: '', contenuti: 'pratico', interattivi: 'simula' };
+
+try {
+  if (!(profilo.corsi || []).includes(idCorso)) throw { nostro: 'Non sei iscritto a questo corso.' };
+  [corso] = await leggiCorsi([idCorso], { fresco: true });
+  if (!corso) throw { nostro: 'Corso non trovato.' };
+  document.title = `Giochi — ${corso.nome}`;
+  $('titoloBreve').textContent = corso.nome;
+  $('sottotitolo').textContent = `${corso.nome} · allenati giocando`;
+  $('indietro').href = corso.categorie.length > 1 ? `corso.html?c=${encodeURIComponent(corso.id)}` : `area.html?a=${encodeURIComponent(corso.area || 'altro')}`;
+  // i pacchetti restano sul dispositivo: se la versione non è cambiata non si rileggono
+  const pacchetti = await Promise.all(corso.categorie.map(c => leggiPacchetto(c.id, corso.versioni?.[c.id] || null).catch(() => null)));
+  corso.categorie.forEach((c, k) => perCat.set(c.id, (pacchetti[k]?.domande || []).map(d => ({ ...d, categoria: c.id }))));
+  if (corso.categorie.length > 1) {
+    $('fArg').innerHTML = `<option value="tutti">Tutti gli argomenti</option>` + corso.categorie.map(c => `<option value="${esc(c.id)}">${esc(c.nome)}</option>`).join('');
+    const pre = params.get('cat');
+    if (pre && perCat.has(pre)) $('fArg').value = pre;
+    $('cardArg').classList.remove('hidden');
+  }
+  disegna();
+} catch (e) {
+  $('elenco').innerHTML = `<div class="card"><div class="msg err">${esc(e.nostro || messaggioErrore(e))} <a href="home.html">Torna ai tuoi corsi</a>.</div></div>`;
+}
+
+function disegna() {
+  const cat = corso.categorie.length > 1 ? $('fArg').value : 'tutti';
+  const domande = cat === 'tutti' ? [...perCat.values()].flat() : (perCat.get(cat) || []);
+  const categorie = corso.categorie.map(c => c.id);
+  let h = '';
+  for (const gr of GRUPPI) {
+    const lista = GIOCHI.filter(g => g.gruppo === gr.id).map(g => ({ g, ok: g.disponibile({ domande, categorie }) }));
+    if (!lista.some(x => x.ok) && gr.id !== 'domande') continue;
+    h += `<div class="gruppo-giochi"><h2>${esc(gr.nome)}</h2><p>${esc(gr.sub)}</p></div>`;
+    h += lista.map(({ g, ok }) => {
+      const r = record(g.id, corso.id);
+      const href = `gioco.html?c=${encodeURIComponent(corso.id)}&g=${g.id}${g.usaDomande && cat !== 'tutti' ? '&cat=' + encodeURIComponent(cat) : (cat !== 'tutti' ? '&cat=' + encodeURIComponent(cat) : '')}`;
+      return `<a class="voce ${ok ? '' : 'spenta'}" href="${ok ? href : '#'}" ${ok ? '' : 'aria-disabled="true"'}>
+        <span class="icona gioco ${TINTA[g.gruppo]}">${ICONE_GIOCHI[g.id]}</span>
+        <span><span class="tit" style="display:block">${esc(g.nome)}</span><span class="sub">${ok ? esc(g.sub) : 'Non ci sono abbastanza domande adatte'}</span></span>
+        ${r ? `<span class="rec">★ ${r}</span>` : ''}
+        <span class="freccia">${ICONA.avanti}</span></a>`;
+    }).join('');
+  }
+  $('elenco').innerHTML = h;
+}
+$('fArg').addEventListener('change', () => {
+  const u = new URL(location.href); u.searchParams.set('cat', $('fArg').value); history.replaceState(null, '', u);
+  disegna();
+});
+</script>
+</body>
+</html>

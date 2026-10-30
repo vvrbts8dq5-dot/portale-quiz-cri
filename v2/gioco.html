@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Gioco — Portale Formazione CRI Padova</title>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="img/icona-180.png">
+<link rel="apple-touch-icon" href="img/icona-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#C8102E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Formazione CRI">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/giochi.css">
+<style>.wrap { max-width: 620px; }</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a class="tondo" id="indietro" href="home.html" aria-label="Torna ai giochi"></a>
+    <div><div class="t1" id="titolo">Gioco</div><div class="t2" id="sottotitolo">Allenamento</div></div>
+    <div class="spazio"></div>
+  </div>
+
+  <div class="card schermata attiva" id="sCarica"><p class="nota" id="testoCarica">Caricamento…</p></div>
+
+  <div class="card schermata" id="sIntro">
+    <div class="intro-gioco">
+      <div class="ic" id="introIcona"></div>
+      <h2 id="introNome"></h2>
+      <p class="nota" id="introSub" style="margin-top:4px"></p>
+    </div>
+    <div class="regole" id="introRegole"></div>
+    <p class="nota" id="introRecord" style="text-align:center;margin-bottom:14px"></p>
+    <button class="btn" id="btnInizia" type="button">Inizia</button>
+  </div>
+
+  <div class="schermata" id="sGioco">
+    <div class="hud" id="hud"></div>
+    <div id="campo"></div>
+  </div>
+
+  <div class="card schermata" id="sFine">
+    <div class="intro-gioco">
+      <p class="nota" id="fineSub"></p>
+      <div class="punti-grandi" id="finePunti" style="margin-top:8px"></div>
+      <p class="nota">punti</p>
+      <div id="fineRecord"></div>
+    </div>
+    <div class="punteggio-mini nota" id="fineDettaglio" style="text-align:center;margin-top:14px"></div>
+    <p class="nota" id="fineSalva" style="text-align:center;margin-top:6px"></p>
+    <div class="card-title" id="fineTitoloRip" style="margin-top:20px"></div>
+    <div id="fineRipasso"></div>
+    <div class="azioni-col">
+      <button class="btn" id="btnAncora" type="button">Gioca ancora</button>
+      <a class="btn sec" id="btnAltri" href="home.html">Altri giochi</a>
+    </div>
+  </div>
+  <div class="footer">Portale riservato ai volontari CRI · v2</div>
+</div>
+
+<script type="module">
+import { sfondoSimboli } from './js/sfondi.js';
+sfondoSimboli();
+import { richiediUtente, esc, messaggioErrore } from './js/auth.js';
+import { leggiCorsi, leggiPacchetto } from './js/domande.js';
+import { ICONA } from './js/icone.js';
+import { gioco as trovaGioco, ICONE_GIOCHI } from './js/giochi/catalogo.js';
+import { salvaPartita, record, aggiornaRecord } from './js/giochi/comune.js';
+
+const $ = id => document.getElementById(id);
+$('indietro').innerHTML = ICONA.indietro;
+const mostra = id => { document.querySelectorAll('.schermata').forEach(s => s.classList.toggle('attiva', s.id === id)); window.scrollTo({ top: 0 }); };
+const errore = t => { $('testoCarica').innerHTML = `<span class="msg err" style="display:block">${t}</span>`; mostra('sCarica'); };
+
+const params = new URLSearchParams(location.search);
+const idCorso = params.get('c'), idGioco = params.get('g'), idCat = params.get('cat') || 'tutti';
+const { user, profilo } = await richiediUtente();
+const G = trovaGioco(idGioco);
+let corso, modulo, domande = [], categorie = [], argomenti = new Map(), inCorso = false;
+const urlHub = () => `giochi.html?c=${encodeURIComponent(idCorso)}${idCat !== 'tutti' ? '&cat=' + encodeURIComponent(idCat) : ''}`;
+
+try {
+  if (!G) throw { nostro: 'Gioco non trovato.' };
+  if (!(profilo.corsi || []).includes(idCorso)) throw { nostro: 'Non sei iscritto a questo corso.' };
+  [corso] = await leggiCorsi([idCorso], { fresco: true });
+  if (!corso) throw { nostro: 'Corso non trovato.' };
+  categorie = corso.categorie.map(c => c.id);
+  corso.categorie.forEach(c => argomenti.set(c.id, c.nome));
+  $('indietro').href = urlHub(); $('btnAltri').href = urlHub();
+  $('titolo').textContent = G.nome; $('sottotitolo').textContent = corso.nome;
+  document.title = `${G.nome} — ${corso.nome}`;
+
+  if (G.usaDomande) {
+    const scelte = idCat === 'tutti' ? corso.categorie : corso.categorie.filter(c => c.id === idCat);
+    if (!scelte.length) throw { nostro: 'Argomento non trovato.' };
+    const pacchetti = await Promise.all(scelte.map(c => leggiPacchetto(c.id, corso.versioni?.[c.id] || null).catch(() => null)));
+    domande = pacchetti.flatMap((p, k) => p ? p.domande.map(d => ({ ...d, categoria: scelte[k].id })) : []);
+    if (idCat !== 'tutti') $('sottotitolo').textContent = `${corso.nome} · ${argomenti.get(idCat)}`;
+  }
+  if (!G.disponibile({ domande, categorie })) throw { nostro: 'Questo gioco non è disponibile per il corso o l\'argomento scelto.' };
+  modulo = await import(`./js/giochi/${G.id}.js`);
+
+  $('introIcona').innerHTML = ICONE_GIOCHI[G.id];
+  $('introNome').textContent = G.nome;
+  $('introSub').textContent = G.sub;
+  $('introRegole').innerHTML = modulo.regole;
+  const r = record(G.id, idCorso);
+  $('introRecord').textContent = r ? `Il tuo record su questo dispositivo: ${r} punti` : '';
+  mostra('sIntro');
+} catch (e) {
+  console.error(e);
+  errore(esc(e.nostro || messaggioErrore(e)) + ` <a href="${urlHub()}">Torna ai giochi</a>.`);
+}
+
+// HUD: punti, vite, tempo e un'etichetta libera. undefined = nascosto
+const hud = {
+  stato: {},
+  aggiorna(x) {
+    Object.assign(this.stato, x);
+    const s = this.stato, h = [];
+    if (s.extra !== undefined && s.extra !== null) h.push(`<div><span class="lab">${esc(s.extraLab || '')}</span>${esc(s.extra)}</div>`);
+    if (s.vite !== undefined) h.push(`<div class="vite" aria-label="${s.vite} vite">${'♥'.repeat(Math.max(0, s.vite))}<span style="opacity:.2">${'♥'.repeat(Math.max(0, (s.viteMax || 3) - s.vite))}</span></div>`);
+    h.push('<div class="spazio"></div>');
+    if (s.tempo !== undefined) h.push(`<div class="tempo ${s.tempo <= 10 ? 'urgente' : ''}"><span class="lab">Tempo</span>${s.tempo}s</div>`);
+    if (s.punti !== undefined) h.push(`<div><span class="lab">Punti</span>${s.punti}</div>`);
+    $('hud').innerHTML = h.join('');
+  },
+  azzera() { this.stato = {}; $('hud').innerHTML = ''; }
+};
+
+async function avvia() {
+  hud.azzera();
+  $('campo').innerHTML = '';
+  mostra('sGioco');
+  inCorso = true;
+  const inizio = Date.now();
+  let r;
+  try {
+    r = await modulo.gioca({ campo: $('campo'), hud, domande, categorie, argomenti, corso, idCat });
+  } catch (e) { console.error(e); inCorso = false; errore('Si è verificato un errore nel gioco: ' + esc(e.message || e)); return; }
+  inCorso = false;
+  fine(r, (Date.now() - inizio) / 1000);
+}
+$('btnInizia').addEventListener('click', avvia);
+$('btnAncora').addEventListener('click', () => { modulo.ripeti ? avvia() : mostra('sIntro'); });
+window.addEventListener('beforeunload', ev => { if (inCorso) { ev.preventDefault(); ev.returnValue = ''; } });
+
+async function fine(r, durataSec) {
+  const risposte = r?.risposte || [];
+  const punti = r?.punti || 0;
+  const corrette = risposte.filter(x => x.esatta).length;
+  $('finePunti').textContent = punti;
+  $('fineSub').textContent = r?.titolo || 'Partita finita';
+  const rec = aggiornaRecord(G.id, idCorso, punti);
+  $('fineRecord').innerHTML = rec.nuovo ? `<span class="badge-record">Nuovo record personale!${rec.prima ? ' (prima ' + rec.prima + ')' : ''}</span>`
+    : (rec.prima ? `<p class="nota" style="margin-top:6px">Record: ${rec.prima} punti</p>` : '');
+  $('fineDettaglio').textContent = risposte.length ? `${corrette} giuste su ${risposte.length}${r?.nota ? ' · ' + r.nota : ''}` : (r?.nota || '');
+  const rip = r?.ripasso || [];
+  $('fineTitoloRip').textContent = rip.length ? `Da ripassare (${rip.length})` : (risposte.length ? 'Nessun errore, complimenti!' : '');
+  $('fineRipasso').innerHTML = rip.map(x => `<div class="rev"><div class="q">${esc(x.testo)}</div><div class="a">
+    ${x.tua ? `<div class="tua">${esc(x.tua)}</div>` : ''}
+    ${x.giusta ? `<div class="giusta">${esc(x.giusta)}</div>` : ''}
+    ${x.spieg ? `<div class="spieg">${esc(x.spieg)}</div>` : ''}</div></div>`).join('');
+  mostra('sFine');
+  if (!risposte.length || r?.nonSalvare) { $('fineSalva').textContent = r?.nonSalvare ? 'Partita di prova: non salvata.' : ''; return; }
+  $('fineSalva').textContent = 'Salvataggio…';
+  try {
+    await salvaPartita({ user, profilo, corso: idCorso, gioco: G.id, nomeGioco: G.nome, risposte, punti, durataSec, argomenti });
+    $('fineSalva').textContent = '✓ Partita salvata: gli errori vanno nel tuo ripasso e aiutano gli istruttori';
+  } catch (e) {
+    $('fineSalva').textContent = 'Partita non salvata: ' + messaggioErrore(e);
+  }
+}
+</script>
+</body>
+</html>

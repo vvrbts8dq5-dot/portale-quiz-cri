@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Contenuti giochi — Pannello formazione CRI Padova</title>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="../img/icona-180.png">
+<link rel="manifest" href="../manifest.webmanifest">
+<meta name="theme-color" content="#C8102E">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+  .elem { background: var(--bg); border-radius: 14px; padding: 14px 16px; margin-bottom: 10px; }
+  .elem h4 { font-size: 15px; font-weight: 800; margin-bottom: 4px; }
+  .elem .meta { font: 500 12px 'DM Mono', monospace; color: var(--text2); margin-bottom: 8px; }
+  .elem ol, .elem ul { margin-left: 20px; font-size: 14px; line-height: 1.55; }
+  .elem .ok { color: var(--green); font-weight: 700; }
+  .elem .fb { color: var(--text2); font-size: 13px; }
+  .elem table { font-size: 13px; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; background: var(--blue-tint); color: var(--blue); border-radius: 999px; padding: 2px 8px; margin-right: 4px; }
+  .tag.fuori { background: var(--campo); color: var(--text2); text-decoration: line-through; }
+  mark { background: var(--green-bg); color: var(--green); font-weight: 700; padding: 0 4px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap largo">
+  <div class="topbar" id="barraPannello"></div>
+  <div class="card">
+    <div class="card-title">Contenuti dei giochi</div>
+    <p class="nota">Qui trovi tutto ciò che i volontari vedono nei giochi che non usano le domande dei quiz: sequenze, frasi da completare, abbinamenti, casi clinici e punti di anatomia.
+      I giochi con le domande (Vero o falso lampo, Sopravvivenza, La scala, Coppie lampo) usano invece le domande pubblicate di ogni argomento.
+      <strong>Controlla che i contenuti siano coerenti con i protocolli in uso</strong>: per correzioni scrivi al responsabile della formazione, che aggiorna il file <code>js/giochi/contenuti.js</code>.</p>
+    <div class="schede" style="margin-top:16px" id="schede"></div>
+    <div class="campo" style="margin:0"><label for="fCorso">Mostra i contenuti visibili nel corso</label><select id="fCorso"><option value="">Tutti i corsi</option></select></div>
+  </div>
+  <div class="card"><div id="elenco"><p class="nota">Caricamento…</p></div></div>
+</div>
+<script type="module">
+import { sfondoSimboli } from '../js/sfondi.js';
+sfondoSimboli();
+import { richiediUtente, esc } from '../js/auth.js';
+import { barraPannello, corsiDelPannello } from '../js/pannello.js';
+import { SEQUENZE, FRASI, ABBINAMENTI, CASI, PUNTI_ANATOMIA, RAMI_START } from '../js/giochi/contenuti.js';
+
+const $ = id => document.getElementById(id);
+const { profilo } = await richiediUtente({ staff: true });
+barraPannello(profilo, 'giochi', 'Contenuti giochi');
+const corsi = await corsiDelPannello(profilo);
+const nomeCat = new Map(), catCorso = new Map();
+corsi.forEach(c => c.categorie.forEach(k => { nomeCat.set(k.id, k.nome); catCorso.set(k.id, c.id); }));
+$('fCorso').innerHTML += corsi.map(c => `<option value="${esc(c.id)}">${esc(c.nome)}</option>`).join('');
+
+const TIPI = [
+  { id: 'seq', nome: 'Sequenze', lista: SEQUENZE },
+  { id: 'frasi', nome: 'Frasi', lista: FRASI },
+  { id: 'abbina', nome: 'Abbinamenti', lista: ABBINAMENTI },
+  { id: 'casi', nome: 'Casi clinici', lista: CASI },
+  { id: 'punti', nome: 'Anatomia', lista: PUNTI_ANATOMIA },
+  { id: 'triage', nome: 'Triage', lista: null }
+];
+let tipo = 'seq';
+$('schede').innerHTML = TIPI.map(t => `<button type="button" data-t="${t.id}">${t.nome}</button>`).join('');
+$('schede').onclick = ev => { const b = ev.target.closest('[data-t]'); if (b) { tipo = b.dataset.t; disegna(); } };
+$('fCorso').onchange = disegna;
+
+// argomenti: quello usato nel corso scelto è evidenziato, gli altri restano come riserva
+const tags = el => {
+  const fc = $('fCorso').value;
+  const usato = fc ? el.cat.find(c => catCorso.get(c) === fc) : null;
+  return el.cat.map(c => `<span class="tag ${nomeCat.has(c) && (!fc || c === usato) ? '' : 'fuori'}" title="${esc(c)}">${esc(nomeCat.get(c) || c)}</span>`).join('');
+};
+const visibile = el => { const fc = $('fCorso').value; return !fc || el.cat.some(c => catCorso.get(c) === fc); };
+
+function disegna() {
+  document.querySelectorAll('#schede button').forEach(b => b.classList.toggle('attiva', b.dataset.t === tipo));
+  const T = TIPI.find(t => t.id === tipo);
+  if (tipo === 'triage') {
+    $('elenco').innerHTML = `<div class="elem"><h4>Triage START</h4><p class="nota" style="margin-bottom:8px">I feriti vengono generati automaticamente dalle regole dell'algoritmo, così sono sempre coerenti. Ogni ferito ha una regola decisiva:</p>
+      <ul>${Object.entries(RAMI_START).map(([k, v]) => `<li><code>${k}</code> — ${esc(v)}</li>`).join('')}</ul></div>`;
+    return;
+  }
+  const L = T.lista.filter(visibile);
+  $('elenco').innerHTML = (L.length ? L.map(el => {
+    const meta = `<div class="meta">id: ${esc(el.id)}</div><div style="margin-bottom:8px">${tags(el)}</div>`;
+    if (tipo === 'seq') return `<div class="elem"><h4>${esc(el.titolo)}</h4>${meta}<p style="font-size:14px;margin-bottom:6px">${esc(el.consegna)}</p><ol>${el.passi.map(p => `<li>${esc(p)}</li>`).join('')}</ol></div>`;
+    if (tipo === 'frasi') return `<div class="elem">${meta}<p style="font-size:15px;line-height:1.6">${esc(el.testo).replace(/\[\[(.+?)\]\]/g, '<mark>$1</mark>')}</p>
+      <p class="nota" style="margin-top:6px">Distrattori: ${el.distrattori.map(esc).join(' · ')}</p></div>`;
+    if (tipo === 'abbina') return `<div class="elem"><h4>${esc(el.titolo)}</h4>${meta}<table><tbody>${el.coppie.map(([a, b]) => `<tr><td><strong>${esc(a)}</strong></td><td>${esc(b)}</td></tr>`).join('')}</tbody></table></div>`;
+    if (tipo === 'casi') return `<div class="elem"><h4>${esc(el.titolo)}</h4>${meta}<p style="font-size:14px;margin-bottom:8px"><em>${esc(el.intro)}</em></p>
+      <ol>${el.tappe.map(t => `<li style="margin-bottom:8px"><strong>${esc(t.testo)}</strong><ul>${t.scelte.map(s => `<li>${s.ok ? '<span class="ok">✓</span> ' : ''}${esc(s.t)}<br><span class="fb">${esc(s.fb)}</span></li>`).join('')}</ul></li>`).join('')}</ol></div>`;
+    if (tipo === 'punti') return `<div class="elem"><h4>${esc(el.nome)}</h4>${meta}<p style="font-size:14px">${esc(el.nota)}</p></div>`;
+    return '';
+  }).join('') : '<p class="nota">Nessun contenuto di questo tipo per il corso scelto.</p>');
+}
+disegna();
+</script>
+</body>
+</html>
