@@ -34,7 +34,8 @@ export function disegnaDomanda(contenitore, d, { secondi = 0, extraHtml = '' } =
       const ok = s === d.corretta;
       contenitore.querySelector('.fb').innerHTML = `<div class="feedback ${ok ? 'ok' : 'ko'}"><strong>${ok ? 'Giusto!' : s === null ? 'Tempo scaduto.' : 'Sbagliato.'}</strong>
         ${ok ? '' : ' La risposta corretta è: ' + esc(d.opzioni[d.corretta])}
-        ${conSpiegazione && d.spiegazione ? `<div class="spieg">${esc(d.spiegazione)}</div>` : ''}</div>`;
+        ${conSpiegazione && d.spiegazione ? `<div class="spieg">${esc(d.spiegazione)}</div>` : ''}
+        ${conSpiegazione && d.rif ? `<div class="rif">📖 ${esc(d.rif)}</div>` : ''}</div>`;
     },
     // 50:50: nasconde n opzioni sbagliate
     togli(n) {
@@ -49,7 +50,8 @@ export const vocePerRipasso = (d, s) => ({
   testo: d.testo,
   tua: s === null || s === undefined ? 'Nessuna risposta' : 'La tua risposta: ' + d.opzioni[s],
   giusta: 'Risposta corretta: ' + d.opzioni[d.corretta],
-  spieg: d.spiegazione
+  spieg: d.spiegazione,
+  rif: d.rif, rifLink: d.rifLink
 });
 
 // Domande in ordine di difficoltà crescente (senza difficoltà = media), mescolate dentro ogni livello

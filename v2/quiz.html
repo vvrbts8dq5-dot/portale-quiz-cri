@@ -96,6 +96,9 @@
     background: var(--amber-bg); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
   .ripasso strong { display: block; font-size: 16px; }
   .ripasso span.nota { font-size: 13px; }
+  .rif { margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--blue); }
+  .rif a { color: inherit; }
+  .rev .rif { padding: 0 6px; }
   .segnala { background: none; border: none; color: var(--text2); font: 600 13px 'Figtree', sans-serif; cursor: pointer; padding: 6px 2px 0; text-decoration: underline; }
   .rev .segnala { padding: 2px 6px 0; align-self: flex-start; }
 </style>
@@ -202,6 +205,8 @@ import { ICONA, iconaArgomento } from './js/icone.js';
 import { addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const $ = id => document.getElementById(id);
+// riferimento al manuale (scritto nel pacchetto al momento della pubblicazione)
+const rifHtml = d => !d.rif ? '' : `<div class="rif">📖 ${d.rifLink ? `<a href="${esc(d.rifLink)}" target="_blank" rel="noopener">${esc(d.rif)}</a>` : esc(d.rif)}</div>`;
 $('linkIndietro').innerHTML = ICONA.indietro;
 $('icTimer').innerHTML = ICONA.orologio;
 const mostra = id => { document.querySelectorAll('.schermata').forEach(s => s.classList.toggle('attiva', s.id === id)); $('timer').classList.toggle('hidden', id !== 'sQuiz'); window.scrollTo({ top: 0 }); };
@@ -344,7 +349,7 @@ $('opzioni').addEventListener('click', ev => {
     if (scelta !== d.corretta) b.classList.add('sbagliata');
     $('feedback').innerHTML = `<div class="feedback ${scelta === d.corretta ? 'ok' : 'ko'}"><strong>${scelta === d.corretta ? 'Giusto!' : 'Sbagliato.'}</strong>
       ${scelta === d.corretta ? '' : 'La risposta corretta è: ' + esc(d.opzioni[d.corretta])}
-      ${d.spiegazione ? `<div class="spieg">${esc(d.spiegazione)}</div>` : ''}</div>
+      ${d.spiegazione ? `<div class="spieg">${esc(d.spiegazione)}</div>` : ''}${rifHtml(d)}</div>
       <button class="segnala" type="button" data-segnala="${esc(d.id)}">Segnala un errore in questa domanda</button>`;
   }
   $('btnAvanti').classList.remove('hidden');
@@ -391,7 +396,7 @@ async function termina(tempoScaduto) {
     return `<div class="rev"><div class="q">${esc(d.testo)}</div><div class="a">
       <div class="tua">${r.scelta === null ? 'Nessuna risposta' : 'La tua risposta: ' + esc(d.opzioni[r.scelta])}</div>
       <div class="giusta">Risposta corretta: ${esc(d.opzioni[d.corretta])}</div>
-      ${d.spiegazione ? `<div class="spieg">${esc(d.spiegazione)}</div>` : ''}
+      ${d.spiegazione ? `<div class="spieg">${esc(d.spiegazione)}</div>` : ''}${rifHtml(d)}
       <button class="segnala" type="button" data-segnala="${esc(d.id)}">Segnala un errore</button>
     </div></div>`;
   }).join('');

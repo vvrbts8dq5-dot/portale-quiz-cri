@@ -46,7 +46,20 @@
   .anteprima-import { max-height: 320px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; margin-top: 12px; }
   .anteprima-import table { font-size: 13px; }
   .barra { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-bottom: 14px; }
-  @media (max-width: 760px) { .filtri { grid-template-columns: 1fr 1fr; } .filtri .campo:first-child { grid-column: 1 / -1; } }
+  .filtri.due { grid-template-columns: 1fr 1fr; margin-top: 10px; }
+  .badge.manca { background: var(--err-bg); color: var(--red-dark); }
+  .badge.proposta { background: var(--blue-tint); color: var(--blue); }
+  .badge.errori { background: var(--amber-bg); color: var(--amber); font-family: 'DM Mono', monospace; }
+  .copertura { font: 600 12px 'DM Mono', monospace; }
+  .rif-riga { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px; }
+  .rif-riga select, .rif-riga input { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font: 500 14px 'Figtree', sans-serif; background: var(--bg); }
+  .proposta-box { background: var(--blue-tint); border-radius: 14px; padding: 14px 16px; margin: 4px 0 14px; font-size: 14px; line-height: 1.5; }
+  .proposta-box h4 { font-size: 14px; color: var(--blue); margin-bottom: 6px; }
+  .proposta-box .fonte { margin-top: 8px; padding: 8px 10px; background: #fff; border-radius: 10px; font-size: 13px; color: var(--text3); border-left: 3px solid var(--blue); white-space: pre-line; }
+  .proposta-box .avviso { margin-top: 8px; color: var(--red-dark); font-weight: 700; }
+  .manuale { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--linea); font-size: 14px; }
+  .manuale .n { flex: 1; } .manuale .n small { display: block; color: var(--text2); }
+  @media (max-width: 760px) { .filtri { grid-template-columns: 1fr 1fr; } .filtri .campo:first-child { grid-column: 1 / -1; } .rif-riga { grid-template-columns: 1fr 1fr; } .rif-riga > :first-child { grid-column: 1 / -1; } }
 </style>
 </head>
 <body>
@@ -65,6 +78,16 @@
     <div id="msgPubblica"></div>
   </div>
 
+  <!-- MANUALI -->
+  <div class="card">
+    <div class="barra">
+      <div class="card-title" style="margin:0">Manuali di riferimento</div>
+      <button class="btn sec piccolo hidden" id="btnNuovoManuale" type="button">+ Aggiungi manuale</button>
+    </div>
+    <p class="nota" style="margin-bottom:8px">Ogni domanda può rimandare a un manuale (capitolo e pagina): il volontario lo vede insieme alla spiegazione quando sbaglia o si allena.</p>
+    <div id="elencoManuali"><p class="nota">Caricamento…</p></div>
+  </div>
+
   <!-- ELENCO -->
   <div class="card">
     <div class="barra">
@@ -81,6 +104,14 @@
       <div class="campo"><select id="fTipo"><option value="">Tutti i tipi</option><option value="multipla">Multipla</option><option value="vf">Vero/Falso</option></select></div>
       <div class="campo"><select id="fDiff"><option value="">Ogni difficoltà</option><option value="facile">Facile</option><option value="medio">Medio</option><option value="difficile">Difficile</option><option value="-">Non indicata</option></select></div>
       <div class="campo"><select id="fStato"><option value="">Tutti gli stati</option><option value="attiva">Attive</option><option value="bozza">Bozze</option><option value="archiviata">Archiviate</option></select></div>
+    </div>
+    <div class="filtri due">
+      <div class="campo"><select id="fCompleta"><option value="">Spiegazioni e riferimenti: tutte</option>
+        <option value="da-completare">Da completare (manca spiegazione o riferimento)</option>
+        <option value="senza-spieg">Senza spiegazione</option><option value="senza-rif">Senza riferimento al manuale</option>
+        <option value="proposta">Con proposta da approvare</option><option value="non-trovata">Non trovate nei manuali</option></select></div>
+      <div class="campo"><select id="fOrdina"><option value="recenti">Ordina: modificate di recente</option>
+        <option value="errori">Ordina: più sbagliate dai volontari (ultimi 90 giorni)</option></select></div>
     </div>
     <div class="azioni hidden" id="barraBozze" style="margin-top:12px">
       <button class="btn sec piccolo" id="btnAttivaBozze" type="button"></button>
@@ -111,13 +142,36 @@
       <div class="campo"><label for="edStato">Stato</label>
         <select id="edStato"><option value="attiva">Attiva</option><option value="bozza">Bozza</option><option value="archiviata">Archiviata</option></select></div>
     </div>
-    <div class="campo"><label for="edSpieg">Spiegazione (facoltativa, mostrata nella revisione degli errori)</label><textarea id="edSpieg" rows="2"></textarea></div>
+    <div id="edProposta"></div>
+    <div class="campo"><label for="edSpieg">Spiegazione <span class="nota" style="font-weight:400">— il perché della risposta, 1-3 righe. Il volontario la legge quando sbaglia o si allena</span></label><textarea id="edSpieg" rows="3"></textarea></div>
+    <div class="campo"><label>Riferimento al manuale</label>
+      <div class="rif-riga">
+        <select id="edManuale"><option value="">Nessun manuale</option></select>
+        <input type="text" id="edCapitolo" placeholder="Capitolo (es. 4 Trauma)" maxlength="80">
+        <input type="text" id="edPagina" placeholder="Pagina (es. 112)" maxlength="20">
+      </div>
+      <p class="nota" id="edRifAnteprima" style="margin-top:6px"></p></div>
     <p class="nota" id="edInfo"></p>
     <div id="edMsg"></div>
     <div class="azioni" style="margin-top:16px">
       <button class="btn piccolo" id="edSalva" type="button">Salva</button>
       <button class="btn sec piccolo" id="edAnnulla" type="button">Annulla</button>
     </div>
+  </div>
+</div>
+
+<!-- MANUALE -->
+<div class="overlay hidden" id="modManuale">
+  <div class="modale">
+    <h3 id="manTitolo">Manuale</h3>
+    <div class="campo"><label for="manNome">Nome</label><input type="text" id="manNome" maxlength="80" placeholder="es. Manuale TSSA"></div>
+    <div class="campo"><label for="manEdizione">Edizione / anno</label><input type="text" id="manEdizione" maxlength="40" placeholder="es. 2024"></div>
+    <div class="campo"><label>Corsi che lo usano</label><div id="manCorsi"></div></div>
+    <div class="campo"><label for="manLink">Link (facoltativo)</label><input type="text" id="manLink" maxlength="500" placeholder="Indirizzo ad accesso riservato, es. cartella Drive del Comitato">
+      <p class="nota" style="margin-top:6px">Non usare indirizzi pubblici per materiale riservato. Se è un PDF, il volontario lo apre alla pagina indicata.</p></div>
+    <label class="check"><input type="checkbox" id="manAttivo" checked> Attivo</label>
+    <div id="manMsg"></div>
+    <div class="azioni" style="margin-top:16px"><button class="btn piccolo" id="manSalva" type="button">Salva</button><button class="btn sec piccolo" id="manAnnulla" type="button">Annulla</button></div>
   </div>
 </div>
 
@@ -149,9 +203,10 @@ sfondoSimboli();
 import { db } from '../js/firebase.js';
 import { richiediUtente, esc, messaggioErrore, corsiGestiti } from '../js/auth.js';
 import { barraPannello, corsiDelPannello, avvisoSenzaCorsi, registra } from '../js/pannello.js';
-import { valida, chiaveTesto, daRigaCsv, aRigaCsv, COLONNE_CSV, pubblicaCategoria } from '../js/domande.js';
+import { valida, chiaveTesto, daRigaCsv, aRigaCsv, COLONNE_CSV, pubblicaCategoria, leggiManuali, testoRiferimento } from '../js/domande.js';
+import { eResponsabile } from '../js/auth.js';
 import {
-  collection, doc, getDocs, addDoc, updateDoc, writeBatch, query, where, serverTimestamp, Timestamp
+  collection, doc, getDocs, addDoc, setDoc, updateDoc, writeBatch, query, where, serverTimestamp, Timestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const $ = id => document.getElementById(id);
@@ -163,6 +218,10 @@ const filtroCorsi = col => soloCorsi === null ? collection(db, col) : query(coll
 
 let corsi = [], categorie = [], perCat = new Map(), domande = [], pacchetti = new Map();
 let mostrate = 50;
+let manuali = [], tuttiManuali = [], erroriDom = null; // erroriDom: Map id → { n, err } (caricato su richiesta)
+const haSpieg = d => !!(d.spiegazione || '').trim();
+const haRif = d => !!d.riferimento?.manuale;
+const haProposta = d => d.proposta && d.proposta.stato === 'da_approvare';
 
 const nomeCat = id => perCat.get(id)?.nome || id;
 const BADGE_STATO = { attiva: '<span class="badge si">Attiva</span>', bozza: '<span class="badge bozza">Bozza</span>', archiviata: '<span class="badge archiviata">Archiviata</span>' };
@@ -172,7 +231,10 @@ const ms = ts => ts?.toMillis ? ts.toMillis() : 0;
 async function carica() {
   const cs = await corsiDelPannello(profilo);
   if (!cs.length) { document.querySelectorAll('.wrap > .card').forEach(c => c.remove()); $('barraPannello').insertAdjacentHTML('afterend', avvisoSenzaCorsi()); return; }
-  const [sd, sp] = await Promise.all([getDocs(filtroCorsi('domande')), getDocs(filtroCorsi('pacchetti'))]);
+  const [sd, sp, sm] = await Promise.all([getDocs(filtroCorsi('domande')), getDocs(filtroCorsi('pacchetti')),
+    getDocs(collection(db, 'manuali')).catch(e => { console.warn('Manuali non leggibili', e); return { docs: [] }; })]);
+  tuttiManuali = sm.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'it'));
+  manuali = tuttiManuali.filter(m => m.attivo !== false);
   corsi = cs;
   categorie = cs.flatMap(c => c.categorie.map(cat => ({ ...cat, corso: c.id, nomeCorso: c.nome })));
   perCat = new Map(categorie.map(c => [c.id, c]));
@@ -181,6 +243,7 @@ async function carica() {
   const opts = cs.map(c => `<optgroup label="${esc(c.nome)}">${c.categorie.map(cat => `<option value="${esc(cat.id)}">${esc(cat.nome)}</option>`).join('')}</optgroup>`).join('');
   $('fCategoria').innerHTML = '<option value="">Tutti gli argomenti</option>' + opts;
   $('edCategoria').innerHTML = opts;
+  disegnaManuali();
   disegnaPubblica();
   disegnaElenco();
 }
@@ -193,21 +256,28 @@ function statoCategoria(cat) {
   const pubbl = p ? ms(p.pubblicatoIl) : 0;
   // da pubblicare se il numero di attive è cambiato o se qualcosa è stato modificato dopo l'ultima pubblicazione
   const daPubblicare = !p || p.numero !== attive || ds.some(d => ms(d.aggiornataIl) > pubbl);
+  const att = ds.filter(d => d.stato === 'attiva');
   return { attive, bozze: ds.filter(d => d.stato === 'bozza').length, archiviate: ds.filter(d => d.stato === 'archiviata').length,
-           pubblicate: p?.numero ?? 0, quando: p?.pubblicatoIl, daPubblicare };
+           pubblicate: p?.numero ?? 0, quando: p?.pubblicatoIl, daPubblicare,
+           spieg: att.length ? Math.round(att.filter(haSpieg).length / att.length * 100) : null,
+           rif: att.length ? Math.round(att.filter(haRif).length / att.length * 100) : null,
+           proposte: ds.filter(haProposta).length };
 }
 
+const colCop = p => p === null ? 'inherit' : p >= 80 ? 'var(--green)' : p >= 40 ? 'var(--amber)' : 'var(--red-dark)';
 function disegnaPubblica() {
   let h = `<table><thead><tr><th>Argomento</th><th class="num">Attive</th><th class="num">Bozze</th><th class="num">Archiviate</th>
-    <th class="num">Nei quiz</th><th>Ultima pubblicazione</th><th></th></tr></thead><tbody>`;
+    <th class="num">Nei quiz</th><th class="num" title="Domande attive con spiegazione">Spiegate</th><th class="num" title="Domande attive con riferimento al manuale">Manuale</th><th>Ultima pubblicazione</th><th></th></tr></thead><tbody>`;
   let quante = 0;
   for (const c of corsi) {
-    h += `<tr><td colspan="7" style="font-weight:600;background:var(--bg)">${esc(c.nome)}</td></tr>`;
+    h += `<tr><td colspan="9" style="font-weight:600;background:var(--bg)">${esc(c.nome)}</td></tr>`;
     for (const cat of c.categorie) {
       const s = statoCategoria(cat);
       if (s.daPubblicare) quante++;
       h += `<tr><td>${esc(cat.nome)}</td><td class="num">${s.attive}</td><td class="num">${s.bozze || ''}</td><td class="num">${s.archiviate || ''}</td>
         <td class="num">${s.pubblicate}</td>
+        <td class="num copertura" style="color:${colCop(s.spieg)}">${s.spieg === null ? '' : s.spieg + '%'}</td>
+        <td class="num copertura" style="color:${colCop(s.rif)}">${s.rif === null ? '' : s.rif + '%'}${s.proposte ? `<br><span class="badge proposta" data-proposte="${esc(cat.id)}" style="cursor:pointer">${s.proposte} proposte</span>` : ''}</td>
         <td>${s.quando ? s.quando.toDate().toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</td>
         <td>${s.daPubblicare ? `<button class="btn piccolo" data-pubblica="${esc(cat.id)}" type="button">Pubblica</button>` : '<span class="badge si">Aggiornato</span>'}</td></tr>`;
     }
@@ -232,18 +302,27 @@ async function pubblica(ids) {
   } catch (e) { $('msgPubblica').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; }
   disegnaPubblica();
 }
-$('tabPubblica').addEventListener('click', ev => { const b = ev.target.closest('[data-pubblica]'); if (b) pubblica([b.dataset.pubblica]); });
+$('tabPubblica').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-pubblica]'); if (b) return pubblica([b.dataset.pubblica]);
+  const p = ev.target.closest('[data-proposte]');
+  if (p) { $('fCategoria').value = p.dataset.proposte; $('fCompleta').value = 'proposta'; $('fStato').value = ''; mostrate = 50; disegnaElenco(); $('elenco').scrollIntoView({ behavior: 'smooth' }); }
+});
 $('btnPubblicaTutto').addEventListener('click', () => pubblica(categorie.filter(c => statoCategoria(c).daPubblicare).map(c => c.id)));
 
 // ---------- elenco ----------
 function filtrate() {
   const q = chiaveTesto($('fTesto').value);
-  const fc = $('fCategoria').value, ft = $('fTipo').value, fd = $('fDiff').value, fs = $('fStato').value;
+  const fc = $('fCategoria').value, ft = $('fTipo').value, fd = $('fDiff').value, fs = $('fStato').value, fk = $('fCompleta').value;
+  const completa = d => !fk || (fk === 'da-completare' ? (!haSpieg(d) || !haRif(d)) : fk === 'senza-spieg' ? !haSpieg(d)
+    : fk === 'senza-rif' ? !haRif(d) : fk === 'proposta' ? haProposta(d) : fk === 'non-trovata' ? d.proposta?.stato === 'non_trovata' : true);
+  const err = d => { const x = erroriDom?.get(d.id); return x && x.n >= 3 ? x.err / x.n : -1; };
+  const perErrori = $('fOrdina').value === 'errori' && erroriDom;
   return domande.filter(d =>
     (!fc || d.categoria === fc) && (!ft || d.tipo === ft) && (!fs || d.stato === fs) &&
-    (!fd || (fd === '-' ? !d.difficolta : d.difficolta === fd)) &&
+    (!fd || (fd === '-' ? !d.difficolta : d.difficolta === fd)) && completa(d) &&
     (!q || chiaveTesto(d.testo + ' ' + d.opzioni.join(' ') + ' ' + (d.spiegazione || '')).includes(q))
-  ).sort((a, b) => ms(b.aggiornataIl) - ms(a.aggiornataIl) || a.testo.localeCompare(b.testo, 'it'));
+  ).sort((a, b) => (perErrori ? err(b) - err(a) || (erroriDom.get(b.id)?.n || 0) - (erroriDom.get(a.id)?.n || 0) : 0)
+    || ms(b.aggiornataIl) - ms(a.aggiornataIl) || a.testo.localeCompare(b.testo, 'it'));
 }
 
 function disegnaElenco() {
@@ -255,14 +334,37 @@ function disegnaElenco() {
       <div class="m">${BADGE_STATO[d.stato] || ''}<span class="badge neutro">${esc(nomeCat(d.categoria))}</span>
         <span class="badge neutro">${d.tipo === 'vf' ? 'V/F' : 'Multipla'}</span>
         ${d.difficolta ? `<span class="badge neutro">${esc(d.difficolta)}</span>` : ''}
-        <span class="badge neutro" title="Risposta corretta">✓ ${esc(d.opzioni[d.corretta] || '?').slice(0, 60)}</span></div>
+        <span class="badge neutro" title="Risposta corretta">✓ ${esc(d.opzioni[d.corretta] || '?').slice(0, 60)}</span>
+        ${haProposta(d) ? '<span class="badge proposta">Proposta da approvare</span>' : ''}
+        ${d.proposta?.stato === 'non_trovata' ? '<span class="badge manca">Non trovata nei manuali</span>' : ''}
+        ${!haSpieg(d) ? '<span class="badge manca">Senza spiegazione</span>' : ''}
+        ${!haRif(d) ? '<span class="badge manca">Senza manuale</span>' : `<span class="badge neutro">📖 ${esc(testoRiferimento(d.riferimento, tuttiManuali).slice(0, 50))}</span>`}
+        ${erroriDom?.get(d.id)?.n >= 3 ? `<span class="badge errori" title="Risposte errate negli ultimi 90 giorni">✗ ${Math.round(erroriDom.get(d.id).err / erroriDom.get(d.id).n * 100)}% su ${erroriDom.get(d.id).n}</span>` : ''}</div>
     </button>`).join('') : '<p class="nota">Nessuna domanda corrisponde ai filtri.</p>';
   $('btnAltre').classList.toggle('hidden', lista.length <= mostrate);
   const bozze = lista.filter(d => d.stato === 'bozza');
   $('barraBozze').classList.toggle('hidden', !bozze.length);
   $('btnAttivaBozze').textContent = `Rendi attive le ${bozze.length} bozze mostrate`;
 }
-['fTesto', 'fCategoria', 'fTipo', 'fDiff', 'fStato'].forEach(id => $(id).addEventListener('input', () => { mostrate = 50; disegnaElenco(); }));
+['fTesto', 'fCategoria', 'fTipo', 'fDiff', 'fStato', 'fCompleta'].forEach(id => $(id).addEventListener('input', () => { mostrate = 50; disegnaElenco(); }));
+// Errori dei volontari: si leggono solo se richiesto (ultimi 90 giorni, quiz e giochi)
+$('fOrdina').addEventListener('change', async () => {
+  mostrate = 50;
+  if ($('fOrdina').value === 'errori' && !erroriDom) {
+    $('elenco').innerHTML = '<p class="nota">Calcolo delle domande più sbagliate…</p>';
+    try {
+      const da = Timestamp.fromMillis(Date.now() - 90 * 86400e3);
+      const vincoli = soloCorsi === null ? [] : [where('corso', 'in', soloCorsi)];
+      let snap;
+      try { snap = await getDocs(query(collection(db, 'esiti'), ...vincoli, where('timestamp', '>=', da))); }
+      catch (e) { if (e.code !== 'failed-precondition') throw e; snap = await getDocs(query(collection(db, 'esiti'), ...vincoli)); }
+      erroriDom = new Map();
+      snap.docs.forEach(s => (s.data().risposte || []).forEach(r => { if (String(r.id).startsWith('g:')) return;
+        const x = erroriDom.get(r.id) || { n: 0, err: 0 }; x.n++; if (!r.esatta) x.err++; erroriDom.set(r.id, x); }));
+    } catch (e) { erroriDom = null; $('fOrdina').value = 'recenti'; alert(messaggioErrore(e)); }
+  }
+  disegnaElenco();
+});
 $('btnAltre').addEventListener('click', () => { mostrate += 50; disegnaElenco(); });
 $('elenco').addEventListener('click', ev => { const b = ev.target.closest('[data-id]'); if (b) apriEditor(b.dataset.id); });
 
@@ -327,6 +429,13 @@ function apriEditor(id) {
   $('edDiff').value = d?.difficolta || '';
   $('edStato').value = d?.stato || 'bozza';
   $('edSpieg').value = d?.spiegazione || '';
+  // manuali del corso dell'argomento (più quello già indicato, anche se di un altro corso o disattivato)
+  opzioniManuali(d?.riferimento?.manuale || '');
+  $('edCapitolo').value = d?.riferimento?.capitolo || '';
+  $('edPagina').value = d?.riferimento?.pagina || '';
+  propostaUsata = null;
+  disegnaProposta(d);
+  anteprimaRif();
   $('edInfo').textContent = d
     ? `Ultima modifica: ${d.aggiornataIl ? d.aggiornataIl.toDate().toLocaleString('it-IT') : '—'}${d.legacy ? ` · Origine: ${d.legacy.collezione}` : ''}`
     : 'Le domande nuove partono come bozza: rendile attive quando sono pronte.';
@@ -336,6 +445,98 @@ function apriEditor(id) {
   $('edTesto').focus();
 }
 $('btnNuova').addEventListener('click', () => apriEditor(null));
+
+// ---------- riferimento al manuale e proposte ----------
+let propostaUsata = null; // 'approvata' | 'scartata' | null
+function opzioniManuali(scelto) {
+  const corso = perCat.get($('edCategoria').value)?.corso;
+  const lista = tuttiManuali.filter(m => m.id === scelto || (m.attivo !== false && (!m.corsi?.length || m.corsi.includes(corso))));
+  $('edManuale').innerHTML = '<option value="">Nessun manuale</option>' + lista.map(m => `<option value="${esc(m.id)}">${esc(m.nome)}${m.edizione ? ' (' + esc(m.edizione) + ')' : ''}</option>`).join('');
+  $('edManuale').value = scelto;
+}
+const rifDalModulo = () => $('edManuale').value ? { manuale: $('edManuale').value, capitolo: $('edCapitolo').value.trim(), pagina: $('edPagina').value.trim() } : null;
+function anteprimaRif() {
+  const t = testoRiferimento(rifDalModulo(), tuttiManuali);
+  $('edRifAnteprima').textContent = t ? `Il volontario vedrà: 📖 ${t}` : (manuali.length ? '' : 'Non ci sono ancora manuali: il responsabile li aggiunge nel riquadro "Manuali di riferimento".');
+}
+['edManuale', 'edCapitolo', 'edPagina'].forEach(id => $(id).addEventListener('input', anteprimaRif));
+$('edCategoria').addEventListener('change', () => { opzioniManuali($('edManuale').value); anteprimaRif(); });
+
+function disegnaProposta(d) {
+  const p = d?.proposta;
+  if (!p || !['da_approvare', 'non_trovata'].includes(p.stato)) { $('edProposta').innerHTML = ''; return; }
+  if (p.stato === 'non_trovata') {
+    $('edProposta').innerHTML = `<div class="proposta-box"><h4>Non trovata nei manuali</h4>
+      ${esc(p.nota || 'Nel materiale caricato non c\'è un passaggio che tratti questa domanda.')}
+      <div class="azioni" style="margin-top:10px"><button class="btn sec piccolo" type="button" id="prScarta">Ho visto, togli l'avviso</button></div></div>`;
+  } else {
+    const rif = testoRiferimento(p.riferimento, tuttiManuali);
+    $('edProposta').innerHTML = `<div class="proposta-box"><h4>Proposta da approvare</h4>
+      ${p.spiegazione ? `<div><strong>Spiegazione:</strong> ${esc(p.spiegazione)}</div>` : ''}
+      ${rif ? `<div><strong>Riferimento:</strong> 📖 ${esc(rif)}</div>` : ''}
+      ${p.fonte ? `<div class="fonte"><strong>Dal manuale:</strong> «${esc(p.fonte)}»</div>` : ''}
+      ${p.avviso ? `<div class="avviso">⚠ ${esc(p.avviso)}</div>` : ''}
+      <div class="azioni" style="margin-top:10px">
+        <button class="btn piccolo" type="button" id="prUsa">Usa la proposta</button>
+        <button class="btn sec piccolo" type="button" id="prScarta">Scarta</button></div>
+      <p class="nota" style="margin-top:6px">"Usa la proposta" compila i campi qui sotto: puoi correggerli, poi premi Salva.</p></div>`;
+  }
+  $('prUsa')?.addEventListener('click', () => {
+    if (p.spiegazione) $('edSpieg').value = p.spiegazione;
+    if (p.riferimento?.manuale) { opzioniManuali(p.riferimento.manuale); $('edCapitolo').value = p.riferimento.capitolo || ''; $('edPagina').value = p.riferimento.pagina || ''; }
+    propostaUsata = 'approvata'; anteprimaRif();
+    $('edProposta').innerHTML = '<div class="msg ok" style="margin:0 0 12px">Proposta inserita nei campi: controllala e premi Salva.</div>';
+  });
+  $('prScarta').addEventListener('click', () => {
+    propostaUsata = 'scartata';
+    $('edProposta').innerHTML = '<div class="msg info" style="margin:0 0 12px">La proposta verrà tolta quando premi Salva.</div>';
+  });
+}
+
+// ---------- manuali ----------
+const RESP = eResponsabile(profilo);
+let manInModifica = null;
+function disegnaManuali() {
+  $('btnNuovoManuale').classList.toggle('hidden', !RESP);
+  const nomeCorso = id => corsi.find(c => c.id === id)?.nome || id;
+  const conta = id => domande.filter(d => d.riferimento?.manuale === id).length;
+  $('elencoManuali').innerHTML = tuttiManuali.length ? tuttiManuali.map(m => `<div class="manuale">
+      <div class="n"><strong>${esc(m.nome)}</strong>${m.edizione ? ' · ' + esc(m.edizione) : ''}${m.attivo === false ? ' <span class="badge archiviata">non attivo</span>' : ''}
+        <small>${m.corsi?.length ? m.corsi.map(nomeCorso).map(esc).join(', ') : 'Tutti i corsi'} · ${conta(m.id)} domande collegate${m.link ? ' · con link' : ''}</small></div>
+      ${RESP ? `<button class="btn sec piccolo" type="button" data-man="${esc(m.id)}">Modifica</button>` : ''}</div>`).join('')
+    : `<p class="nota">${RESP ? 'Nessun manuale: aggiungi quelli usati nei corsi.' : 'Il responsabile non ha ancora aggiunto i manuali.'}</p>`;
+}
+function apriManuale(id) {
+  const m = id ? tuttiManuali.find(x => x.id === id) : null;
+  manInModifica = id;
+  $('manTitolo').textContent = m ? 'Modifica manuale' : 'Nuovo manuale';
+  $('manNome').value = m?.nome || ''; $('manEdizione').value = m?.edizione || ''; $('manLink').value = m?.link || '';
+  $('manAttivo').checked = m ? m.attivo !== false : true;
+  $('manCorsi').innerHTML = corsi.map(c => `<label class="check"><input type="checkbox" value="${esc(c.id)}" ${m?.corsi?.includes(c.id) ? 'checked' : ''}> ${esc(c.nome)}</label>`).join('');
+  $('manMsg').innerHTML = '';
+  $('modManuale').classList.remove('hidden');
+}
+$('btnNuovoManuale').addEventListener('click', () => apriManuale(null));
+$('elencoManuali').addEventListener('click', ev => { const b = ev.target.closest('[data-man]'); if (b) apriManuale(b.dataset.man); });
+$('manAnnulla').addEventListener('click', () => $('modManuale').classList.add('hidden'));
+$('manSalva').addEventListener('click', async () => {
+  const dati = { nome: $('manNome').value.trim(), edizione: $('manEdizione').value.trim(), link: $('manLink').value.trim(),
+    corsi: [...$('manCorsi').querySelectorAll('input:checked')].map(i => i.value), attivo: $('manAttivo').checked,
+    aggiornatoIl: serverTimestamp(), aggiornatoDa: user.uid };
+  if (!dati.nome) return $('manMsg').innerHTML = '<div class="msg err">Scrivi il nome del manuale.</div>';
+  if (dati.link && !/^https:\/\//.test(dati.link)) return $('manMsg').innerHTML = '<div class="msg err">Il link deve iniziare con https://</div>';
+  try {
+    const ref = manInModifica ? doc(db, 'manuali', manInModifica) : doc(collection(db, 'manuali'));
+    await setDoc(ref, dati, { merge: true });
+    const vecchio = tuttiManuali.find(x => x.id === ref.id);
+    if (vecchio) Object.assign(vecchio, dati); else tuttiManuali.push({ id: ref.id, ...dati });
+    tuttiManuali.sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'it'));
+    manuali = tuttiManuali.filter(m => m.attivo !== false);
+    registra('manuale.salva', `${dati.nome}${dati.edizione ? ' (' + dati.edizione + ')' : ''}`, { rif: ref.id });
+    $('modManuale').classList.add('hidden');
+    disegnaManuali(); disegnaElenco();
+  } catch (e) { $('manMsg').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; }
+});
 $('edAnnulla').addEventListener('click', () => $('modEditor').classList.add('hidden'));
 
 $('edSalva').addEventListener('click', async () => {
@@ -345,8 +546,11 @@ $('edSalva').addEventListener('click', async () => {
     testo: $('edTesto').value.trim().replace(/\s+/g, ' '),
     opzioni: opzioni.map(o => o.trim().replace(/\s+/g, ' ')),
     corretta, difficolta: $('edDiff').value || null,
-    spiegazione: $('edSpieg').value.trim(), stato: $('edStato').value
+    spiegazione: $('edSpieg').value.trim(), stato: $('edStato').value,
+    riferimento: rifDalModulo()
   };
+  // proposta approvata o scartata: si toglie dalla domanda (resta traccia nel registro)
+  if (propostaUsata) dati.proposta = null;
   const errori = valida(dati);
   if (errori.length) return $('edMsg').innerHTML = `<div class="msg err">${esc(errori.join(' · '))}</div>`;
   const k = chiaveTesto(dati.testo);
@@ -360,7 +564,8 @@ $('edSalva').addEventListener('click', async () => {
     if (inModifica) {
       await updateDoc(doc(db, 'domande', inModifica), { ...dati, ...meta });
       Object.assign(domande.find(d => d.id === inModifica), dati, { aggiornataIl: ora });
-      registra('domanda.modifica', `${nomeCat(dati.categoria)} · ${dati.stato} · ${dati.testo.slice(0, 160)}`, { corso: dati.corso, rif: inModifica });
+      registra(propostaUsata === 'approvata' ? 'proposta.approva' : propostaUsata === 'scartata' ? 'proposta.scarta' : 'domanda.modifica',
+        `${nomeCat(dati.categoria)} · ${dati.stato} · ${dati.testo.slice(0, 160)}`, { corso: dati.corso, rif: inModifica });
     } else {
       const r = await addDoc(collection(db, 'domande'), { ...dati, ...meta, creataIl: serverTimestamp() });
       domande.push({ id: r.id, ...dati, aggiornataIl: ora });

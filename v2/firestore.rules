@@ -136,6 +136,14 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['versioni']);
     }
 
+    // ---------- Manuali di riferimento (nome, edizione, corsi, link) ----------
+    // Li leggono gli istruttori nel pannello; li gestisce il responsabile.
+    // Ai volontari il riferimento arriva già scritto nei pacchetti pubblicati.
+    match /manuali/{id} {
+      allow read: if isStaff();
+      allow write: if isAdmin();
+    }
+
     // ---------- Archivio domande, comprese le bozze ----------
     match /domande/{id} {
       allow read: if gestisce(resource.data.corso);

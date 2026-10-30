@@ -169,7 +169,8 @@ async function fine(r, durataSec) {
   $('fineRipasso').innerHTML = rip.map(x => `<div class="rev"><div class="q">${esc(x.testo)}</div><div class="a">
     ${x.tua ? `<div class="tua">${esc(x.tua)}</div>` : ''}
     ${x.giusta ? `<div class="giusta">${esc(x.giusta)}</div>` : ''}
-    ${x.spieg ? `<div class="spieg">${esc(x.spieg)}</div>` : ''}</div></div>`).join('');
+    ${x.spieg ? `<div class="spieg">${esc(x.spieg)}</div>` : ''}
+    ${x.rif ? `<div class="rif">📖 ${x.rifLink ? `<a href="${esc(x.rifLink)}" target="_blank" rel="noopener">${esc(x.rif)}</a>` : esc(x.rif)}</div>` : ''}</div></div>`).join('');
   mostra('sFine');
   if (!risposte.length || r?.nonSalvare) { $('fineSalva').textContent = r?.nonSalvare ? 'Partita di prova: non salvata.' : ''; return; }
   $('fineSalva').textContent = 'Salvataggio…';

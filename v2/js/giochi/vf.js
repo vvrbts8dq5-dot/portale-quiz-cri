@@ -42,7 +42,7 @@ export function gioca({ campo, hud, domande }) {
       else {
         serie = 0; vibra(120);
         campo.querySelector('#vfEsito').innerHTML = `<span style="color:var(--red-dark);font-weight:700">Era ${esc(d.opzioni[d.corretta])}</span>`;
-        ripasso.push({ testo: d.testo, tua: 'Hai risposto: ' + d.opzioni[scelta], giusta: 'Risposta corretta: ' + d.opzioni[d.corretta], spieg: d.spiegazione });
+        ripasso.push({ testo: d.testo, tua: 'Hai risposto: ' + d.opzioni[scelta], giusta: 'Risposta corretta: ' + d.opzioni[d.corretta], spieg: d.spiegazione, rif: d.rif, rifLink: d.rifLink });
       }
       hud.aggiorna({ punti });
       await attendi(esatta ? 260 : 700);

@@ -181,3 +181,6 @@
 .tachimetro-scala { display: flex; justify-content: space-between; font: 500 11px 'DM Mono', monospace; color: var(--text2); padding: 0 2px; }
 .bpm { font: 800 30px 'Figtree', sans-serif; font-variant-numeric: tabular-nums; margin-top: 6px; }
 .rev .giusta { white-space: pre-line; }
+.rif { margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--blue); }
+.rif a { color: inherit; }
+.rev .rif { padding: 0 6px; }

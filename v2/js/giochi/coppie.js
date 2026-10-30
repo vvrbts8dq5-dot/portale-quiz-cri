@@ -68,7 +68,7 @@ function manche(campo, gruppo, risposte, ripasso, aggiornaPunti) {
           gruppo.forEach((d, i) => {
             const esatta = !errori.has(i);
             risposte.push({ id: d.id, scelta: esatta ? d.corretta : null, esatta, cat: d.categoria, ...(esatta ? {} : { det: sbagliateScelte.get(i) }) });
-            if (!esatta) ripasso.push({ testo: d.testo, tua: 'Avevi abbinato: ' + sbagliateScelte.get(i), giusta: 'Risposta corretta: ' + d.opzioni[d.corretta], spieg: d.spiegazione });
+            if (!esatta) ripasso.push({ testo: d.testo, tua: 'Avevi abbinato: ' + sbagliateScelte.get(i), giusta: 'Risposta corretta: ' + d.opzioni[d.corretta], spieg: d.spiegazione, rif: d.rif, rifLink: d.rifLink });
           });
           setTimeout(() => risolvi(parziale), 450);
         }

@@ -174,14 +174,46 @@ export function aRigaCsv(d) {
 // Id stabile per le domande migrate: rieseguire la migrazione non crea doppioni
 export const idLegacy = (collezione, id) => `${collezione}__${id}`;
 
+// ---------- Manuali di riferimento ----------
+// Collezione `manuali`: { nome, edizione, corsi: [...], link, attivo }. La gestisce il responsabile.
+export async function leggiManuali() {
+  const snap = await getDocs(collection(db, 'manuali'));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(m => m.attivo !== false)
+    .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'it'));
+}
+
+// Riferimento di una domanda { manuale, capitolo, pagina } → "Manuale TSSA (2024) · cap. 4 · pag. 112"
+export function testoRiferimento(r, manuali) {
+  if (!r || !r.manuale) return '';
+  const m = (manuali instanceof Map ? manuali.get(r.manuale) : manuali.find(x => x.id === r.manuale));
+  if (!m) return '';
+  const parti = [`${m.nome}${m.edizione ? ` (${m.edizione})` : ''}`];
+  if (r.capitolo) parti.push(/^\d/.test(r.capitolo) ? `cap. ${r.capitolo}` : r.capitolo);
+  if (r.pagina) parti.push(`pag. ${r.pagina}`);
+  return parti.join(' · ');
+}
+// Link al manuale (se il manuale ha un indirizzo); per i PDF si apre direttamente alla pagina
+export function linkRiferimento(r, manuali) {
+  if (!r || !r.manuale) return '';
+  const m = (manuali instanceof Map ? manuali.get(r.manuale) : manuali.find(x => x.id === r.manuale));
+  if (!m?.link) return '';
+  const pag = parseInt(r.pagina, 10);
+  return /\.pdf($|[?#])/i.test(m.link) && pag ? `${m.link.split('#')[0]}#page=${pag}` : m.link;
+}
+
 // Rigenera il pacchetto di una categoria con le sole domande attive.
+// Il riferimento al manuale viene scritto già come testo: i volontari non devono leggere i manuali.
 export async function pubblicaCategoria(corso, categoria, uid) {
-  const snap = await getDocs(query(collection(db, 'domande'),
-    where('corso', '==', corso), where('categoria', '==', categoria), where('stato', '==', 'attiva')));
+  const [snap, manuali] = await Promise.all([
+    getDocs(query(collection(db, 'domande'), where('corso', '==', corso), where('categoria', '==', categoria), where('stato', '==', 'attiva'))),
+    leggiManuali().catch(() => [])
+  ]);
   const domande = snap.docs.map(d => {
     const x = d.data();
+    const rif = testoRiferimento(x.riferimento, manuali), rifLink = linkRiferimento(x.riferimento, manuali);
     return { id: d.id, tipo: x.tipo, testo: x.testo, opzioni: x.opzioni, corretta: x.corretta,
-             difficolta: x.difficolta ?? null, spiegazione: x.spiegazione || '' };
+             difficolta: x.difficolta ?? null, spiegazione: x.spiegazione || '',
+             ...(rif ? { rif } : {}), ...(rifLink ? { rifLink } : {}) };
   }).sort((a, b) => a.id.localeCompare(b.id));
   const versione = Date.now();
   await setDoc(doc(db, 'pacchetti', categoria), {
