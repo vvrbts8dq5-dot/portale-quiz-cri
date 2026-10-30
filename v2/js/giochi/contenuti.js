@@ -7,16 +7,19 @@
 //   cat  argomenti a cui appartiene, in ordine di preferenza. Il gioco usa il primo argomento
 //        presente nel corso del volontario; gli errori finiscono nelle statistiche di quell'argomento.
 //
-// Riferimenti: linee guida ERC/IRC 2021 per BLS-D e PBLS, algoritmo START per il triage.
+// Riferimenti: manuali del Comitato per ciascun corso (base: Manuale Manovre Salvavita laico;
+// TSSA: Manuale TSSA 2022 e dispense; squadra: Linee Guida ERC/IRC 2025). Dove i manuali dei corsi
+// divergono ci sono varianti separate (es. seq_bls_adulto per base/TSSA, seq_bls_2025 per squadra).
 // TUTTI i contenuti vanno validati dagli istruttori (Pannello → Contenuti giochi).
 
 const SALVAVITA = ['base_salvavita', 'tssa_cardio', 'tssa_adulto', 'squadra'];
+const SALVAVITA_NO_SQUADRA = ['base_salvavita', 'tssa_cardio', 'tssa_adulto'];
 
 // ---------------------------------------------------------------------------
 // METTI IN ORDINE — i passi sono già nell'ordine corretto (il gioco li mescola)
 // ---------------------------------------------------------------------------
 export const SEQUENZE = [
-  { id: 'seq_bls_adulto', cat: SALVAVITA, titolo: 'BLS-D nell\'adulto',
+  { id: 'seq_bls_adulto', cat: SALVAVITA_NO_SQUADRA, titolo: 'BLS-D nell\'adulto',
     consegna: 'Una persona si accascia a terra davanti a te. Metti in ordine le azioni.',
     passi: [
       'Verifica la sicurezza della scena',
@@ -29,6 +32,17 @@ export const SEQUENZE = [
       'Esegui 2 ventilazioni',
       'Appena arriva, accendi il DAE e segui le sue istruzioni'
     ] },
+  { id: 'seq_bls_2025', cat: ['squadra'], titolo: 'BLS-D nell\'adulto (Linee Guida 2025)',
+    consegna: 'Una persona si accascia a terra davanti a te. Metti in ordine le azioni.',
+    passi: [
+      'Verifica che sia sicuro avvicinarsi',
+      'Valuta la coscienza: la persona non risponde',
+      'Chiama subito il 112/118 (meglio in vivavoce) e fai portare il DAE',
+      'Valuta il respiro mentre attendi la risposta della centrale',
+      'Se il respiro è assente o anomalo, inizia 30 compressioni toraciche',
+      'Esegui 2 ventilazioni',
+      'Appena è disponibile il DAE, collegalo e segui le sue istruzioni'
+    ] },
   { id: 'seq_dae', cat: SALVAVITA, titolo: 'Uso del DAE',
     consegna: 'Il DAE è arrivato mentre stai facendo la RCP. In che ordine procedi?',
     passi: [
@@ -39,7 +53,7 @@ export const SEQUENZE = [
       'Se lo shock è indicato, allontana tutti e premi il pulsante',
       'Riprendi subito la RCP per 2 minuti, fino alla nuova analisi'
     ] },
-  { id: 'seq_ostruzione_adulto', cat: ['base_salvavita', 'tssa_adulto', 'squadra'], titolo: 'Ostruzione grave delle vie aeree (adulto)',
+  { id: 'seq_ostruzione_adulto', cat: ['tssa_adulto'], titolo: 'Ostruzione grave delle vie aeree (adulto)',
     consegna: 'Un adulto cosciente non riesce più a parlare né a tossire. Metti in ordine.',
     passi: [
       'Riconosci l\'ostruzione grave: non parla, non tossisce efficacemente',
@@ -49,7 +63,18 @@ export const SEQUENZE = [
       'Continua ad alternare 5 colpi e 5 compressioni',
       'Se perde coscienza: adagialo a terra, allerta il 112/118 e inizia la RCP'
     ] },
-  { id: 'seq_pbls', cat: ['tssa_pediatrico', 'base_salvavita'], titolo: 'BLS pediatrico',
+  { id: 'seq_ostruzione_laico', cat: ['base_salvavita', 'squadra'], titolo: 'Ostruzione grave delle vie aeree (adulto)',
+    consegna: 'Un adulto cosciente non riesce più a parlare né a tossire. Metti in ordine.',
+    passi: [
+      'Riconosci l\'ostruzione grave: non parla, non tossisce efficacemente',
+      'Chiama subito il 112/118',
+      'Posizionati di lato e un po\' dietro, sostienigli il torace e inclinalo in avanti',
+      'Dai fino a 5 colpi tra le scapole',
+      'Se non si risolve, esegui fino a 5 compressioni addominali',
+      'Continua ad alternare 5 colpi e 5 compressioni',
+      'Se perde coscienza: adagialo a terra, verifica che i soccorsi siano in arrivo e inizia la RCP'
+    ] },
+  { id: 'seq_pbls', cat: ['tssa_pediatrico'], titolo: 'BLS pediatrico',
     consegna: 'Un bambino non risponde. Metti in ordine le azioni del soccorritore.',
     passi: [
       'Verifica la sicurezza della scena',
@@ -62,7 +87,20 @@ export const SEQUENZE = [
       'Inizia 15 compressioni alternate a 2 ventilazioni',
       'Se sei solo, allerta il 112/118 dopo circa 1 minuto di RCP'
     ] },
-  { id: 'seq_abcde', cat: ['tssa_adulto', 'tssa_trauma', 'tssa_resp', 'squadra'], titolo: 'Valutazione primaria ABCDE',
+  { id: 'seq_pbls_laico', cat: ['base_salvavita'], titolo: 'BLS pediatrico',
+    consegna: 'Un bambino non risponde. Metti in ordine le azioni del soccorritore.',
+    passi: [
+      'Verifica la sicurezza della scena',
+      'Valuta la coscienza: chiamalo a voce alta e pizzica i muscoli sopra le spalle (mai scuoterlo)',
+      'Chiedi aiuto: se c\'è un secondo soccorritore, chiama subito il 112/118 in vivavoce e recupera il DAE',
+      'Apri le vie aeree',
+      'Valuta il respiro con la manovra GAS per massimo 10 secondi',
+      'Esegui 5 insufflazioni di soccorso',
+      'Valuta i segni di circolo: movimento, tosse, respiro',
+      'Se sono assenti, alterna 30 compressioni e 2 insufflazioni',
+      'Se sei solo e senza telefono, dopo 1 minuto di RCP vai a cercare aiuto'
+    ] },
+  { id: 'seq_abcde', cat: ['tssa_adulto', 'tssa_resp'], titolo: 'Valutazione primaria ABCDE',
     consegna: 'Arrivi sul paziente. Metti in ordine la valutazione primaria.',
     passi: [
       'Sicurezza della scena e autoprotezione',
@@ -71,6 +109,17 @@ export const SEQUENZE = [
       'C — Circolo: polso, cute, emorragie',
       'D — Stato neurologico: AVPU e pupille',
       'E — Esposizione e protezione dall\'ipotermia'
+    ] },
+  { id: 'seq_abcde_trauma', cat: ['tssa_trauma', 'squadra'], titolo: 'Valutazione primaria nel trauma',
+    consegna: 'Arrivi su un traumatizzato. Metti in ordine la valutazione primaria.',
+    passi: [
+      'Sicurezza della scena e autoprotezione',
+      'Controllo delle emorragie massive',
+      'A — Vie aeree e protezione del rachide cervicale',
+      'B — Respiro',
+      'C — Circolo e controllo delle altre emorragie',
+      'D — Stato neurologico',
+      'E — Esposizione e prevenzione dell\'ipotermia'
     ] },
   { id: 'seq_ossigeno', cat: ['tssa_ossigeno', 'squadra'], titolo: 'Preparare l\'ossigenoterapia',
     consegna: 'Devi somministrare ossigeno con maschera con reservoir. In che ordine?',
@@ -133,10 +182,10 @@ export const FRASI = [
     testo: 'Nell\'adulto a riposo la frequenza respiratoria normale è di [[12-20]] atti al minuto e la frequenza cardiaca di [[60-100]] battiti al minuto.',
     distrattori: ['25-35', '6-10', '40-50', '110-130'] },
   { id: 'fr_ipoglicemia', cat: ['tssa_adulto', 'tssa_neuro'],
-    testo: 'Si parla di ipoglicemia quando la glicemia scende sotto i [[70]] mg/dl.',
+    testo: 'Si parla di ipoglicemia quando la glicemia scende sotto i [[60]] mg/dl.',
     distrattori: ['120', '180', '250'] },
   { id: 'fr_reservoir', cat: ['tssa_ossigeno'],
-    testo: 'La maschera con reservoir permette concentrazioni di ossigeno [[elevate]] e si usa con flussi di [[10-15]] litri al minuto.',
+    testo: 'La maschera con reservoir permette concentrazioni di ossigeno [[elevate]] e si usa con flussi di [[12-15]] litri al minuto.',
     distrattori: ['basse', '1-2', '3-5'] },
   { id: 'fr_tourniquet', cat: ['tssa_trauma'],
     testo: 'Il tourniquet si applica [[a monte]] della ferita, cioè tra la ferita e il [[cuore]], annotando l\'[[orario]] di applicazione.',
@@ -192,7 +241,7 @@ export const ABBINAMENTI = [
       ['Frequenza respiratoria', '12-20 atti/min'],
       ['Saturazione (SpO2)', '95-100%'],
       ['Temperatura corporea', '36-37,5 °C'],
-      ['Glicemia a digiuno', '70-100 mg/dl']
+      ['Glicemia a digiuno', '70-110 mg/dl']
     ] },
   { id: 'ab_presidi', cat: ['tssa_trauma', 'squadra'], titolo: 'Presidi per il trauma',
     coppie: [
@@ -205,9 +254,9 @@ export const ABBINAMENTI = [
     ] },
   { id: 'ab_ossigeno', cat: ['tssa_ossigeno'], titolo: 'Presidi per l\'ossigeno e flussi',
     coppie: [
-      ['Cannula nasale', 'Flussi bassi, circa 1-6 L/min'],
-      ['Maschera semplice', 'Flussi intermedi, circa 5-10 L/min'],
-      ['Maschera con reservoir', 'Flussi alti, 10-15 L/min'],
+      ['Cannula nasale', 'Flussi bassi, fino a 4 L/min'],
+      ['Maschera semplice', 'Flussi intermedi, circa 6-8 L/min'],
+      ['Maschera con reservoir', 'Flussi alti, 12-15 L/min'],
       ['Pallone autoespansibile', 'Ventilazione assistita del paziente che non respira adeguatamente']
     ] },
   { id: 'ab_apparati', cat: ['tssa_anatomia'], titolo: 'Organi e apparati',
@@ -286,11 +335,11 @@ export const CASI = [
         ] },
       { id: 't3', testo: 'Il figlio dice che è diabetica. Cosa fai?',
         scelte: [
-          { t: 'Misuro la glicemia: un\'ipoglicemia può dare sintomi simili all\'ictus', ok: true, fb: 'Corretto: l\'ipoglicemia va sempre esclusa.' },
-          { t: 'Le do subito dello zucchero da sciogliere in bocca', fb: 'Con difficoltà a parlare può avere difficoltà a deglutire: rischio di soffocamento. Prima misura.' },
-          { t: 'Non cambia nulla, proseguo', fb: 'Il diabete è un\'informazione importante: verifica la glicemia.' }
+          { t: 'Chiedo se e quando è stata misurata la glicemia e riferisco il valore e il diabete alla centrale', ok: true, fb: 'Corretto: il diabete e un eventuale valore di glicemia misurato dalla paziente o dai familiari sono informazioni da comunicare.' },
+          { t: 'Le do subito dello zucchero da sciogliere in bocca', fb: 'Con difficoltà a parlare può avere difficoltà a deglutire: rischio di soffocamento. Prima informati e riferisci alla centrale.' },
+          { t: 'Non cambia nulla, proseguo', fb: 'Il diabete è un\'informazione importante: chiedi della glicemia e riferiscilo alla centrale.' }
         ] },
-      { id: 't4', testo: 'Glicemia 128 mg/dl. La signora chiede un bicchiere d\'acqua.',
+      { id: 't4', testo: 'Il figlio l\'ha misurata poco fa: 128 mg/dl. La signora chiede un bicchiere d\'acqua.',
         scelte: [
           { t: 'Non le do niente da bere né da mangiare', ok: true, fb: 'Corretto: la deglutizione può essere compromessa.' },
           { t: 'Le do un po\' d\'acqua a piccoli sorsi', fb: 'Rischio di inalazione: nel sospetto ictus niente per bocca.' },
@@ -303,7 +352,7 @@ export const CASI = [
           { t: 'Che la porterete al pronto soccorso più vicino a casa', fb: 'La destinazione la decide la centrale in base ai dati che fornisci.' }
         ] }
     ] },
-  { id: 'caso_moto', cat: ['tssa_trauma', 'squadra'], titolo: 'Incidente in moto', icona: '🏍️',
+  { id: 'caso_moto', cat: ['tssa_trauma'], titolo: 'Incidente in moto', icona: '🏍️',
     intro: 'Un motociclista è caduto da solo su una strada extraurbana. È a terra, a pancia in su, con il casco.',
     tappe: [
       { id: 't1', testo: 'Arrivate sul posto. Le auto passano ancora a velocità sostenuta.',
@@ -466,7 +515,7 @@ export const RAMI_START = {
   apnea: 'non respira nemmeno dopo l\'apertura delle vie aeree → NERO',
   respira_dopo_apertura: 'respira solo dopo l\'apertura delle vie aeree → ROSSO',
   fr_alta: 'frequenza respiratoria > 30 → ROSSO',
-  perfusione: 'polso radiale assente o riempimento capillare > 2 s → ROSSO',
+  perfusione: 'polso radiale assente → ROSSO',
   ordini: 'non esegue ordini semplici → ROSSO',
   giallo: 'parametri nei limiti ma non cammina → GIALLO'
 };

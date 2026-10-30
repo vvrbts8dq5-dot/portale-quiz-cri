@@ -11,7 +11,7 @@ export const regole = `<ul>
   <li>Maxi-emergenza: arrivano <strong>${N} feriti</strong>, hai <strong>${SECONDI} secondi</strong> in tutto.</li>
   <li>Assegna a ciascuno il codice dell'algoritmo <strong>START</strong>:
     cammina → <b style="color:#1E8B5A">verde</b>; non respira nemmeno dopo l'apertura delle vie aeree → <b>nero</b>;
-    respira solo dopo l'apertura, FR &gt; 30, polso radiale assente o riempimento capillare &gt; 2 s, non esegue ordini semplici → <b style="color:#C8102E">rosso</b>;
+    respira solo dopo l'apertura, FR &gt; 30, polso radiale assente, non esegue ordini semplici → <b style="color:#C8102E">rosso</b>;
     altrimenti <b style="color:#9A7600">giallo</b>.</li>
   <li>10 punti per ogni codice giusto, bonus per il tempo avanzato.</li></ul>`;
 
@@ -36,13 +36,13 @@ export function generaFerito(regola = pesca()) {
   if (regola === 'respira_dopo_apertura') return { regola, chi, descr, dati: ['Non respira', 'Dopo l\'apertura delle vie aeree inizia a respirare'] };
   const fr = regola === 'fr_alta' ? rnd(32, 40) : rnd(12, 28);
   dati.push(`Respira, frequenza respiratoria ${fr}/min`);
-  if (regola === 'fr_alta') { dati.push(Math.random() < .5 ? 'Polso radiale presente' : 'Riempimento capillare 2 secondi'); return { regola, chi, descr, dati }; }
+  if (regola === 'fr_alta') { dati.push('Polso radiale presente'); return { regola, chi, descr, dati }; }
   if (regola === 'perfusione') {
-    dati.push(Math.random() < .5 ? 'Polso radiale assente' : `Riempimento capillare ${rnd(3, 5)} secondi`);
+    dati.push('Polso radiale assente');
     if (Math.random() < .5) dati.push('Risponde alle domande');
     return { regola, chi, descr, dati };
   }
-  dati.push(Math.random() < .5 ? 'Polso radiale presente' : 'Riempimento capillare inferiore a 2 secondi');
+  dati.push('Polso radiale presente');
   dati.push(regola === 'ordini' ? (Math.random() < .5 ? 'Non esegue ordini semplici ("stringi la mia mano")' : 'Confuso, non esegue ordini semplici') : 'Esegue gli ordini semplici');
   return { regola, chi, descr, dati };
 }
