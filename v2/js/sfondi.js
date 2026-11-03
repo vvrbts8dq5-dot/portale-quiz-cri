@@ -356,7 +356,57 @@ async function disegnaMuroCheSale(el) {
     + `<div class="blocco" style="height:${B}px">${blocco}</div><div class="blocco" style="height:${B}px;top:${B}px">${blocco}</div></div></div>`;
 }
 
-export const sfondoPrincipi = (stile) => stile === 'muro'
+// Trama bianca: i Principi nei loro colori, in maiuscolo con caratteri misti, incastrati a caso dal basso
+// (grandezze simili, pochi vuoti, niente parole tagliate) e sempre più tenui salendo, fino a sparire.
+async function disegnaPrincipiBianchi(el) {
+  try { await Promise.all(CARATTERI.map(c => document.fonts.load(`${c.s} ${c.w} 24px "${c.f}"`, 'ÀÈ'))); } catch { /* caratteri di riserva */ }
+  const r = casuale(73), prossimo = sacchetto(r, PRINCIPI), carattere = sacchetto(r, CARATTERI);
+  const { W, H } = misura(el);
+  const telefono = W < 600;
+  const ctx = document.createElement('canvas').getContext('2d');
+  const largo = (t, sz, c) => { ctx.font = `${c.s} ${c.w} ${sz}px "${c.f}", sans-serif`; return ctx.measureText(t).width; };
+  const CELLA = 3, n = Math.ceil(W / CELLA);
+  const cielo = new Array(n).fill(H - 2);
+  const parti = [];
+  let ultimoColore = null;
+  const sotto = new Array(n).fill('');                         // ultima parola posata in ogni colonna
+  for (let k = 0; k < 5000; k++) {
+    const media = cielo.reduce((s, x) => s + x, 0) / n;
+    if (media < H * 0.08) break;
+    const t = Math.min(1, Math.max(0, (H - media) / H));        // 0 in basso, 1 in alto
+    let [nome, colore] = prossimo();
+    if (colore === ultimoColore) [nome, colore] = prossimo();  // due colori uguali di fila: si cambia
+    ultimoColore = colore;
+    const car = carattere(), testo = nome.toLocaleUpperCase('it');
+    const sz = Math.max(9, ((telefono ? 26 : 36) - (telefono ? 15 : 21) * Math.pow(t, 0.9)) * (0.85 + r() * 0.3)) * car.k;
+    const verticale = sz > 16 && r() < 0.04;
+    const lt = largo(testo, sz, car), alto = sz * 0.94;
+    const w = verticale ? alto : lt, h = verticale ? lt : alto;
+    const nc = Math.min(n, Math.ceil(w / CELLA));
+    // punto più basso con il "pavimento" più piatto, con un po' di caso; mai sopra la stessa parola
+    let meglio = -Infinity, cx = -1, base = 0;
+    for (let c = 0; c + nc <= n; c++) {
+      let b = Infinity, v = 0, uguali = 0;
+      for (let i = c; i < c + nc; i++) if (cielo[i] < b) b = cielo[i];
+      for (let i = c; i < c + nc; i++) { v += cielo[i] - b; if (sotto[i] === nome) uguali++; }
+      const p = b - 1.5 * v / nc + r() * sz * 0.35 - (uguali / nc) * sz * 2.5;
+      if (p > meglio) { meglio = p; cx = c; base = b; }
+    }
+    if (cx < 0) break;
+    const y = base - h - sz * 0.06;
+    for (let i = cx; i < cx + nc; i++) { cielo[i] = y; sotto[i] = nome; }
+    const op = 0.30 + 0.62 * Math.pow(1 - t, 1.2);              // accese in basso, tenui salendo
+    const ritardo = Math.round(t * 700 + r() * 200);
+    parti.push(`<span style="left:${Math.round(cx * CELLA)}px;top:${Math.round(y)}px;font:${car.s} ${car.w} ${sz.toFixed(1)}px/0.94 '${car.f}',sans-serif;`
+      + `color:${colore};--op:${op.toFixed(2)};opacity:${op.toFixed(2)};animation-delay:${ritardo}ms;`
+      + (verticale ? '--rot:rotate(180deg);writing-mode:vertical-rl;transform:rotate(180deg)' : `--rot:rotate(${tra(r, -2, 2)}deg);transform:rotate(0deg)`) + `">${testo}</span>`);
+  }
+  el.innerHTML = parti.join('');
+}
+
+export const sfondoPrincipi = (stile) => stile === 'bianco'
+  ? monta('principi bianco', disegnaPrincipiBianchi)
+  : stile === 'muro'
   ? (document.body.classList.add('accesso-caldo'), monta('principi salita muro', disegnaMuroCheSale))
   : stile === 'salita'
   ? (document.body.classList.add('accesso-caldo'), monta('principi salita', disegnaPrincipiSalita))
