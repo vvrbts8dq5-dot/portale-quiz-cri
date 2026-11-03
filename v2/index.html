@@ -97,7 +97,7 @@
 import { auth, db } from './js/firebase.js';
 import { sfondoPrincipi } from './js/sfondi.js';
 // Prova della trama più fitta: index.html?prova
-sfondoPrincipi(new URLSearchParams(location.search).has('prova') ? 'fitti' : '');
+{ const p = new URLSearchParams(location.search); sfondoPrincipi(p.has('prova') ? (p.get('prova') === 'fitti' ? 'fitti' : 'caldo') : ''); }
 import { utenteCorrente, leggiProfilo, urlPagina, messaggioErrore, esc } from './js/auth.js';
 import {
   signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail,

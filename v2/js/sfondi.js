@@ -70,7 +70,7 @@ function disegnaPrincipi(el) {
 // Versione "fitta" (prova): le parole si incastrano dal basso come in un muro a secco.
 // Ogni parola viene misurata con il carattere vero e messa nel punto libero più basso, così restano pochi vuoti;
 // grandi e marcate in basso, sempre più piccole e tenui salendo; qualcuna in verticale per chiudere i buchi.
-async function disegnaPrincipiFitti(el) {
+async function disegnaPrincipiFitti(el, caldo = false) {
   try { await document.fonts.load('800 24px Figtree'); } catch { /* si usa il carattere di riserva */ }
   const r = casuale(23), prossimo = sacchetto(r, PRINCIPI);
   const { W, H } = misura(el);
@@ -84,9 +84,9 @@ async function disegnaPrincipiFitti(el) {
   for (let k = 0; k < 2500; k++) {
     let somma = 0; for (let c = Math.floor(BORDO / CELLA); c < n - Math.floor(BORDO / CELLA); c++) somma += cielo[c];
     const livello = somma / (n - 2 * Math.floor(BORDO / CELLA));
-    if (livello < H * 0.06) break;
+    if (livello < H * (caldo ? 0.12 : 0.06)) break;
     const t = Math.min(1, Math.max(0, (H - livello) / H));   // 0 in basso, 1 in alto
-    const sz = Math.max(9, (50 - 38 * Math.pow(t, 0.75)) * piccolo * (0.78 + r() * 0.44));
+    const sz = Math.max(9, ((caldo ? 66 : 50) - (caldo ? 52 : 38) * Math.pow(t, 0.7)) * piccolo * (0.78 + r() * 0.44));
     const [parola, colore] = prossimo();
     const verticale = sz > 15 && r() < 0.13;
     const lt = larghezza(parola, sz);
@@ -103,9 +103,19 @@ async function disegnaPrincipiFitti(el) {
     const y = base - gap - h, x = cx * CELLA - BORDO;
     for (let i = cx; i < cx + nc; i++) cielo[i] = y;
     if (x > W || x + w < 0) continue;
-    const op = (0.30 - 0.20 * t).toFixed(2), rot = verticale ? 0 : tra(r, -3, 3);
-    parti.push(`<span style="left:${Math.round(x)}px;top:${Math.round(y)}px;font-size:${sz.toFixed(1)}px;line-height:1;color:${colore};opacity:${op};`
-      + (verticale ? 'writing-mode:vertical-rl;transform:rotate(180deg)' : `transform:rotate(${rot}deg)`) + `">${parola}</span>`);
+    const rot = verticale ? 0 : tra(r, -3, 3);
+    // caldo: parole bianche sul fondo acceso, qualcuna rosso scuro o ambra per dare profondità
+    let col = colore, op = (0.30 - 0.20 * t);
+    if (caldo) {
+      const d = r();
+      if (t < 0.45 && d < 0.16) { col = '#7E0A1E'; op = 0.16 + 0.22 * (1 - t); }
+      else if (t < 0.55 && d < 0.27) { col = '#FFE2A8'; op = 0.60 + 0.35 * (1 - t); }
+      else { col = '#FFFFFF'; op = 0.42 + 0.50 * (1 - t); }
+    }
+    const ritardo = caldo ? Math.round(t * 900 + r() * 250) : 0;
+    parti.push(`<span style="left:${Math.round(x)}px;top:${Math.round(y)}px;font-size:${sz.toFixed(1)}px;line-height:1;color:${col};--op:${op.toFixed(2)};opacity:${op.toFixed(2)};`
+      + (ritardo ? `animation-delay:${ritardo}ms;` : '')
+      + (verticale ? '--rot:rotate(180deg);writing-mode:vertical-rl;transform:rotate(180deg)' : `--rot:rotate(${rot}deg);transform:rotate(${rot}deg)`) + `">${parola}</span>`);
   }
   el.innerHTML = parti.join('');
 }
@@ -176,6 +186,8 @@ function monta(classe, disegna) {
   });
 }
 
-export const sfondoPrincipi = (stile) => monta(stile === 'fitti' ? 'principi fitti' : 'principi', stile === 'fitti' ? disegnaPrincipiFitti : disegnaPrincipi);
+export const sfondoPrincipi = (stile) => stile === 'caldo'
+  ? (document.body.classList.add('accesso-caldo'), monta('principi caldo', el => disegnaPrincipiFitti(el, true)))
+  : monta(stile === 'fitti' ? 'principi fitti' : 'principi', stile === 'fitti' ? disegnaPrincipiFitti : disegnaPrincipi);
 export const sfondoAttrezzature = () => monta('attrezzature', disegnaAttrezzature);
 export const sfondoSimboli = () => monta('simboli', disegnaSimboli);
