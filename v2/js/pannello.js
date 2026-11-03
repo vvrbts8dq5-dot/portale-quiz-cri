@@ -2,7 +2,7 @@
 import { db } from './firebase.js';
 import { esci, esc, eResponsabile, corsiGestiti, NOMI_RUOLO } from './auth.js';
 import { leggiTuttiCorsi } from './domande.js';
-import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { collection, addDoc, getDocs, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const VOCI = [
   { id: 'inviti', href: 'index.html', nome: 'Codici invito' },
@@ -48,6 +48,16 @@ export async function corsiDelPannello(profilo) {
   const g = corsiGestiti(profilo);
   return g === null ? tutti : tutti.filter(c => g.includes(c.id));
 }
+
+// Edizioni = codici invito. Note dei codici leggibili: tutti per il responsabile, i propri per l'istruttore.
+export async function leggiNoteInviti(profilo, uid) {
+  try {
+    const q = eResponsabile(profilo) ? collection(db, 'inviti') : query(collection(db, 'inviti'), where('creatoDa', '==', uid));
+    return new Map((await getDocs(q)).docs.map(d => [d.id, d.data()]));
+  } catch { return new Map(); }
+}
+// Nome leggibile di un'edizione: "Base marzo 2026 – Noventa (ABC123)" oppure solo il codice
+export const nomeEdizione = (codice, inviti) => inviti?.get(codice)?.note ? `${inviti.get(codice).note} (${codice})` : codice;
 
 // Avviso per l'istruttore senza corsi assegnati
 export const avvisoSenzaCorsi = () => `<div class="card"><div class="msg info">Non hai ancora corsi da gestire.

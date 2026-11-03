@@ -166,7 +166,7 @@ import { sfondoSimboli } from '../js/sfondi.js';
 sfondoSimboli();
 import { db } from '../js/firebase.js';
 import { richiediUtente, esc, messaggioErrore, corsiGestiti, eResponsabile } from '../js/auth.js';
-import { barraPannello, corsiDelPannello, avvisoSenzaCorsi, registra } from '../js/pannello.js';
+import { barraPannello, corsiDelPannello, avvisoSenzaCorsi, registra, leggiNoteInviti, nomeEdizione } from '../js/pannello.js';
 import { leggiPacchettiCorsi } from '../js/domande.js';
 import { espandi, conta, periodi, matrice, segnali, domandeCritiche, analisiGiochi, partitePerGioco, mappaVolontari, pct, FONTI, SOGLIA } from '../js/analisi.js';
 import { descriviElemento, SEQUENZE, RAMI_START } from '../js/giochi/contenuti.js';
@@ -175,7 +175,7 @@ import { prendi, metti } from '../js/cache.js';
 import { collection, getDocs, query, where, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const $ = id => document.getElementById(id);
-const { profilo } = await richiediUtente({ staff: true });
+const { user, profilo } = await richiediUtente({ staff: true });
 barraPannello(profilo, 'andamento', 'Andamento');
 
 const GIORNO = 86400e3;
@@ -222,13 +222,15 @@ async function leggiEsiti(corso, giorni) {
   return c.lista.filter(e => !da || ms(e.timestamp) >= da);
 }
 
+let noteInviti = null;
 async function ricarica() {
   $('segnali').innerHTML = '<p class="nota">Caricamento…</p>';
   try { esitiCorso = await leggiEsiti($('fCorso').value, +$('fPeriodo').value || 0); }
   catch (e) { $('segnali').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; return; }
-  const ed = [...new Set(esitiCorso.map(e => e.edizione).filter(Boolean))].sort();
+  if (!noteInviti) noteInviti = await leggiNoteInviti(profilo, user.uid);
+  const ed = [...new Set(esitiCorso.map(e => e.edizione).filter(Boolean))].sort((a, b) => nomeEdizione(a, noteInviti).localeCompare(nomeEdizione(b, noteInviti), 'it'));
   const prima = $('fEdizione').value;
-  $('fEdizione').innerHTML = '<option value="">Tutte</option>' + ed.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join('');
+  $('fEdizione').innerHTML = '<option value="">Tutte</option>' + ed.map(x => `<option value="${esc(x)}">${esc(nomeEdizione(x, noteInviti))}</option>`).join('');
   if (ed.includes(prima)) $('fEdizione').value = prima;
   selezionati = new Set();
   disegna();

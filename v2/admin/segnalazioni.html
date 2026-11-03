@@ -41,6 +41,7 @@
     <div class="filtri">
       <div class="campo"><label for="fStato">Stato</label><select id="fStato"><option value="aperta" selected>Da gestire</option><option value="chiusa">Chiuse</option><option value="">Tutte</option></select></div>
       <div class="campo"><label for="fCorso">Corso</label><select id="fCorso"><option value="">Tutti</option></select></div>
+      <div class="campo"><label for="fEdizione">Edizione (codice invito)</label><select id="fEdizione"><option value="">Tutte</option></select></div>
     </div>
   </div>
   <div id="elenco"><div class="card"><p class="nota">Caricamento…</p></div></div>
@@ -63,9 +64,9 @@
 import { sfondoSimboli } from '../js/sfondi.js';
 sfondoSimboli();
 import { db } from '../js/firebase.js';
-import { richiediUtente, esc, messaggioErrore, corsiGestiti } from '../js/auth.js';
-import { barraPannello, corsiDelPannello, avvisoSenzaCorsi, registra } from '../js/pannello.js';
-import { collection, doc, getDocs, updateDoc, query, where, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { richiediUtente, esc, messaggioErrore, corsiGestiti, eResponsabile } from '../js/auth.js';
+import { barraPannello, corsiDelPannello, avvisoSenzaCorsi, registra, leggiNoteInviti, nomeEdizione } from '../js/pannello.js';
+import { collection, doc, getDoc, getDocs, updateDoc, query, where, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const $ = id => document.getElementById(id);
 const { user, profilo } = await richiediUtente({ staff: true });
@@ -82,17 +83,32 @@ const dataOra = ts => ts ? ts.toDate().toLocaleString('it-IT', { day: '2-digit',
 const MOTIVI = { risposta: 'La risposta indicata come giusta è sbagliata', testo: 'Il testo non è chiaro', opzioni: 'Le risposte sono ambigue', altro: 'Altro' };
 
 let segn = [];
+// Edizione = codice invito con cui il volontario si è registrato (dal suo profilo)
+const codiceDi = new Map(); let noteInviti = new Map();
+const edizioneDi = s => codiceDi.get(s.uid) || '';
 async function carica() {
   const q = soloCorsi === null ? collection(db, 'segnalazioni') : query(collection(db, 'segnalazioni'), where('corso', 'in', soloCorsi));
   segn = (await getDocs(q)).docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => ms(b.creataIl) - ms(a.creataIl));
   disegna();
+  // profili ed edizioni dopo: le segnalazioni si vedono subito
+  noteInviti = await leggiNoteInviti(profilo, user.uid);
+  if (eResponsabile(profilo)) {
+    try { (await getDocs(collection(db, 'utenti'))).docs.forEach(d => codiceDi.set(d.id, d.data().codiceInvito || '')); } catch { /* niente */ }
+  } else {
+    await Promise.all([...new Set(segn.map(s => s.uid))].map(async uid => {
+      try { const d = await getDoc(doc(db, 'utenti', uid)); if (d.exists()) codiceDi.set(uid, d.data().codiceInvito || ''); } catch { /* non più nei miei corsi */ }
+    }));
+  }
+  const ed = [...new Set(segn.map(edizioneDi).filter(Boolean))].sort((a, b) => nomeEdizione(a, noteInviti).localeCompare(nomeEdizione(b, noteInviti), 'it'));
+  $('fEdizione').innerHTML = '<option value="">Tutte</option>' + ed.map(x => `<option value="${esc(x)}">${esc(nomeEdizione(x, noteInviti))}</option>`).join('');
+  disegna();
 }
 
 function disegna() {
-  const fs = $('fStato').value, fc = $('fCorso').value;
-  const L = segn.filter(s => (!fs || s.stato === fs) && (!fc || s.corso === fc));
+  const fs = $('fStato').value, fc = $('fCorso').value, fe = $('fEdizione').value;
+  const L = segn.filter(s => (!fs || s.stato === fs) && (!fc || s.corso === fc) && (!fe || edizioneDi(s) === fe));
   $('elenco').innerHTML = L.length ? L.map(s => `<div class="segn">
-    <div class="testa"><span>${esc(nomeCorso(s.corso))} · ${esc(nomeCat(s.categoria))}</span><span>${esc(s.cognome)} ${esc(s.nome)} · ${dataOra(s.creataIl)}</span></div>
+    <div class="testa"><span>${esc(nomeCorso(s.corso))} · ${esc(nomeCat(s.categoria))}</span><span>${esc(s.cognome)} ${esc(s.nome)}${edizioneDi(s) ? ' · ' + esc(nomeEdizione(edizioneDi(s), noteInviti)) : ''} · ${dataOra(s.creataIl)}</span></div>
     <div class="dom">${esc(s.testoDomanda)}</div>
     <div class="motivo"><strong>${esc(MOTIVI[s.motivo] || s.motivo)}</strong>${s.testo ? ' — ' + esc(s.testo) : ''}</div>
     ${s.stato === 'chiusa' ? `<div class="chiusa">Chiusa ${dataOra(s.gestitaIl)}${s.nota ? ' · ' + esc(s.nota) : ''}</div>` : ''}
@@ -102,7 +118,7 @@ function disegna() {
     </div></div>`).join('')
     : `<div class="card"><p class="nota">${fs === 'aperta' ? 'Nessuna segnalazione da gestire.' : 'Nessuna segnalazione.'}</p></div>`;
 }
-['fStato', 'fCorso'].forEach(id => $(id).addEventListener('input', disegna));
+['fStato', 'fCorso', 'fEdizione'].forEach(id => $(id).addEventListener('input', disegna));
 
 let inChiusura = null;
 $('elenco').addEventListener('click', ev => {
