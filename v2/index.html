@@ -11,8 +11,6 @@
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js">
 <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js">
 <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<!-- caratteri della trama dei Principi (solo pagina di accesso) -->
-<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Bebas+Neue&family=DM+Serif+Display:ital@1&family=Zilla+Slab:wght@700&display=swap" rel="stylesheet">
 <link rel="icon" href="img/icona-180.png">
 <link rel="apple-touch-icon" href="img/icona-180.png">
 <link rel="manifest" href="manifest.webmanifest">
@@ -98,8 +96,7 @@
 <script type="module">
 import { auth, db } from './js/firebase.js';
 import { sfondoPrincipi } from './js/sfondi.js';
-// Prova della trama più fitta: index.html?prova
-{ const p = new URLSearchParams(location.search); sfondoPrincipi(p.has('prova') ? (['fitti', 'caldo', 'salita', 'muro', 'bianco'].includes(p.get('prova')) ? p.get('prova') : 'trama') : ''); }
+sfondoPrincipi();
 import { utenteCorrente, leggiProfilo, urlPagina, messaggioErrore, esc } from './js/auth.js';
 import {
   signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail,
