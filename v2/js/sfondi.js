@@ -67,15 +67,25 @@ function disegnaPrincipi(el) {
   el.innerHTML = parti.join('');
 }
 
+// Caratteri della trama calda: maiuscole, un carattere diverso a ogni parola
+const CARATTERI = [
+  { f: 'Figtree', w: 800, s: 'normal', k: 1.00 },
+  { f: 'Bebas Neue', w: 400, s: 'normal', k: 1.32 },
+  { f: 'Archivo Black', w: 400, s: 'normal', k: 0.92 },
+  { f: 'DM Serif Display', w: 400, s: 'italic', k: 1.08 },
+  { f: 'Zilla Slab', w: 700, s: 'normal', k: 1.08 }
+];
+
 // Versione "fitta" (prova): le parole si incastrano dal basso come in un muro a secco.
 // Ogni parola viene misurata con il carattere vero e messa nel punto libero più basso, così restano pochi vuoti;
 // grandi e marcate in basso, sempre più piccole e tenui salendo; qualcuna in verticale per chiudere i buchi.
 async function disegnaPrincipiFitti(el, caldo = false) {
-  try { await document.fonts.load('800 24px Figtree'); } catch { /* si usa il carattere di riserva */ }
+  try { await Promise.all((caldo ? CARATTERI : [CARATTERI[0]]).map(c => document.fonts.load(`${c.s} ${c.w} 24px "${c.f}"`, 'ÀÈ'))); } catch { /* caratteri di riserva */ }
   const r = casuale(23), prossimo = sacchetto(r, PRINCIPI);
   const { W, H } = misura(el);
   const ctx = document.createElement('canvas').getContext('2d');
-  const larghezza = (parola, sz) => { ctx.font = `800 ${sz}px Figtree, sans-serif`; return ctx.measureText(parola).width; };
+  const larghezza = (parola, sz, c = CARATTERI[0]) => { ctx.font = `${c.s} ${c.w} ${sz}px "${c.f}", sans-serif`; return ctx.measureText(parola).width; };
+  const carattere = sacchetto(r, CARATTERI);
   const CELLA = 4, BORDO = 160;                       // le parole possono uscire un po' dai lati
   const n = Math.ceil((W + 2 * BORDO) / CELLA);
   const cielo = new Array(n).fill(H + 10);            // per ogni colonna: fin dove è già pieno (dal basso)
@@ -87,10 +97,14 @@ async function disegnaPrincipiFitti(el, caldo = false) {
     if (livello < H * (caldo ? 0.12 : 0.06)) break;
     const t = Math.min(1, Math.max(0, (H - livello) / H));   // 0 in basso, 1 in alto
     const sz = Math.max(9, ((caldo ? 66 : 50) - (caldo ? 52 : 38) * Math.pow(t, 0.7)) * piccolo * (0.78 + r() * 0.44));
-    const [parola, colore] = prossimo();
+    const [nome, colore] = prossimo();
+    const car = caldo ? carattere() : CARATTERI[0];
+    const parola = caldo ? nome.toLocaleUpperCase('it') : nome;
+    const szc = caldo ? sz * car.k : sz;                 // grandezza reale per quel carattere
     const verticale = sz > 15 && r() < 0.13;
-    const lt = larghezza(parola, sz);
-    const w = verticale ? sz * 0.95 : lt, h = verticale ? lt : sz * 0.95;
+    const lt = larghezza(parola, szc, car);
+    const alto = caldo ? szc * 0.94 : sz * 0.95;          // in maiuscolo la riga può essere più stretta
+    const w = verticale ? alto : lt, h = verticale ? lt : alto;
     const nc = Math.ceil(w / CELLA);
     // il punto più basso disponibile (con un po' di caso per non fare file regolari)
     let meglio = -Infinity, cx = 0, base = 0;
@@ -113,7 +127,8 @@ async function disegnaPrincipiFitti(el, caldo = false) {
       else { col = '#FFFFFF'; op = 0.42 + 0.50 * (1 - t); }
     }
     const ritardo = caldo ? Math.round(t * 900 + r() * 250) : 0;
-    parti.push(`<span style="left:${Math.round(x)}px;top:${Math.round(y)}px;font-size:${sz.toFixed(1)}px;line-height:1;color:${col};--op:${op.toFixed(2)};opacity:${op.toFixed(2)};`
+    const font = caldo ? `font-family:'${car.f}',sans-serif;font-weight:${car.w};font-style:${car.s};` : '';
+    parti.push(`<span style="left:${Math.round(x)}px;top:${Math.round(y)}px;font-size:${szc.toFixed(1)}px;line-height:${caldo ? 0.94 : 1};${font}color:${col};--op:${op.toFixed(2)};opacity:${op.toFixed(2)};`
       + (ritardo ? `animation-delay:${ritardo}ms;` : '')
       + (verticale ? '--rot:rotate(180deg);writing-mode:vertical-rl;transform:rotate(180deg)' : `--rot:rotate(${rot}deg);transform:rotate(${rot}deg)`) + `">${parola}</span>`);
   }
