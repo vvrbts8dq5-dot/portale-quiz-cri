@@ -43,10 +43,14 @@ sfondoSimboli();
 import { richiediUtente, esc } from '../js/auth.js';
 import { barraPannello, corsiDelPannello } from '../js/pannello.js';
 import { SEQUENZE, FRASI, ABBINAMENTI, CASI, PUNTI_ANATOMIA, RAMI_START } from '../js/giochi/contenuti.js';
+import { db } from '../js/firebase.js';
+import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const $ = id => document.getElementById(id);
 // I contenuti sono nel codice: si mostrano subito. Accesso e nomi degli argomenti arrivano da Firebase subito dopo.
-const nomeCat = new Map(), catCorso = new Map();
+const nomeCat = new Map(), catCorso = new Map(), nomeMan = new Map();
+// Fonte di un elemento: manuale del Comitato e pagina
+const fonti = el => el.fonti?.length ? `<p class="nota" style="margin-top:8px">📖 ${el.fonti.map(f => `${esc(nomeMan.get(f.manuale) || f.manuale)}, pag. ${esc(f.pagina)}`).join(' · ')}</p>` : '';
 
 const TIPI = [
   { id: 'seq', nome: 'Sequenze', lista: SEQUENZE },
@@ -80,12 +84,13 @@ function disegna() {
   const L = T.lista.filter(visibile);
   $('elenco').innerHTML = (L.length ? L.map(el => {
     const meta = `<div class="meta">id: ${esc(el.id)}</div><div style="margin-bottom:8px">${tags(el)}</div>`;
-    if (tipo === 'seq') return `<div class="elem"><h4>${esc(el.titolo)}</h4>${meta}<p style="font-size:14px;margin-bottom:6px">${esc(el.consegna)}</p><ol>${el.passi.map(p => `<li>${esc(p)}</li>`).join('')}</ol></div>`;
+    const fo = fonti(el);
+    if (tipo === 'seq') return `<div class="elem"><h4>${esc(el.titolo)}</h4>${meta}<p style="font-size:14px;margin-bottom:6px">${esc(el.consegna)}</p><ol>${el.passi.map(p => `<li>${esc(p)}</li>`).join('')}</ol>${fo}</div>`;
     if (tipo === 'frasi') return `<div class="elem">${meta}<p style="font-size:15px;line-height:1.6">${esc(el.testo).replace(/\[\[(.+?)\]\]/g, '<mark>$1</mark>')}</p>
-      <p class="nota" style="margin-top:6px">Distrattori: ${el.distrattori.map(esc).join(' · ')}</p></div>`;
-    if (tipo === 'abbina') return `<div class="elem"><h4>${esc(el.titolo)}</h4>${meta}<table><tbody>${el.coppie.map(([a, b]) => `<tr><td><strong>${esc(a)}</strong></td><td>${esc(b)}</td></tr>`).join('')}</tbody></table></div>`;
+      <p class="nota" style="margin-top:6px">Distrattori: ${el.distrattori.map(esc).join(' · ')}</p>${fo}</div>`;
+    if (tipo === 'abbina') return `<div class="elem"><h4>${esc(el.titolo)}</h4>${meta}<table><tbody>${el.coppie.map(([a, b]) => `<tr><td><strong>${esc(a)}</strong></td><td>${esc(b)}</td></tr>`).join('')}</tbody></table>${fo}</div>`;
     if (tipo === 'casi') return `<div class="elem"><h4>${esc(el.titolo)}</h4>${meta}<p style="font-size:14px;margin-bottom:8px"><em>${esc(el.intro)}</em></p>
-      <ol>${el.tappe.map(t => `<li style="margin-bottom:8px"><strong>${esc(t.testo)}</strong><ul>${t.scelte.map(s => `<li>${s.ok ? '<span class="ok">✓</span> ' : ''}${esc(s.t)}<br><span class="fb">${esc(s.fb)}</span></li>`).join('')}</ul></li>`).join('')}</ol></div>`;
+      <ol>${el.tappe.map(t => `<li style="margin-bottom:8px"><strong>${esc(t.testo)}</strong><ul>${t.scelte.map(s => `<li>${s.ok ? '<span class="ok">✓</span> ' : ''}${esc(s.t)}<br><span class="fb">${esc(s.fb)}</span></li>`).join('')}</ul></li>`).join('')}</ol>${fo}</div>`;
     if (tipo === 'punti') return `<div class="elem"><h4>${esc(el.nome)}</h4>${meta}<p style="font-size:14px">${esc(el.nota)}</p></div>`;
     return '';
   }).join('') : '<p class="nota">Nessun contenuto di questo tipo per il corso scelto.</p>');
@@ -98,6 +103,7 @@ const corsi = await corsiDelPannello(profilo);
 corsi.forEach(c => c.categorie.forEach(k => { nomeCat.set(k.id, k.nome); catCorso.set(k.id, c.id); }));
 $('fCorso').innerHTML += corsi.map(c => `<option value="${esc(c.id)}">${esc(c.nome)}</option>`).join('');
 disegna();
+try { (await getDocs(collection(db, 'manuali'))).docs.forEach(d => nomeMan.set(d.id, d.data().nome)); disegna(); } catch { /* restano gli id dei manuali */ }
 </script>
 </body>
 </html>
