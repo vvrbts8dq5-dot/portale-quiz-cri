@@ -140,6 +140,8 @@ $('cardForm').classList.remove('hidden');
 
 const codiceUrl = (params.get('codice') || '').trim().toUpperCase();
 if (codiceUrl) { $('regCodice').value = codiceUrl; scheda('registrati'); $('regNome').focus(); }
+// ?registrati (QR di prima registrazione senza codice): apre direttamente la scheda Registrati
+else if (params.has('registrati')) { scheda('registrati'); }
 if (params.get('msg') === 'disattivato') mostra('err', 'Il tuo account è stato disattivato. Rivolgiti all\'istruttore del corso.');
 if (params.get('msg') === 'eliminato') mostra('ok', 'Il tuo account e i tuoi risultati sono stati eliminati.');
 if (params.get('msg') === 'profilo') mostra('err', 'Il tuo account non ha un profilo valido. Prova a registrarti di nuovo con il codice invito, o rivolgiti all\'istruttore.');
