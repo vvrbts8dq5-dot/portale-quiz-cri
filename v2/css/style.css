@@ -70,6 +70,16 @@ body.accesso-caldo .footer a { color: #fff; }
 /* chi chiede meno movimento vede le parole ferme, sparse a diverse altezze */
 @media (prefers-reduced-motion: reduce) { .sfondo.principi.salita span { animation-play-state: paused; } }
 
+/* Muro che sale (prova): il nastro scorre verso l'alto senza fine */
+.sfondo.principi.muro .flusso {
+  -webkit-mask-image: linear-gradient(to top, #000 0%, #000 55%, rgba(0,0,0,.55) 74%, transparent 90%);
+          mask-image: linear-gradient(to top, #000 0%, #000 55%, rgba(0,0,0,.55) 74%, transparent 90%); }
+.sfondo.principi.muro .nastro { position: absolute; left: 0; right: 0; top: 0; will-change: transform; animation: nastro-su linear infinite; }
+.sfondo.principi.muro .blocco { position: absolute; left: 0; right: 0; }
+.sfondo.principi.muro span { position: absolute; white-space: nowrap; animation: none; transform: none; text-shadow: 0 1px 6px rgba(120,10,30,0.14); }
+@keyframes nastro-su { from { transform: translateY(0); } to { transform: translateY(calc(-1 * var(--b))); } }
+@media (prefers-reduced-motion: reduce) { .sfondo.principi.muro .nastro { animation: none; } }
+
 /* Trama fitta (prova): parte piena più in alto, poi sfuma */
 .sfondo.principi.fitti {
   -webkit-mask-image: linear-gradient(to top, #000 0%, #000 30%, rgba(0,0,0,0.6) 58%, rgba(0,0,0,0.2) 80%, transparent 96%);

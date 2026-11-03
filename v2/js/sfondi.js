@@ -285,7 +285,80 @@ function disegnaPrincipiSalita(el) {
   el.innerHTML = `<div class="flusso">${parti.join('')}</div>`;
 }
 
-export const sfondoPrincipi = (stile) => stile === 'salita'
+// Muro che sale: un "nastro" di Principi incastrati liberamente (niente righe) che scorre lentamente verso l'alto
+// senza fine. Il nastro è un blocco ripetuto due volte: in basso parte piatto e in alto viene chiuso con parole
+// più piccole, così la giuntura tra le due copie non lascia buchi.
+async function disegnaMuroCheSale(el) {
+  try { await Promise.all(CARATTERI.map(c => document.fonts.load(`${c.s} ${c.w} 24px "${c.f}"`, 'ÀÈ'))); } catch { /* caratteri di riserva */ }
+  const r = casuale(57), prossimo = sacchetto(r, PRINCIPI), carattere = sacchetto(r, CARATTERI);
+  const { W, H } = misura(el);
+  const telefono = W < 600;
+  const B = Math.round(Math.max(H, 600) * 1.15);             // altezza del blocco che si ripete
+  const ctx = document.createElement('canvas').getContext('2d');
+  const largo = (t, sz, c) => { ctx.font = `${c.s} ${c.w} ${sz}px "${c.f}", sans-serif`; return ctx.measureText(t).width; };
+  const CELLA = 3, n = Math.ceil(W / CELLA);
+  const cielo = new Array(n).fill(B);                        // per colonna: fin dove è pieno, dal basso del blocco
+  const [MIN, MAX] = telefono ? [12, 28] : [17, 40];
+  const parti = [];
+  const metti = (c0, nc, base, h, w, testo, sz, car) => {
+    for (let i = c0; i < c0 + nc; i++) cielo[i] = base - h - sz * 0.07;
+    const d = r(); let col = '#FFFFFF', op = 0.50 + r() * 0.42;
+    if (d < 0.14) { col = '#7E0A1E'; op = 0.22 + r() * 0.2; } else if (d < 0.27) { col = '#FFE2A8'; op = 0.7 + r() * 0.25; }
+    parti.push(`<span style="left:${Math.round(c0 * CELLA)}px;top:${Math.round(base - h)}px;font:${car.s} ${car.w} ${sz.toFixed(1)}px/0.94 '${car.f}',sans-serif;color:${col};opacity:${op.toFixed(2)}">${testo}</span>`);
+  };
+  // trova il punto più basso con il "pavimento" più piatto per una parola larga nc colonne
+  const cerca = (nc, sz) => {
+    let meglio = -Infinity, cx = -1, base = 0;
+    for (let c = 0; c + nc <= n; c++) {
+      let b = Infinity, v = 0;
+      for (let i = c; i < c + nc; i++) if (cielo[i] < b) b = cielo[i];
+      for (let i = c; i < c + nc; i++) v += cielo[i] - b;
+      const p = b - 1.6 * v / nc + r() * sz * 0.3;
+      if (p > meglio) { meglio = p; cx = c; base = b; }
+    }
+    return { cx, base };
+  };
+  // 1) riempimento: parole di grandezza mista finché il blocco è quasi pieno
+  for (let k = 0; k < 4000; k++) {
+    const media = cielo.reduce((s, x) => s + x, 0) / n;
+    if (media < MAX * 1.6) break;
+    const [nome] = prossimo(), car = carattere(), testo = nome.toLocaleUpperCase('it');
+    const sz = (MIN + (MAX - MIN) * Math.pow(r(), 1.3)) * car.k;
+    const w = largo(testo, sz, car), h = sz * 0.94, nc = Math.min(n, Math.ceil(w / CELLA));
+    const { cx, base } = cerca(nc, sz);
+    if (cx < 0 || base - h < 0) continue;
+    metti(cx, nc, base, h, w, testo, sz, car);
+  }
+  // 2) chiusura in alto: si cerca la colonna con più spazio libero e la si riempie con una parola su misura,
+  //    finché restano solo fessure di pochi pixel (così la giuntura tra le due copie non si vede)
+  for (let k = 0; k < 6000; k++) {
+    let c0 = 0; for (let c = 1; c < n; c++) if (cielo[c] > cielo[c0]) c0 = c;
+    if (cielo[c0] < 9) break;
+    const [nome] = prossimo(), car = carattere(), testo = nome.toLocaleUpperCase('it');
+    let sz = Math.min(MAX * car.k, (cielo[c0] - 1) / 1.01), fatto = false;
+    for (let giro = 0; giro < 4 && sz >= 8; giro++) {
+      const w = largo(testo, sz, car), nc = Math.min(n, Math.ceil(w / CELLA));
+      // tra le posizioni che coprono la colonna c0, quella con il pavimento più basso
+      let base = -Infinity, cx = -1;
+      for (let c = Math.max(0, c0 - nc + 1); c <= Math.min(c0, n - nc); c++) {
+        let b = Infinity; for (let i = c; i < c + nc; i++) if (cielo[i] < b) b = cielo[i];
+        if (b > base) { base = b; cx = c; }
+      }
+      const h = sz * 0.94;
+      if (cx >= 0 && base - h - sz * 0.07 >= -1) { metti(cx, nc, base, h, w, testo, sz, car); fatto = true; break; }
+      sz = Math.min(sz * 0.8, (base - 1) / 1.01);
+    }
+    if (!fatto) cielo[c0] = Math.min(cielo[c0], 8); // qui non entra niente: si lascia la fessura
+  }
+  const blocco = parti.join('');
+  const durata = Math.round(B / (telefono ? 9 : 11));         // pochi pixel al secondo: movimento lento
+  el.innerHTML = `<div class="flusso"><div class="nastro" style="height:${2 * B}px;--b:${B}px;animation-duration:${durata}s">`
+    + `<div class="blocco" style="height:${B}px">${blocco}</div><div class="blocco" style="height:${B}px;top:${B}px">${blocco}</div></div></div>`;
+}
+
+export const sfondoPrincipi = (stile) => stile === 'muro'
+  ? (document.body.classList.add('accesso-caldo'), monta('principi salita muro', disegnaMuroCheSale))
+  : stile === 'salita'
   ? (document.body.classList.add('accesso-caldo'), monta('principi salita', disegnaPrincipiSalita))
   : stile === 'caldo'
   ? (document.body.classList.add('accesso-caldo'), monta('principi caldo', disegnaPrincipiCaldi))
