@@ -287,19 +287,29 @@ function disegnaPubblica() {
   $('btnPubblicaTutto').textContent = quante ? `Pubblica tutte le modifiche (${quante})` : 'Tutto pubblicato';
 }
 
+let pubblicando = false;
 async function pubblica(ids) {
-  $('msgPubblica').innerHTML = '<div class="msg info">Pubblicazione in corso…</div>';
-  document.querySelectorAll('[data-pubblica], #btnPubblicaTutto').forEach(b => b.disabled = true);
-  try {
-    const fatti = [];
-    for (const id of ids) {
+  if (pubblicando || !ids.length) return;
+  pubblicando = true;
+  const fatti = [], errori = [];
+  const blocca = () => document.querySelectorAll('[data-pubblica], #btnPubblicaTutto').forEach(b => b.disabled = true);
+  blocca();
+  for (const [i, id] of ids.entries()) {
+    $('msgPubblica').innerHTML = `<div class="msg info">Pubblicazione in corso: ${i + 1} di ${ids.length} · <strong>${esc(nomeCat(id))}</strong>…
+      ${fatti.length ? `<br><small>Fatti: ${esc(fatti.join(', '))}</small>` : ''}</div>`;
+    const riga = document.querySelector(`[data-pubblica="${CSS.escape(id)}"]`);
+    if (riga) riga.textContent = 'In corso…';
+    try {
       const n = await pubblicaCategoria(perCat.get(id).corso, id, user.uid);
       pacchetti.set(id, { corso: perCat.get(id).corso, numero: n, pubblicatoIl: Timestamp.now() });
       fatti.push(`${nomeCat(id)} (${n})`);
       registra('pubblica', `${nomeCat(id)}: ${n} domande nei quiz`, { corso: perCat.get(id).corso, rif: id });
-    }
-    $('msgPubblica').innerHTML = `<div class="msg ok">Pubblicato: ${esc(fatti.join(', '))}. I volontari vedono le modifiche dal prossimo quiz.</div>`;
-  } catch (e) { $('msgPubblica').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; }
+    } catch (e) { errori.push(`${nomeCat(id)}: ${messaggioErrore(e)}`); }
+    disegnaPubblica(); blocca(); // la tabella si aggiorna dopo ogni argomento
+  }
+  pubblicando = false;
+  $('msgPubblica').innerHTML = (fatti.length ? `<div class="msg ok">Pubblicato: ${esc(fatti.join(', '))}. I volontari vedono le modifiche dal prossimo quiz.</div>` : '')
+    + (errori.length ? `<div class="msg err">Non pubblicati: ${esc(errori.join(' · '))}. Riprova con il pulsante dell'argomento.</div>` : '');
   disegnaPubblica();
 }
 $('tabPubblica').addEventListener('click', ev => {

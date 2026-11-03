@@ -45,12 +45,8 @@ import { barraPannello, corsiDelPannello } from '../js/pannello.js';
 import { SEQUENZE, FRASI, ABBINAMENTI, CASI, PUNTI_ANATOMIA, RAMI_START } from '../js/giochi/contenuti.js';
 
 const $ = id => document.getElementById(id);
-const { profilo } = await richiediUtente({ staff: true });
-barraPannello(profilo, 'giochi', 'Contenuti giochi');
-const corsi = await corsiDelPannello(profilo);
+// I contenuti sono nel codice: si mostrano subito. Accesso e nomi degli argomenti arrivano da Firebase subito dopo.
 const nomeCat = new Map(), catCorso = new Map();
-corsi.forEach(c => c.categorie.forEach(k => { nomeCat.set(k.id, k.nome); catCorso.set(k.id, c.id); }));
-$('fCorso').innerHTML += corsi.map(c => `<option value="${esc(c.id)}">${esc(c.nome)}</option>`).join('');
 
 const TIPI = [
   { id: 'seq', nome: 'Sequenze', lista: SEQUENZE },
@@ -69,7 +65,7 @@ $('fCorso').onchange = disegna;
 const tags = el => {
   const fc = $('fCorso').value;
   const usato = fc ? el.cat.find(c => catCorso.get(c) === fc) : null;
-  return el.cat.map(c => `<span class="tag ${nomeCat.has(c) && (!fc || c === usato) ? '' : 'fuori'}" title="${esc(c)}">${esc(nomeCat.get(c) || c)}</span>`).join('');
+  return el.cat.map(c => `<span class="tag ${!nomeCat.size || (nomeCat.has(c) && (!fc || c === usato)) ? '' : 'fuori'}" title="${esc(c)}">${esc(nomeCat.get(c) || c)}</span>`).join('');
 };
 const visibile = el => { const fc = $('fCorso').value; return !fc || el.cat.some(c => catCorso.get(c) === fc); };
 
@@ -94,6 +90,13 @@ function disegna() {
     return '';
   }).join('') : '<p class="nota">Nessun contenuto di questo tipo per il corso scelto.</p>');
 }
+disegna();
+
+const { profilo } = await richiediUtente({ staff: true });
+barraPannello(profilo, 'giochi', 'Contenuti giochi');
+const corsi = await corsiDelPannello(profilo);
+corsi.forEach(c => c.categorie.forEach(k => { nomeCat.set(k.id, k.nome); catCorso.set(k.id, c.id); }));
+$('fCorso').innerHTML += corsi.map(c => `<option value="${esc(c.id)}">${esc(c.nome)}</option>`).join('');
 disegna();
 </script>
 </body>
