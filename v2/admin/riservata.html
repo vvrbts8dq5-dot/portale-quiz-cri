@@ -36,6 +36,11 @@
   .avviso-reg { font-size: 13px; color: var(--text2); line-height: 1.5; margin-top: 10px; }
   td.quando { white-space: nowrap; font-family: 'DM Mono', monospace; font-size: 12px; }
   td.dett { font-size: 13px; line-height: 1.4; max-width: 420px; }
+  .manuale { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--linea); font-size: 14px; }
+  .manuale .n { flex: 1; } .manuale .n small { display: block; color: var(--text2); }
+  .solo-tu-elenco { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.5; }
+  .solo-tu-elenco li { margin: 4px 0; }
+  .solo-tu-elenco .link { font-size: 14px; padding: 0; text-align: left; }
   .scelta-ruolo { display: grid; gap: 8px; margin: 8px 0 14px; }
   .scelta-ruolo label { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border-radius: 14px; background: var(--campo); cursor: pointer; }
   .scelta-ruolo label:has(input:checked) { background: var(--red-tint); }
@@ -59,9 +64,25 @@
 <div class="wrap largo">
   <div class="topbar" id="barraPannello"></div>
 
-  <div class="schede" style="max-width:680px">
+  <!-- Riepilogo di tutto ciò che può fare solo il responsabile (in arancione in tutto il pannello) -->
+  <div class="card resp">
+    <div class="card-title">Solo tu · responsabile della formazione</div>
+    <p class="nota" style="margin-bottom:10px">Queste funzioni le vedi solo tu e nel pannello sono sempre in <strong class="resp-titolo">arancione</strong>.
+      Gli istruttori vedono tutto il resto, ma solo per i corsi che gestiscono.</p>
+    <ul class="solo-tu-elenco">
+      <li><button class="link resp-titolo" type="button" data-vai="tabPersone">Nominare gli istruttori e scegliere i loro corsi</button> — Utenti e ruoli → Ruolo</li>
+      <li><button class="link resp-titolo" type="button" data-vai="tabPersone">Vedere tutti gli utenti, disattivarli, cambiare i corsi a cui sono iscritti</button></li>
+      <li><button class="link resp-titolo" type="button" data-vai="tabManuali">Aggiungere e modificare i manuali di riferimento</button></li>
+      <li><button class="link resp-titolo" type="button" data-vai="tabRegistro">Leggere il registro: chi ha fatto cosa nel pannello</button></li>
+      <li><button class="link resp-titolo" type="button" data-vai="tabAssist">Rispondere alle richieste di assistenza e leggere le valutazioni</button></li>
+      <li><a class="link resp-titolo" href="index.html">Vedere i codici invito di tutti gli istruttori</a> (gli istruttori vedono solo i propri) e disattivare quelli di chiunque</li>
+    </ul>
+  </div>
+
+  <div class="schede" style="max-width:760px">
     <button id="tabIstr" class="attiva" type="button">Istruttori</button>
     <button id="tabPersone" type="button">Utenti e ruoli</button>
+    <button id="tabManuali" type="button">Manuali</button>
     <button id="tabRegistro" type="button">Registro</button>
     <button id="tabAssist" type="button">Assistenza</button>
   </div>
@@ -73,6 +94,19 @@
         <strong>Utenti e ruoli</strong>, cerca la persona (deve prima registrarsi con un codice invito) e premi <strong>Ruolo</strong>.</p>
     </div>
     <div class="istruttori" id="elencoIstr"><div class="card"><p class="nota">Caricamento…</p></div></div>
+  </section>
+
+  <!-- ============ MANUALI ============ -->
+  <section id="sezManuali" class="hidden">
+    <div class="card">
+      <div class="barra">
+        <div class="card-title" style="margin:0">Manuali di riferimento</div>
+        <button class="btn sec piccolo resp" id="btnNuovoManuale" type="button" style="width:auto">+ Aggiungi manuale</button>
+      </div>
+      <p class="nota" style="margin:6px 0 8px">Ogni domanda può rimandare a un manuale (capitolo e pagina): il volontario lo vede con la spiegazione.
+        Gli istruttori vedono l'elenco in Domande, ma non possono modificarlo.</p>
+      <div id="elencoManuali"><p class="nota">Caricamento…</p></div>
+    </div>
   </section>
 
   <!-- ============ UTENTI E RUOLI ============ -->
@@ -169,6 +203,21 @@
   </div>
 </div>
 
+<!-- Finestra manuale -->
+<div class="overlay hidden" id="modManuale">
+  <div class="modale">
+    <h3 id="manTitolo">Manuale</h3>
+    <div class="campo"><label for="manNome">Nome</label><input type="text" id="manNome" maxlength="80" placeholder="es. Manuale TSSA"></div>
+    <div class="campo"><label for="manEdizione">Edizione / anno</label><input type="text" id="manEdizione" maxlength="40" placeholder="es. 2024"></div>
+    <div class="campo"><label>Corsi che lo usano</label><div id="manCorsi"></div></div>
+    <div class="campo"><label for="manLink">Link (facoltativo)</label><input type="text" id="manLink" maxlength="500" placeholder="Indirizzo ad accesso riservato, es. cartella Drive del Comitato">
+      <p class="nota" style="margin-top:6px">Non usare indirizzi pubblici per materiale riservato. Se è un PDF, il volontario lo apre alla pagina indicata.</p></div>
+    <label class="check"><input type="checkbox" id="manAttivo" checked> Attivo</label>
+    <div id="manMsg"></div>
+    <div class="azioni" style="margin-top:16px"><button class="btn piccolo" id="manSalva" type="button">Salva</button><button class="btn sec piccolo" id="manAnnulla" type="button">Annulla</button></div>
+  </div>
+</div>
+
 <script type="module">
 import { sfondoSimboli } from '../js/sfondi.js';
 sfondoSimboli();
@@ -178,7 +227,7 @@ import { barraPannello, registra, AZIONI } from '../js/pannello.js';
 import { leggiTuttiCorsi } from '../js/domande.js';
 import { iniziali } from '../js/icone.js';
 import { CATEGORIE_TICKET, STATI_TICKET } from '../js/menu-utente.js';
-import { collection, doc, getDocs, updateDoc, query, orderBy, limit, startAfter, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { collection, doc, getDocs, setDoc, updateDoc, query, orderBy, limit, startAfter, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const $ = id => document.getElementById(id);
 const { user, profilo } = await richiediUtente({ admin: true });
@@ -200,7 +249,7 @@ const PAGINA = 300;
 
 // ---------- schede ----------
 function scheda(n) {
-  [['tabIstr', 'sezIstr'], ['tabPersone', 'sezPersone'], ['tabRegistro', 'sezRegistro'], ['tabAssist', 'sezAssist']].forEach(([t, s]) => {
+  [['tabIstr', 'sezIstr'], ['tabPersone', 'sezPersone'], ['tabManuali', 'sezManuali'], ['tabRegistro', 'sezRegistro'], ['tabAssist', 'sezAssist']].forEach(([t, s]) => {
     $(t).classList.toggle('attiva', t === n); $(s).classList.toggle('hidden', t !== n);
   });
 }
@@ -208,6 +257,53 @@ $('tabIstr').onclick = () => scheda('tabIstr');
 $('tabPersone').onclick = () => scheda('tabPersone');
 $('tabRegistro').onclick = () => scheda('tabRegistro');
 $('tabAssist').onclick = () => scheda('tabAssist');
+$('tabManuali').onclick = () => { scheda('tabManuali'); disegnaManuali(); };
+document.querySelectorAll('[data-vai]').forEach(b => b.onclick = () => { $(b.dataset.vai).click(); $(b.dataset.vai).scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+
+// ================= MANUALI =================
+let tuttiManuali = null, manInModifica = null;
+async function disegnaManuali() {
+  try {
+    if (!tuttiManuali) tuttiManuali = (await getDocs(collection(db, 'manuali'))).docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'it'));
+  } catch (e) { $('elencoManuali').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; return; }
+  $('elencoManuali').innerHTML = tuttiManuali.length ? tuttiManuali.map(m => `<div class="manuale">
+      <div class="n"><strong>${esc(m.nome)}</strong>${m.edizione ? ' · ' + esc(m.edizione) : ''}${m.attivo === false ? ' <span class="badge archiviata">non attivo</span>' : ''}
+        <small>${m.corsi?.length ? m.corsi.map(nomeCorso).map(esc).join(', ') : 'Tutti i corsi'}${m.link ? ' · con link' : ''}</small></div>
+      <button class="btn sec piccolo resp" type="button" data-man="${esc(m.id)}" style="width:auto">Modifica</button></div>`).join('')
+    : '<p class="nota">Nessun manuale: aggiungi quelli usati nei corsi.</p>';
+}
+function apriManuale(id) {
+  const m = id ? tuttiManuali.find(x => x.id === id) : null;
+  manInModifica = id;
+  $('manTitolo').textContent = m ? 'Modifica manuale' : 'Nuovo manuale';
+  $('manNome').value = m?.nome || ''; $('manEdizione').value = m?.edizione || ''; $('manLink').value = m?.link || '';
+  $('manAttivo').checked = m ? m.attivo !== false : true;
+  $('manCorsi').innerHTML = corsi.map(c => `<label class="check"><input type="checkbox" value="${esc(c.id)}" ${m?.corsi?.includes(c.id) ? 'checked' : ''}> ${esc(c.nome)}</label>`).join('');
+  $('manMsg').innerHTML = '';
+  $('modManuale').classList.remove('hidden');
+}
+$('btnNuovoManuale').addEventListener('click', () => apriManuale(null));
+$('elencoManuali').addEventListener('click', ev => { const b = ev.target.closest('[data-man]'); if (b) apriManuale(b.dataset.man); });
+$('manAnnulla').addEventListener('click', () => $('modManuale').classList.add('hidden'));
+$('manSalva').addEventListener('click', async () => {
+  const dati = { nome: $('manNome').value.trim(), edizione: $('manEdizione').value.trim(), link: $('manLink').value.trim(),
+    corsi: [...$('manCorsi').querySelectorAll('input:checked')].map(i => i.value), attivo: $('manAttivo').checked,
+    aggiornatoIl: serverTimestamp(), aggiornatoDa: user.uid };
+  if (!dati.nome) return $('manMsg').innerHTML = '<div class="msg err">Scrivi il nome del manuale.</div>';
+  if (dati.link && !/^https:\/\//.test(dati.link)) return $('manMsg').innerHTML = '<div class="msg err">Il link deve iniziare con https://</div>';
+  try {
+    const ref = manInModifica ? doc(db, 'manuali', manInModifica) : doc(collection(db, 'manuali'));
+    await setDoc(ref, dati, { merge: true });
+    const vecchio = tuttiManuali.find(x => x.id === ref.id);
+    if (vecchio) Object.assign(vecchio, dati); else tuttiManuali.push({ id: ref.id, ...dati });
+    tuttiManuali.sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'it'));
+    registra('manuale.salva', `${dati.nome}${dati.edizione ? ' (' + dati.edizione + ')' : ''}`, { rif: ref.id });
+    $('modManuale').classList.add('hidden');
+    disegnaManuali();
+  } catch (e) { $('manMsg').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; }
+});
+if (location.hash === '#manuali') $('tabManuali').click();
 
 // ---------- caricamento ----------
 async function caricaUtenti() {

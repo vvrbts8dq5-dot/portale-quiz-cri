@@ -29,7 +29,9 @@ export function barraPannello(profilo, attiva, titolo) {
       <div class="t2">${esc(profilo.nome)} ${esc(profilo.cognome)} · ${esc(NOMI_RUOLO[profilo.ruolo] || profilo.ruolo)}</div></div>
     <div class="spazio"></div>
     <nav class="menu-pannello" aria-label="Pannello">
-      ${voci.map(v => `<a href="${v.href}" class="${v.id === attiva ? 'attiva' : ''}${v.riservata ? ' riservata' : ''}">${esc(v.nome)}</a>`).join('')}
+      ${voci.filter(v => !v.riservata).map(v => `<a href="${v.href}" class="${v.id === attiva ? 'attiva' : ''}">${esc(v.nome)}</a>`).join('')}
+      ${voci.some(v => v.riservata) ? `<span class="solo-tu" title="Funzioni riservate al responsabile della formazione">Solo tu</span>` : ''}
+      ${voci.filter(v => v.riservata).map(v => `<a href="${v.href}" class="riservata${v.id === attiva ? ' attiva' : ''}">${esc(v.nome)}</a>`).join('')}
       <a href="../home.html">I miei corsi</a>
       <button type="button" id="btnEsciPannello">Esci</button>
     </nav>`;

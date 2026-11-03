@@ -51,7 +51,7 @@
     </div>
 
     <div class="card">
-      <div class="card-title">Codici esistenti</div>
+      <div class="card-title">Codici esistenti <span class="badge resp hidden" id="badgeTuttiCodici" style="text-transform:none;letter-spacing:0;margin-left:6px">Solo tu: vedi anche i codici degli altri istruttori</span></div>
       <div class="tabella-wrap" id="tabInvitiBody"><p class="nota">Caricamento…</p></div>
     </div>
   </section>
@@ -93,6 +93,7 @@ const $ = id => document.getElementById(id);
 const { user, profilo } = await richiediUtente({ staff: true });
 barraPannello(profilo, 'inviti', 'Codici invito');
 const responsabile = eResponsabile(profilo);
+$('badgeTuttiCodici').classList.toggle('hidden', !responsabile);
 
 const corsiMiei = await corsiDelPannello(profilo);
 if (!corsiMiei.length) { $('sezInviti').innerHTML = avvisoSenzaCorsi(); throw new Error('nessun corso'); }
@@ -189,7 +190,7 @@ function disegnaInviti() {
     return;
   }
   const ora = Date.now();
-  let h = `<table><thead><tr><th>Codice</th><th>Corsi</th><th>Note</th>${responsabile ? '<th>Creato da</th>' : ''}<th>Scadenza</th><th>Registrati</th><th>Stato</th><th></th></tr></thead><tbody>`;
+  let h = `<table><thead><tr><th>Codice</th><th>Corsi</th><th>Note</th>${responsabile ? '<th class="resp" title="Solo responsabile">Creato da</th>' : ''}<th>Scadenza</th><th>Registrati</th><th>Stato</th><th></th></tr></thead><tbody>`;
   for (const i of inviti) {
     const usi = registrati.get(i.codice);
     const scaduto = i.scadenza && i.scadenza.toMillis() < ora;
@@ -199,7 +200,7 @@ function disegnaInviti() {
       <td><code>${esc(i.codice)}</code></td>
       <td>${badgeCorsi(i.corsi)}</td>
       <td>${esc(i.note || '')}</td>
-      ${responsabile ? `<td>${esc(i.creatoDaNome || (i.creatoDa === user.uid ? 'tu' : '—'))}</td>` : ''}
+      ${responsabile ? `<td class="resp">${esc(i.creatoDaNome || (i.creatoDa === user.uid ? 'tu' : '—'))}</td>` : ''}
       <td>${dataIt(i.scadenza)}</td>
       <td>${usi === null || usi === undefined ? (usi === null ? '—' : 0) : usi}</td>
       <td>${stato}</td>

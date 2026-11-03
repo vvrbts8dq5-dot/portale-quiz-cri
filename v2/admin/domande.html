@@ -82,7 +82,7 @@
   <div class="card">
     <div class="barra">
       <div class="card-title" style="margin:0">Manuali di riferimento</div>
-      <button class="btn sec piccolo hidden" id="btnNuovoManuale" type="button">+ Aggiungi manuale</button>
+      <a class="btn sec piccolo resp hidden" id="btnNuovoManuale" href="riservata.html#manuali" title="Solo responsabile">Gestisci i manuali · Area riservata</a>
     </div>
     <p class="nota" style="margin-bottom:8px">Ogni domanda può rimandare a un manuale (capitolo e pagina): il volontario lo vede insieme alla spiegazione quando sbaglia o si allena.</p>
     <div id="elencoManuali"><p class="nota">Caricamento…</p></div>
@@ -157,21 +157,6 @@
       <button class="btn piccolo" id="edSalva" type="button">Salva</button>
       <button class="btn sec piccolo" id="edAnnulla" type="button">Annulla</button>
     </div>
-  </div>
-</div>
-
-<!-- MANUALE -->
-<div class="overlay hidden" id="modManuale">
-  <div class="modale">
-    <h3 id="manTitolo">Manuale</h3>
-    <div class="campo"><label for="manNome">Nome</label><input type="text" id="manNome" maxlength="80" placeholder="es. Manuale TSSA"></div>
-    <div class="campo"><label for="manEdizione">Edizione / anno</label><input type="text" id="manEdizione" maxlength="40" placeholder="es. 2024"></div>
-    <div class="campo"><label>Corsi che lo usano</label><div id="manCorsi"></div></div>
-    <div class="campo"><label for="manLink">Link (facoltativo)</label><input type="text" id="manLink" maxlength="500" placeholder="Indirizzo ad accesso riservato, es. cartella Drive del Comitato">
-      <p class="nota" style="margin-top:6px">Non usare indirizzi pubblici per materiale riservato. Se è un PDF, il volontario lo apre alla pagina indicata.</p></div>
-    <label class="check"><input type="checkbox" id="manAttivo" checked> Attivo</label>
-    <div id="manMsg"></div>
-    <div class="azioni" style="margin-top:16px"><button class="btn piccolo" id="manSalva" type="button">Salva</button><button class="btn sec piccolo" id="manAnnulla" type="button">Annulla</button></div>
   </div>
 </div>
 
@@ -505,7 +490,6 @@ function disegnaProposta(d) {
 
 // ---------- manuali ----------
 const RESP = eResponsabile(profilo);
-let manInModifica = null;
 function disegnaManuali() {
   $('btnNuovoManuale').classList.toggle('hidden', !RESP);
   const nomeCorso = id => corsi.find(c => c.id === id)?.nome || id;
@@ -513,40 +497,9 @@ function disegnaManuali() {
   $('elencoManuali').innerHTML = tuttiManuali.length ? tuttiManuali.map(m => `<div class="manuale">
       <div class="n"><strong>${esc(m.nome)}</strong>${m.edizione ? ' · ' + esc(m.edizione) : ''}${m.attivo === false ? ' <span class="badge archiviata">non attivo</span>' : ''}
         <small>${m.corsi?.length ? m.corsi.map(nomeCorso).map(esc).join(', ') : 'Tutti i corsi'} · ${conta(m.id)} domande collegate${m.link ? ' · con link' : ''}</small></div>
-      ${RESP ? `<button class="btn sec piccolo" type="button" data-man="${esc(m.id)}">Modifica</button>` : ''}</div>`).join('')
-    : `<p class="nota">${RESP ? 'Nessun manuale: aggiungi quelli usati nei corsi.' : 'Il responsabile non ha ancora aggiunto i manuali.'}</p>`;
+      </div>`).join('')
+    : `<p class="nota">${RESP ? 'Nessun manuale: aggiungili dall\'Area riservata.' : 'Il responsabile non ha ancora aggiunto i manuali.'}</p>`;
 }
-function apriManuale(id) {
-  const m = id ? tuttiManuali.find(x => x.id === id) : null;
-  manInModifica = id;
-  $('manTitolo').textContent = m ? 'Modifica manuale' : 'Nuovo manuale';
-  $('manNome').value = m?.nome || ''; $('manEdizione').value = m?.edizione || ''; $('manLink').value = m?.link || '';
-  $('manAttivo').checked = m ? m.attivo !== false : true;
-  $('manCorsi').innerHTML = corsi.map(c => `<label class="check"><input type="checkbox" value="${esc(c.id)}" ${m?.corsi?.includes(c.id) ? 'checked' : ''}> ${esc(c.nome)}</label>`).join('');
-  $('manMsg').innerHTML = '';
-  $('modManuale').classList.remove('hidden');
-}
-$('btnNuovoManuale').addEventListener('click', () => apriManuale(null));
-$('elencoManuali').addEventListener('click', ev => { const b = ev.target.closest('[data-man]'); if (b) apriManuale(b.dataset.man); });
-$('manAnnulla').addEventListener('click', () => $('modManuale').classList.add('hidden'));
-$('manSalva').addEventListener('click', async () => {
-  const dati = { nome: $('manNome').value.trim(), edizione: $('manEdizione').value.trim(), link: $('manLink').value.trim(),
-    corsi: [...$('manCorsi').querySelectorAll('input:checked')].map(i => i.value), attivo: $('manAttivo').checked,
-    aggiornatoIl: serverTimestamp(), aggiornatoDa: user.uid };
-  if (!dati.nome) return $('manMsg').innerHTML = '<div class="msg err">Scrivi il nome del manuale.</div>';
-  if (dati.link && !/^https:\/\//.test(dati.link)) return $('manMsg').innerHTML = '<div class="msg err">Il link deve iniziare con https://</div>';
-  try {
-    const ref = manInModifica ? doc(db, 'manuali', manInModifica) : doc(collection(db, 'manuali'));
-    await setDoc(ref, dati, { merge: true });
-    const vecchio = tuttiManuali.find(x => x.id === ref.id);
-    if (vecchio) Object.assign(vecchio, dati); else tuttiManuali.push({ id: ref.id, ...dati });
-    tuttiManuali.sort((a, b) => String(a.nome).localeCompare(String(b.nome), 'it'));
-    manuali = tuttiManuali.filter(m => m.attivo !== false);
-    registra('manuale.salva', `${dati.nome}${dati.edizione ? ' (' + dati.edizione + ')' : ''}`, { rif: ref.id });
-    $('modManuale').classList.add('hidden');
-    disegnaManuali(); disegnaElenco();
-  } catch (e) { $('manMsg').innerHTML = `<div class="msg err">${esc(messaggioErrore(e))}</div>`; }
-});
 $('edAnnulla').addEventListener('click', () => $('modEditor').classList.add('hidden'));
 
 $('edSalva').addEventListener('click', async () => {
