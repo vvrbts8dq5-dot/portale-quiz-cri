@@ -48,6 +48,28 @@ body.accesso-caldo .footer { display: table; margin: 22px auto 0; padding: 7px 1
   background: rgba(110,8,26,0.42); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 body.accesso-caldo .footer a { color: #fff; }
 
+/* Trama "che sale" (prova): fondo pieno rosso-arancio, chiaro solo in alto attorno al logo */
+.sfondo.principi.salita {
+  -webkit-mask-image: none; mask-image: none;
+  background:
+    radial-gradient(110% 55% at 10% 105%, rgba(178,12,40,0.9) 0%, rgba(178,12,40,0) 60%),
+    radial-gradient(80% 50% at 95% 95%, rgba(236,72,40,0.85) 0%, rgba(236,72,40,0) 65%),
+    linear-gradient(to top, #B70E2B 0%, #D6262E 22%, #EE5530 42%, #F7884A 60%, #FDC9A6 78%, #FFF4EC 92%);
+}
+.sfondo.principi.salita .flusso { position: absolute; inset: 0;
+  -webkit-mask-image: linear-gradient(to top, #000 0%, #000 38%, rgba(0,0,0,.45) 60%, transparent 78%);
+          mask-image: linear-gradient(to top, #000 0%, #000 38%, rgba(0,0,0,.45) 60%, transparent 78%); }
+.sfondo.principi.salita span { position: absolute; top: 0; white-space: nowrap; opacity: var(--op);
+  transform: translateY(var(--a)) rotate(var(--rot)); will-change: transform;
+  animation: sale-su linear infinite; text-shadow: 0 2px 10px rgba(120,10,30,0.18); }
+@keyframes sale-su {
+  0%   { transform: translateY(var(--da)) rotate(var(--rot)); opacity: 0; }
+  8%   { opacity: var(--op); }
+  100% { transform: translateY(var(--a)) rotate(var(--rot)); opacity: var(--op); }
+}
+/* chi chiede meno movimento vede le parole ferme, sparse a diverse altezze */
+@media (prefers-reduced-motion: reduce) { .sfondo.principi.salita span { animation-play-state: paused; } }
+
 /* Trama fitta (prova): parte piena più in alto, poi sfuma */
 .sfondo.principi.fitti {
   -webkit-mask-image: linear-gradient(to top, #000 0%, #000 30%, rgba(0,0,0,0.6) 58%, rgba(0,0,0,0.2) 80%, transparent 96%);

@@ -99,7 +99,7 @@
 import { auth, db } from './js/firebase.js';
 import { sfondoPrincipi } from './js/sfondi.js';
 // Prova della trama più fitta: index.html?prova
-{ const p = new URLSearchParams(location.search); sfondoPrincipi(p.has('prova') ? (p.get('prova') === 'fitti' ? 'fitti' : 'caldo') : ''); }
+{ const p = new URLSearchParams(location.search); sfondoPrincipi(p.has('prova') ? (['fitti', 'caldo'].includes(p.get('prova')) ? p.get('prova') : 'salita') : ''); }
 import { utenteCorrente, leggiProfilo, urlPagina, messaggioErrore, esc } from './js/auth.js';
 import {
   signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail,

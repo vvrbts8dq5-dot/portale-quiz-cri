@@ -253,7 +253,41 @@ async function disegnaPrincipiCaldi(el) {
   el.innerHTML = parti.join('');
 }
 
-export const sfondoPrincipi = (stile) => stile === 'caldo'
+// Trama "che sale": i Principi partono dal fondo, salgono lentamente e svaniscono in alto.
+// Grandi = vicine (piene, più veloci); piccole = lontane (tenui, più lente). Due caratteri, in maiuscolo.
+const CARATTERI_SALITA = [
+  { f: 'Archivo Black', w: 400, s: 'normal', k: 0.9 },
+  { f: 'DM Serif Display', w: 400, s: 'italic', k: 1.12 }
+];
+function disegnaPrincipiSalita(el) {
+  const r = casuale(41), prossimo = sacchetto(r, PRINCIPI), carattere = sacchetto(r, CARATTERI_SALITA);
+  const { W, H } = misura(el);
+  const telefono = W < 600;
+  const quante = Math.round(Math.min(38, Math.max(16, W * H / (telefono ? 17000 : 30000))));
+  // corsie: ogni parola parte da una posizione orizzontale diversa, mescolate
+  const corsie = Array.from({ length: quante }, (_, i) => (i + r() * 0.8) / quante);
+  for (let i = corsie.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [corsie[i], corsie[j]] = [corsie[j], corsie[i]]; }
+  const parti = [];
+  for (let i = 0; i < quante; i++) {
+    const vicino = Math.pow(r(), 2.1);                        // 0 lontano … 1 vicino (poche parole vicine)
+    const car = carattere(), [nome] = prossimo();
+    const sz = (telefono ? 13 + 30 * vicino : 17 + 50 * vicino) * car.k;
+    const durata = (34 - 16 * vicino) * (0.9 + r() * 0.2);   // secondi per attraversare lo schermo
+    const d = r();
+    let col = '#FFFFFF', op = 0.38 + 0.55 * vicino;
+    if (d < 0.14) { col = '#7E0A1E'; op = 0.22 + 0.25 * vicino; } else if (d < 0.30) col = '#FFE2A8';
+    const x = Math.round(corsie[i] * (W + 80) - 80);
+    const rot = tra(r, -4, 4);
+    parti.push(`<span style="left:${x}px;font:${car.s} ${car.w} ${sz.toFixed(1)}px/1 '${car.f}',sans-serif;color:${col};`
+      + `--op:${op.toFixed(2)};--rot:${rot}deg;--da:${Math.round(H + 20)}px;--a:${Math.round(H * 0.08)}px;z-index:${Math.round(vicino * 10)};`
+      + `animation-duration:${durata.toFixed(1)}s;animation-delay:-${(r() * durata).toFixed(1)}s">${nome.toLocaleUpperCase('it')}</span>`);
+  }
+  el.innerHTML = `<div class="flusso">${parti.join('')}</div>`;
+}
+
+export const sfondoPrincipi = (stile) => stile === 'salita'
+  ? (document.body.classList.add('accesso-caldo'), monta('principi salita', disegnaPrincipiSalita))
+  : stile === 'caldo'
   ? (document.body.classList.add('accesso-caldo'), monta('principi caldo', disegnaPrincipiCaldi))
   : monta(stile === 'fitti' ? 'principi fitti' : 'principi', stile === 'fitti' ? disegnaPrincipiFitti : disegnaPrincipi);
 export const sfondoAttrezzature = () => monta('attrezzature', disegnaAttrezzature);
