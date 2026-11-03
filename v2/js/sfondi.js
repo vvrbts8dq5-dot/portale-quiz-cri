@@ -67,6 +67,49 @@ function disegnaPrincipi(el) {
   el.innerHTML = parti.join('');
 }
 
+// Versione "fitta" (prova): le parole si incastrano dal basso come in un muro a secco.
+// Ogni parola viene misurata con il carattere vero e messa nel punto libero più basso, così restano pochi vuoti;
+// grandi e marcate in basso, sempre più piccole e tenui salendo; qualcuna in verticale per chiudere i buchi.
+async function disegnaPrincipiFitti(el) {
+  try { await document.fonts.load('800 24px Figtree'); } catch { /* si usa il carattere di riserva */ }
+  const r = casuale(23), prossimo = sacchetto(r, PRINCIPI);
+  const { W, H } = misura(el);
+  const ctx = document.createElement('canvas').getContext('2d');
+  const larghezza = (parola, sz) => { ctx.font = `800 ${sz}px Figtree, sans-serif`; return ctx.measureText(parola).width; };
+  const CELLA = 4, BORDO = 160;                       // le parole possono uscire un po' dai lati
+  const n = Math.ceil((W + 2 * BORDO) / CELLA);
+  const cielo = new Array(n).fill(H + 10);            // per ogni colonna: fin dove è già pieno (dal basso)
+  const piccolo = W < 600 ? 0.72 : 1;                 // sul telefono parole un po' più piccole
+  const parti = [];
+  for (let k = 0; k < 2500; k++) {
+    let somma = 0; for (let c = Math.floor(BORDO / CELLA); c < n - Math.floor(BORDO / CELLA); c++) somma += cielo[c];
+    const livello = somma / (n - 2 * Math.floor(BORDO / CELLA));
+    if (livello < H * 0.06) break;
+    const t = Math.min(1, Math.max(0, (H - livello) / H));   // 0 in basso, 1 in alto
+    const sz = Math.max(9, (50 - 38 * Math.pow(t, 0.75)) * piccolo * (0.78 + r() * 0.44));
+    const [parola, colore] = prossimo();
+    const verticale = sz > 15 && r() < 0.13;
+    const lt = larghezza(parola, sz);
+    const w = verticale ? sz * 0.95 : lt, h = verticale ? lt : sz * 0.95;
+    const nc = Math.ceil(w / CELLA);
+    // il punto più basso disponibile (con un po' di caso per non fare file regolari)
+    let meglio = -Infinity, cx = 0, base = 0;
+    for (let c = 0; c + nc <= n; c += 2) {
+      let b = Infinity; for (let i = c; i < c + nc; i++) if (cielo[i] < b) b = cielo[i];
+      const punteggio = b + r() * sz * 0.6;
+      if (punteggio > meglio) { meglio = punteggio; cx = c; base = b; }
+    }
+    const gap = 1 + sz * 0.06;
+    const y = base - gap - h, x = cx * CELLA - BORDO;
+    for (let i = cx; i < cx + nc; i++) cielo[i] = y;
+    if (x > W || x + w < 0) continue;
+    const op = (0.30 - 0.20 * t).toFixed(2), rot = verticale ? 0 : tra(r, -3, 3);
+    parti.push(`<span style="left:${Math.round(x)}px;top:${Math.round(y)}px;font-size:${sz.toFixed(1)}px;line-height:1;color:${colore};opacity:${op};`
+      + (verticale ? 'writing-mode:vertical-rl;transform:rotate(180deg)' : `transform:rotate(${rot}deg)`) + `">${parola}</span>`);
+  }
+  el.innerHTML = parti.join('');
+}
+
 // Attrezzature sparse su tutta la pagina, ruotate a caso
 function disegnaAttrezzature(el) {
   const r = casuale(9), prossimo = sacchetto(r, ATTREZZATURE);
@@ -125,7 +168,7 @@ function monta(classe, disegna) {
     clearTimeout(t);
     t = setTimeout(() => {
       const piuGrande = innerWidth > coperto.W || innerHeight > coperto.H;
-      const principiCambiati = classe === 'principi' && Math.abs(innerHeight - altezza) > 120;
+      const principiCambiati = classe.startsWith('principi') && Math.abs(innerHeight - altezza) > 120;
       if (Math.abs(innerWidth - larghezza) > 20 || piuGrande || principiCambiati) {
         larghezza = innerWidth; altezza = innerHeight; disegna(el); coperto = misura(el);
       }
@@ -133,6 +176,6 @@ function monta(classe, disegna) {
   });
 }
 
-export const sfondoPrincipi = () => monta('principi', disegnaPrincipi);
+export const sfondoPrincipi = (stile) => monta(stile === 'fitti' ? 'principi fitti' : 'principi', stile === 'fitti' ? disegnaPrincipiFitti : disegnaPrincipi);
 export const sfondoAttrezzature = () => monta('attrezzature', disegnaAttrezzature);
 export const sfondoSimboli = () => monta('simboli', disegnaSimboli);

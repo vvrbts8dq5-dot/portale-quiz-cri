@@ -28,6 +28,11 @@ body {
           mask-image: linear-gradient(to top, #000 0%, #000 22%, rgba(0,0,0,0.55) 55%, rgba(0,0,0,0.15) 78%, transparent 92%);
 }
 .sfondo.principi span { position: absolute; font-weight: 800; white-space: nowrap; }
+/* Trama fitta (prova): parte piena più in alto, poi sfuma */
+.sfondo.principi.fitti {
+  -webkit-mask-image: linear-gradient(to top, #000 0%, #000 30%, rgba(0,0,0,0.6) 58%, rgba(0,0,0,0.2) 80%, transparent 96%);
+          mask-image: linear-gradient(to top, #000 0%, #000 30%, rgba(0,0,0,0.6) 58%, rgba(0,0,0,0.2) 80%, transparent 96%);
+}
 .sfondo.attrezzature { opacity: 0.22; }
 /* Sfondo caldo delle pagine interne: velature calde e simboli CRI appena accennati */
 .sfondo.simboli { background:
