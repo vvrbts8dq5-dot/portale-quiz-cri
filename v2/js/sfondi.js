@@ -86,9 +86,9 @@ async function disegnaPrincipiFitti(el, caldo = false) {
   const ctx = document.createElement('canvas').getContext('2d');
   const larghezza = (parola, sz, c = CARATTERI[0]) => { ctx.font = `${c.s} ${c.w} ${sz}px "${c.f}", sans-serif`; return ctx.measureText(parola).width; };
   const carattere = sacchetto(r, CARATTERI);
-  const CELLA = 4, BORDO = 160;                       // le parole possono uscire un po' dai lati
+  const CELLA = 4, BORDO = caldo ? 36 : 160;          // quanto le parole possono uscire dai lati
   const n = Math.ceil((W + 2 * BORDO) / CELLA);
-  const cielo = new Array(n).fill(H + 10);            // per ogni colonna: fin dove è già pieno (dal basso)
+  const cielo = new Array(n).fill(caldo ? H - 2 : H + 10); // per ogni colonna: fin dove è già pieno (dal basso)
   const piccolo = W < 600 ? 0.72 : 1;                 // sul telefono parole un po' più piccole
   const parti = [];
   for (let k = 0; k < 2500; k++) {
@@ -96,12 +96,13 @@ async function disegnaPrincipiFitti(el, caldo = false) {
     const livello = somma / (n - 2 * Math.floor(BORDO / CELLA));
     if (livello < H * (caldo ? 0.12 : 0.06)) break;
     const t = Math.min(1, Math.max(0, (H - livello) / H));   // 0 in basso, 1 in alto
-    const sz = Math.max(9, ((caldo ? 66 : 50) - (caldo ? 52 : 38) * Math.pow(t, 0.7)) * piccolo * (0.78 + r() * 0.44));
+    const sz = caldo ? Math.max(9, (38 - 24 * Math.pow(t, 0.9)) * piccolo * (0.86 + r() * 0.28))
+      : Math.max(9, (50 - 38 * Math.pow(t, 0.75)) * piccolo * (0.78 + r() * 0.44));
     const [nome, colore] = prossimo();
     const car = caldo ? carattere() : CARATTERI[0];
     const parola = caldo ? nome.toLocaleUpperCase('it') : nome;
     const szc = caldo ? sz * car.k : sz;                 // grandezza reale per quel carattere
-    const verticale = sz > 15 && r() < 0.13;
+    const verticale = sz > 15 && r() < (caldo ? 0.08 : 0.13);
     const lt = larghezza(parola, szc, car);
     const alto = caldo ? szc * 0.94 : sz * 0.95;          // in maiuscolo la riga può essere più stretta
     const w = verticale ? alto : lt, h = verticale ? lt : alto;
@@ -110,7 +111,9 @@ async function disegnaPrincipiFitti(el, caldo = false) {
     let meglio = -Infinity, cx = 0, base = 0;
     for (let c = 0; c + nc <= n; c += 2) {
       let b = Infinity; for (let i = c; i < c + nc; i++) if (cielo[i] < b) b = cielo[i];
-      const punteggio = b + r() * sz * 0.6;
+      // caldo: si preferiscono i punti con il "pavimento" piatto, così sotto la parola non restano buchi
+      let vuoto = 0; if (caldo) for (let i = c; i < c + nc; i++) vuoto += cielo[i] - b;
+      const punteggio = b - (caldo ? 1.4 * vuoto / nc : 0) + r() * sz * (caldo ? 0.35 : 0.6);
       if (punteggio > meglio) { meglio = punteggio; cx = c; base = b; }
     }
     const gap = 1 + sz * 0.06;
@@ -201,8 +204,57 @@ function monta(classe, disegna) {
   });
 }
 
+// Trama calda: righe giustificate da bordo a bordo (nessun vuoto, nessuna parola tagliata),
+// maiuscole con caratteri e colori misti, più piccole e tenui salendo.
+async function disegnaPrincipiCaldi(el) {
+  try { await Promise.all(CARATTERI.map(c => document.fonts.load(`${c.s} ${c.w} 24px "${c.f}"`, 'ÀÈ'))); } catch { /* caratteri di riserva */ }
+  const r = casuale(31), prossimo = sacchetto(r, PRINCIPI), carattere = sacchetto(r, CARATTERI);
+  const { W, H } = misura(el);
+  const ctx = document.createElement('canvas').getContext('2d');
+  const misuraTesto = (testo, sz, c) => { ctx.font = `${c.s} ${c.w} ${sz}px "${c.f}", sans-serif`; return ctx.measureText(testo).width; };
+  const piccolo = W < 600 ? 0.62 : 1;
+  const MARGINE = 6, parti = [];
+  let y = H - 4;
+  while (y > H * 0.1) {
+    const t = Math.min(1, Math.max(0, (H - y) / H));               // 0 in basso, 1 in alto
+    const base = Math.max(9, (36 - 23 * Math.pow(t, 0.85)) * piccolo);
+    const gapMin = base * 0.32;
+    // riempi la riga finché c'è posto
+    const riga = []; let usato = 0;
+    for (let tentativi = 0; tentativi < 40; tentativi++) {
+      const [nome] = prossimo(), car = carattere();
+      const testo = nome.toLocaleUpperCase('it'), sz = base * car.k;
+      const w = misuraTesto(testo, sz, car);
+      const serve = (riga.length ? gapMin : 0) + w;
+      if (usato + serve > W - 2 * MARGINE) { if (riga.length >= 2) break; else continue; }
+      riga.push({ testo, sz, car, w }); usato += serve;
+    }
+    // prima si ingrandisce un poco la riga (max +18%), poi lo spazio avanzato si divide tra le parole
+    const somma = riga.reduce((s, p) => s + p.w, 0);
+    const f = Math.min(1.18, (W - 2 * MARGINE - gapMin * (riga.length - 1)) / somma);
+    if (f > 1) { riga.forEach(p => { p.sz *= f; p.w *= f; }); usato = somma * f + gapMin * (riga.length - 1); }
+    const alto = base * 0.98 * Math.max(1, f);
+    const avanzo = W - 2 * MARGINE - usato;
+    const gap = gapMin + (riga.length > 1 ? avanzo / (riga.length - 1) : 0);
+    let x = MARGINE + (riga.length > 1 ? 0 : avanzo / 2);
+    for (const p of riga) {
+      const d = r();
+      let col, op;
+      if (t < 0.45 && d < 0.14) { col = '#7E0A1E'; op = 0.18 + 0.22 * (1 - t); }
+      else if (t < 0.55 && d < 0.25) { col = '#FFE2A8'; op = 0.62 + 0.33 * (1 - t); }
+      else { col = '#FFFFFF'; op = 0.42 + 0.50 * (1 - t); }
+      const ritardo = Math.round(t * 900 + r() * 250);
+      parti.push(`<span style="left:${Math.round(x)}px;top:${Math.round(y - alto)}px;font:${p.car.s} ${p.car.w} ${p.sz.toFixed(1)}px/${(alto / p.sz).toFixed(2)} '${p.car.f}',sans-serif;`
+        + `color:${col};--op:${op.toFixed(2)};opacity:${op.toFixed(2)};animation-delay:${ritardo}ms;--rot:rotate(0deg)">${p.testo}</span>`);
+      x += p.w + gap;
+    }
+    y -= alto + base * 0.16;
+  }
+  el.innerHTML = parti.join('');
+}
+
 export const sfondoPrincipi = (stile) => stile === 'caldo'
-  ? (document.body.classList.add('accesso-caldo'), monta('principi caldo', el => disegnaPrincipiFitti(el, true)))
+  ? (document.body.classList.add('accesso-caldo'), monta('principi caldo', disegnaPrincipiCaldi))
   : monta(stile === 'fitti' ? 'principi fitti' : 'principi', stile === 'fitti' ? disegnaPrincipiFitti : disegnaPrincipi);
 export const sfondoAttrezzature = () => monta('attrezzature', disegnaAttrezzature);
 export const sfondoSimboli = () => monta('simboli', disegnaSimboli);
