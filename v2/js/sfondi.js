@@ -404,7 +404,86 @@ async function disegnaPrincipiBianchi(el) {
   el.innerHTML = parti.join('');
 }
 
-export const sfondoPrincipi = (stile) => stile === 'bianco'
+// Trama obliqua: come la trama di sempre (parole sparse e inclinate che sfumano salendo), ma piena.
+// Metodo "nuvola di parole": si posano prima le parole grandi (in basso), poi sempre più piccole che riempiono
+// i buchi; ogni parola ha la sua inclinazione e non tocca le altre (controllo su una griglia di pixel).
+async function disegnaTramaObliqua(el) {
+  try { await Promise.all(CARATTERI.map(c => document.fonts.load(`${c.s} ${c.w} 24px "${c.f}"`, 'ÀÈ'))); } catch { /* caratteri di riserva */ }
+  const r = casuale(91), prossimo = sacchetto(r, PRINCIPI), carattere = sacchetto(r, CARATTERI);
+  const { W, H } = misura(el);
+  const telefono = W < 600, scala = telefono ? 0.7 : 1;
+  const ctx = document.createElement('canvas').getContext('2d');
+  const largo = (t, sz, c) => { ctx.font = `${c.s} ${c.w} ${sz}px "${c.f}", sans-serif`; return ctx.measureText(t).width; };
+  const G = 3, gw = Math.ceil(W / G), gh = Math.ceil(H / G);
+  const occupato = new Uint8Array(gw * gh);
+  const ALTO = H * 0.12;                                       // sopra questa quota non si mette niente
+  // grandezza massima consentita a una certa altezza: grandi in basso, piccole in alto
+  const massimo = y => (14 + 34 * Math.pow(Math.max(0, (y - ALTO) / (H - ALTO)), 1.4)) * scala;
+  const angolo = () => { const d = r(); return d < 0.07 ? (r() < 0.5 ? -90 : 90) : d < 0.22 ? (r() < 0.5 ? -1 : 1) * (28 + r() * 14) : -20 + r() * 40; };
+  // celle coperte da un rettangolo ruotato (centro cx,cy; lati w,h; angolo a), con un piccolo margine
+  const celle = (cx, cy, w, h, a) => {
+    const c = Math.cos(a * Math.PI / 180), s = Math.sin(a * Math.PI / 180), m = 1.5;
+    const ex = Math.abs(c) * w / 2 + Math.abs(s) * h / 2 + m, ey = Math.abs(s) * w / 2 + Math.abs(c) * h / 2 + m;
+    const x0 = Math.max(0, Math.floor((cx - ex) / G)), x1 = Math.min(gw - 1, Math.ceil((cx + ex) / G));
+    const y0 = Math.max(0, Math.floor((cy - ey) / G)), y1 = Math.min(gh - 1, Math.ceil((cy + ey) / G));
+    const L = [];
+    for (let gy = y0; gy <= y1; gy++) for (let gx = x0; gx <= x1; gx++) {
+      const dx = gx * G + G / 2 - cx, dy = gy * G + G / 2 - cy;
+      const u = dx * c + dy * s, v = -dx * s + dy * c;            // coordinate nel sistema della parola
+      if (Math.abs(u) <= w / 2 + m && Math.abs(v) <= h / 2 + m) L.push(gy * gw + gx);
+    }
+    return L;
+  };
+  const parti = [];
+  // grandezze dalla più grande alla più piccola; per ciascuna molti tentativi in posizioni a caso
+  const GRANDEZZE = [46, 38, 32, 27, 23, 19, 16, 13, 11, 9];
+  const uso = Object.fromEntries(PRINCIPI.map(([p]) => [p, 0]));
+  for (const g of GRANDEZZE) {
+    const sz0 = g * scala;
+    const tentativi = Math.round((W * H) / (sz0 * sz0 * 0.35));
+    // la stessa parola riprova in più punti prima di passare alla successiva: così i sette Principi
+    // restano bilanciati (altrimenti le parole corte, che entrano ovunque, diventano troppe)
+    // si sceglie sempre il Principio usato meno finora (le parole lunghe, se non entrano, si restringono un po')
+    let attuale = null, prove = 0;
+    const esauriti = new Set();
+    for (let k = 0; k < tentativi; k++) {
+      if (!attuale || prove >= 160) {
+        if (attuale) esauriti.add(attuale[0]);
+        const minTutti = Math.min(...PRINCIPI.map(([p]) => uso[p]));
+        // tetto: nessun Principio può superare di molto quello usato meno
+        const liberi = PRINCIPI.filter(([p]) => !esauriti.has(p) && uso[p] <= minTutti * 1.35 + 3);
+        if (!liberi.length) break;
+        const min = Math.min(...liberi.map(([p]) => uso[p]));
+        const candidati = liberi.filter(([p]) => uso[p] === min);
+        attuale = [...candidati[Math.floor(r() * candidati.length)], carattere()]; prove = 0;
+      }
+      prove++;
+      const cy = ALTO + r() * (H - ALTO + sz0 * 0.3);
+      if (sz0 > massimo(cy) * 1.08) continue;                     // troppo grande per quell'altezza
+      const cx = -sz0 + r() * (W + 2 * sz0);
+      const [nome, colore, car] = attuale;
+      const testo = nome.toLocaleUpperCase('it'), sz = sz0 * car.k * (0.92 + r() * 0.16) * (1 - 0.3 * Math.min(1, prove / 120));
+      const w = largo(testo, sz, car), h = sz * 0.8, a = angolo();
+      const L = celle(cx, cy, w, h, a);
+      if (!L.length || L.some(i => occupato[i])) continue;
+      // la parola deve stare quasi tutta nello schermo (si accettano piccoli tagli ai bordi)
+      const ex = Math.abs(Math.cos(a * Math.PI / 180)) * w / 2 + Math.abs(Math.sin(a * Math.PI / 180)) * h / 2;
+      if (cx - ex < -w * 0.2 || cx + ex > W + w * 0.2 || cy > H + 2) continue;
+      L.forEach(i => { occupato[i] = 1; });
+      uso[nome]++; attuale = null;
+      const t = Math.min(1, Math.max(0, (H - cy) / (H - ALTO)));  // 0 in basso, 1 in alto
+      const op = 0.20 + 0.52 * Math.pow(1 - t, 1.1);
+      const rot = `translate(-50%,-50%) rotate(${a.toFixed(1)}deg)`;
+      parti.push(`<span style="left:${Math.round(cx)}px;top:${Math.round(cy)}px;font:${car.s} ${car.w} ${sz.toFixed(1)}px/1 '${car.f}',sans-serif;`
+        + `color:${colore};--op:${op.toFixed(2)};opacity:${op.toFixed(2)};--rot:${rot};transform:${rot};animation-delay:${Math.round(t * 700 + r() * 200)}ms">${testo}</span>`);
+    }
+  }
+  el.innerHTML = parti.join('');
+}
+
+export const sfondoPrincipi = (stile) => stile === 'trama'
+  ? monta('principi trama', disegnaTramaObliqua)
+  : stile === 'bianco'
   ? monta('principi bianco', disegnaPrincipiBianchi)
   : stile === 'muro'
   ? (document.body.classList.add('accesso-caldo'), monta('principi salita muro', disegnaMuroCheSale))

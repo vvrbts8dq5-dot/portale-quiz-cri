@@ -88,6 +88,13 @@ body.accesso-caldo .footer a { color: #fff; }
 body:has(.sfondo.principi.bianco) .footer { display: table; margin: 22px auto 0; padding: 7px 16px; border-radius: 999px;
   background: rgba(255,255,255,0.88); box-shadow: 0 4px 14px rgba(60,20,20,0.10); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 
+/* Trama obliqua (prova): come la trama di sempre, piena; le parole entrano dal basso all'apertura */
+@media (prefers-reduced-motion: no-preference) {
+  .sfondo.principi.trama span { animation: sale .8s cubic-bezier(.2,.7,.2,1) both; }
+}
+body:has(.sfondo.principi.trama) .footer { display: table; margin: 22px auto 0; padding: 7px 16px; border-radius: 999px;
+  background: rgba(255,255,255,0.9); box-shadow: 0 4px 14px rgba(60,20,20,0.10); }
+
 /* Muro che sale (prova): il nastro scorre verso l'alto senza fine */
 .sfondo.principi.muro .flusso {
   -webkit-mask-image: linear-gradient(to top, #000 0%, #000 55%, rgba(0,0,0,.55) 74%, transparent 90%);
