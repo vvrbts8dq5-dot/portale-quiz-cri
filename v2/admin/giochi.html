@@ -29,7 +29,7 @@
   <div class="topbar" id="barraPannello"></div>
   <div class="card">
     <div class="card-title">Contenuti dei giochi</div>
-    <p class="nota">Qui trovi tutto ciò che i volontari vedono nei giochi che non usano le domande dei quiz: sequenze, frasi da completare, abbinamenti, casi clinici e punti di anatomia.
+    <p class="nota">Qui trovi tutto ciò che i volontari vedono nei giochi che non usano le domande dei quiz: sequenze, frasi da completare, abbinamenti, intrusi, chiamate alla centrale, parametri, casi clinici e punti di anatomia.
       I giochi con le domande (Vero o falso lampo, Sopravvivenza, La scala, Coppie lampo) usano invece le domande pubblicate di ogni argomento.
       <strong>Controlla che i contenuti siano coerenti con i protocolli in uso</strong>: per correzioni scrivi al responsabile della formazione, che aggiorna il file <code>js/giochi/contenuti.js</code>.</p>
     <div class="schede" style="margin-top:16px" id="schede"></div>
@@ -42,7 +42,7 @@ import { sfondoSimboli } from '../js/sfondi.js';
 sfondoSimboli();
 import { richiediUtente, esc } from '../js/auth.js';
 import { barraPannello, corsiDelPannello } from '../js/pannello.js';
-import { SEQUENZE, FRASI, ABBINAMENTI, CASI, PUNTI_ANATOMIA, RAMI_START } from '../js/giochi/contenuti.js';
+import { SEQUENZE, FRASI, ABBINAMENTI, CASI, PUNTI_ANATOMIA, INTRUSI, CHIAMATE, PARAMETRI, RAMI_START } from '../js/giochi/contenuti.js';
 import { db } from '../js/firebase.js';
 import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
@@ -58,6 +58,9 @@ const TIPI = [
   { id: 'abbina', nome: 'Abbinamenti', lista: ABBINAMENTI },
   { id: 'casi', nome: 'Casi clinici', lista: CASI },
   { id: 'punti', nome: 'Anatomia', lista: PUNTI_ANATOMIA },
+  { id: 'intrusi', nome: 'Intruso', lista: INTRUSI },
+  { id: 'chiamate', nome: 'Chiamate', lista: CHIAMATE },
+  { id: 'parametri', nome: 'Parametri', lista: PARAMETRI },
   { id: 'triage', nome: 'Triage', lista: null }
 ];
 let tipo = 'seq';
@@ -91,6 +94,9 @@ function disegna() {
     if (tipo === 'abbina') return `<div class="elem"><h4>${esc(el.titolo)}</h4>${meta}<table><tbody>${el.coppie.map(([a, b]) => `<tr><td><strong>${esc(a)}</strong></td><td>${esc(b)}</td></tr>`).join('')}</tbody></table>${fo}</div>`;
     if (tipo === 'casi') return `<div class="elem"><h4>${esc(el.titolo)}</h4>${meta}<p style="font-size:14px;margin-bottom:8px"><em>${esc(el.intro)}</em></p>
       <ol>${el.tappe.map(t => `<li style="margin-bottom:8px"><strong>${esc(t.testo)}</strong><ul>${t.scelte.map(s => `<li>${s.ok ? '<span class="ok">✓</span> ' : ''}${esc(s.t)}<br><span class="fb">${esc(s.fb)}</span></li>`).join('')}</ul></li>`).join('')}</ol>${fo}</div>`;
+    if (tipo === 'intrusi') return `<div class="elem"><h4>${esc(el.titolo)}</h4>${meta}<ul>${el.voci.map((v, i) => `<li>${i === el.intruso ? '<span class="ok">✗ intruso:</span> ' : ''}${esc(v)}</li>`).join('')}</ul><p class="nota" style="margin-top:6px">${esc(el.perche)}</p>${fo}</div>`;
+    if (tipo === 'chiamate') return `<div class="elem">${meta}<p style="font-size:14px;margin-bottom:8px"><em>${esc(el.scenario)}</em></p><ul>${el.info.map(x => `<li>${x.ok ? '<span class="ok">✓</span> ' : '<span style="color:var(--text2)">✗</span> '}${esc(x.t)}</li>`).join('')}</ul><p class="nota" style="margin-top:6px">${esc(el.spiegazione)}</p>${fo}</div>`;
+    if (tipo === 'parametri') return `<div class="elem"><h4>${esc(el.nome)}</h4>${meta}<p style="font-size:14px">${esc(el.regola)}</p><p class="nota" style="margin-top:6px">Valori generati — normali: ${el.normale.join('–')} ${esc(el.unita)}${el.basso ? ` · bassi: ${el.basso.join('–')}` : ''}${el.alto ? ` · alti: ${el.alto.join('–')}` : ''}</p>${fo}</div>`;
     if (tipo === 'punti') return `<div class="elem"><h4>${esc(el.nome)}</h4>${meta}<p style="font-size:14px">${esc(el.nota)}</p></div>`;
     return '';
   }).join('') : '<p class="nota">Nessun contenuto di questo tipo per il corso scelto.</p>');

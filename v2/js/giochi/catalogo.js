@@ -1,5 +1,5 @@
 // Elenco dei giochi: nome, descrizione, gruppo e quando sono disponibili per un corso.
-import { SEQUENZE, FRASI, ABBINAMENTI, CASI, PUNTI_ANATOMIA, perCorso } from './contenuti.js';
+import { SEQUENZE, FRASI, ABBINAMENTI, CASI, PUNTI_ANATOMIA, INTRUSI, CHIAMATE, PARAMETRI, perCorso } from './contenuti.js';
 
 const svg = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 
@@ -14,7 +14,10 @@ export const ICONE_GIOCHI = {
   caso: svg('<path d="M12 3v6M12 9l-6 5v7M12 9l6 5v7"/><circle cx="12" cy="3" r="1"/>'),
   anatomia: svg('<circle cx="12" cy="5" r="2.5"/><path d="M12 8v7M7 10l5 1 5-1M9 22l3-7 3 7"/><circle cx="17" cy="15" r="3"/><path d="M19 17l2 2"/>'),
   triage: svg('<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M7 9h2M11 9h6M7 14h2M11 14h6"/>'),
-  rcp: svg('<path d="M3 12h4l2-6 4 12 2-6h6"/>')
+  rcp: svg('<path d="M3 12h4l2-6 4 12 2-6h6"/>'),
+  intruso: svg('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><circle cx="17.5" cy="17.5" r="3.5"/>'),
+  chiamata: svg('<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>'),
+  parametri: svg('<path d="M3 12h3l2-4 3 8 2-4h2"/><path d="M17 8v8M20 11l-3-3-3 3"/>')
 };
 
 export const GRUPPI = [
@@ -48,10 +51,16 @@ export const GIOCHI = [
     disponibile: ({ categorie }) => perCorso(FRASI, categorie).length > 0 },
   { id: 'abbina', gruppo: 'contenuti', nome: 'Abbina', sub: 'Collega ogni voce alla sua definizione.',
     disponibile: ({ categorie }) => perCorso(ABBINAMENTI, categorie).length > 0 },
+  { id: 'intruso', gruppo: 'contenuti', nome: 'Trova l\'intruso', sub: 'Quattro voci, una non c\'entra: scovala.',
+    disponibile: ({ categorie }) => perCorso(INTRUSI, categorie).length >= 4 },
+  { id: 'parametri', gruppo: 'contenuti', nome: 'Parametri: normale o no?', sub: '60 secondi: decidi in fretta se un valore è nella norma.',
+    disponibile: ({ categorie }) => perCorso(PARAMETRI, categorie).length >= 2 },
   { id: 'caso', gruppo: 'interattivi', nome: 'Caso clinico a bivi', sub: 'Sei sul posto: ogni scelta cambia come va a finire.',
     disponibile: ({ categorie }) => perCorso(CASI, categorie).length > 0 },
   { id: 'anatomia', gruppo: 'interattivi', nome: 'Trova il punto', sub: 'Tocca sulla figura polsi, organi e punti delle manovre.',
     disponibile: ({ categorie }) => perCorso(PUNTI_ANATOMIA, categorie).length >= 4 },
+  { id: 'chiamata', gruppo: 'interattivi', nome: 'Chiamata alla centrale', sub: 'Scegli le informazioni giuste da comunicare.',
+    disponibile: ({ categorie }) => perCorso(CHIAMATE, categorie).length >= 2 },
   { id: 'triage', gruppo: 'interattivi', nome: 'Triage START', sub: 'Maxi-emergenza: assegna il codice colore a ogni ferito.',
     disponibile: ({ categorie }) => !!argomentoTriage(categorie) },
   { id: 'rcp', gruppo: 'interattivi', nome: 'Ritmo RCP', sub: '30 compressioni: tieni il ritmo tra 100 e 120 al minuto.',
