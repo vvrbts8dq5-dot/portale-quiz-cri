@@ -22,8 +22,8 @@ export const ICONE_GIOCHI = {
 
 export const GRUPPI = [
   { id: 'domande', nome: 'Gioca con le domande del corso', sub: 'Le domande dei quiz, in versione gioco. Gli errori finiscono nel tuo ripasso.' },
-  { id: 'contenuti', nome: 'Allenamento pratico', sub: 'Sequenze, frasi e abbinamenti da ricordare in servizio.' },
-  { id: 'interattivi', nome: 'Simulazioni', sub: 'Casi a bivi, anatomia, triage e ritmo delle compressioni.' }
+  { id: 'contenuti', nome: 'Allenamento pratico', sub: 'Sequenze, frasi, abbinamenti, intrusi e parametri da ricordare in servizio.' },
+  { id: 'interattivi', nome: 'Simulazioni', sub: 'Casi a bivi, chiamate alla centrale, anatomia, triage e ritmo delle compressioni.' }
 ];
 
 // Domande adatte al gioco "Coppie": testo e risposta brevi, risposta non generica
